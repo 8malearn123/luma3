@@ -10,7 +10,7 @@ export const GET = route({
   auth: 'tenant', capability: ['bookings.view_all', 'bookings.view_assigned', 'bookings.view_financial'], input: listBookingsQuery,
   handler: async ({ tenant, input }) => {
     const r = await listBookings(tenant, {
-      from: input.from, to: input.to, status: input.status?.split(',').filter(Boolean), staffId: input.staff_id, customerId: input.customer_id, q: input.q,
+      from: input.from, to: input.to, status: input.status?.split(',').filter(Boolean), staffId: input.staff_id, branchId: input.branch_id, customerId: input.customer_id, q: input.q,
       limit: input.limit, cursor: decodeCursor<{ starts_at: string; id: string }>(input.cursor),
     });
     return { data: r.items, meta: { next_cursor: r.next_cursor ? encodeCursor(r.next_cursor) : null } };

@@ -111,6 +111,18 @@ export async function futureBookingsFor(trx: Tx, staffId: string, during?: { fro
   return (await q.execute()).map((r) => r.id);
 }
 
+/** The caller's own linked staff profile (public-facing fields only), for the staff portal. */
+export async function getOwnProfile(access: TenantAccess) {
+  if (!access.staffProfileId) throw Errors.notFound('staff');
+  return withTenant(access.tenantId, async (trx) => {
+    const p = await trx.selectFrom('staff_profiles')
+      .select(['id', 'display_name', 'display_name_en', 'title_ar', 'title_en', 'bio_ar', 'bio_en', 'photo_asset_id', 'is_active', 'is_public'])
+      .where('id', '=', access.staffProfileId!).executeTakeFirst();
+    if (!p) throw Errors.notFound('staff');
+    return p;
+  });
+}
+
 /** A specialist edits only allowlisted fields of her own linked profile. */
 export async function updateOwnProfile(access: TenantAccess, actor: AuditActor, patch: z.infer<typeof ownProfilePatch>) {
   if (!access.staffProfileId) throw Errors.forbidden('Your account is not linked to a staff profile');

@@ -334,6 +334,28 @@ function canSeeAll(access: TenantAccess) {
   return hasCapability(access, ['bookings.view_all', 'bookings.view_financial']);
 }
 
+/** Amounts and payment state are shown only to roles that handle money for bookings (not to assigned-only specialists). */
+function canSeeFinancial(access: TenantAccess) {
+  return hasCapability(access, ['bookings.view_financial', 'bookings.manage', 'payments.collect', 'finance.view']);
+}
+
+const BOOKING_MONEY = ['subtotal_minor', 'discount_minor', 'tax_minor', 'total_minor', 'paid_minor', 'refunded_minor', 'deposit_due_minor', 'payment_status', 'coupon_id'] as const;
+const ITEM_MONEY = ['unit_price_minor', 'addons_price_minor', 'line_total_minor'] as const;
+
+function stripFinancial<T extends Record<string, unknown>>(row: T): T {
+  const out: Record<string, unknown> = { ...row };
+  for (const k of BOOKING_MONEY) delete out[k];
+  return out as T;
+}
+
+function stripItemFinancial<T extends Record<string, unknown>>(row: T): T {
+  const out: Record<string, unknown> = { ...row };
+  for (const k of ITEM_MONEY) delete out[k];
+  // Add-on snapshots carry prices; keep names only.
+  if (Array.isArray(out.addons)) out.addons = (out.addons as Array<Record<string, unknown>>).map(({ price_minor: _p, ...a }) => a);
+  return out as T;
+}
+
 async function assignedFilter(trx: Tx, access: TenantAccess, bookingId: string) {
   if (canSeeAll(access)) return true;
   if (!access.staffProfileId || !hasCapability(access, 'bookings.view_assigned')) return false;
@@ -350,30 +372,38 @@ export async function getBooking(access: TenantAccess, bookingId: string) {
       trx.selectFrom('booking_events').selectAll().where('booking_id', '=', bookingId).orderBy('created_at').execute(),
       trx.selectFrom('tenant_customers').select(['id', 'display_name', 'phone', 'email', 'private_notes', 'user_id']).where('id', '=', b.tenant_customer_id).executeTakeFirst(),
       hasCapability(access, ['bookings.view_financial', 'payments.collect', 'finance.view'])
-        ? trx.selectFrom('payments').select(['id', 'kind', 'method', 'amount_minor', 'status', 'captured_at', 'needs_reconciliation']).where('booking_id', '=', bookingId).orderBy('created_at').execute()
+        ? trx.selectFrom('payments').select(['id', 'kind', 'method', 'amount_minor', 'status', 'captured_at', 'needs_reconciliation',
+          sql<number>`(select coalesce(sum(r.amount_minor), 0)::int from refunds r where r.payment_id = payments.id and r.status not in ('failed', 'cancelled'))`.as('refunded_or_pending_minor')])
+          .where('booking_id', '=', bookingId).orderBy('created_at').execute()
         : Promise.resolve([]),
     ]);
     const showNotes = hasCapability(access, 'customers.view_notes');
-    const financial = hasCapability(access, ['bookings.view_financial', 'bookings.manage', 'payments.collect']);
+    const financial = canSeeFinancial(access);
+    const base = financial ? b : stripFinancial(b);
     return {
-      ...b,
+      ...base,
       internal_note: hasCapability(access, 'bookings.manage') ? b.internal_note : null,
       payment_terms: financial ? b.payment_terms : undefined,
-      items: items.filter((i) => !i.superseded_at),
-      history_items: items.filter((i) => !!i.superseded_at),
-      events,
+      items: (financial ? items : items.map(stripItemFinancial)).filter((i) => !i.superseded_at),
+      history_items: (financial ? items : items.map(stripItemFinancial)).filter((i) => !!i.superseded_at),
+      // Event data can carry totals/refund amounts; callers without financial access get the transition only.
+      events: financial ? events : events.map((e) => ({ ...e, data: {} })),
       customer: customer ? { id: customer.id, display_name: customer.display_name, phone: customer.phone, email: customer.email, has_account: !!customer.user_id, private_notes: showNotes ? customer.private_notes : undefined } : null,
       payments,
     };
   });
 }
 
-export async function listBookings(access: TenantAccess, f: { from?: string; to?: string; status?: string[]; staffId?: string; customerId?: string; q?: string; limit: number; cursor?: { starts_at: string; id: string } | null }) {
+export type BookingSegment = { staff_id: string; staff_name: string; starts_at: string; ends_at: string; service_name_ar: string | null; service_name_en: string | null };
+
+export async function listBookings(access: TenantAccess, f: { from?: string; to?: string; status?: string[]; staffId?: string; branchId?: string; customerId?: string; q?: string; limit: number; cursor?: { starts_at: string; id: string } | null }) {
   return withTenant(access.tenantId, async (trx) => {
     let q = trx.selectFrom('bookings as b').innerJoin('tenant_customers as c', 'c.id', 'b.tenant_customer_id')
-      .select(['b.id', 'b.number', 'b.status', 'b.payment_status', 'b.starts_at', 'b.ends_at', 'b.timezone', 'b.total_minor', 'b.paid_minor', 'b.source', 'c.display_name as customer_name',
+      .select(['b.id', 'b.number', 'b.status', 'b.payment_status', 'b.starts_at', 'b.ends_at', 'b.timezone', 'b.branch_id', 'b.hold_expires_at', 'b.total_minor', 'b.paid_minor', 'b.source', 'c.display_name as customer_name',
         sql<string>`(select string_agg(coalesce(i.service_name_ar, i.service_name_en), ' + ' order by i.sequence) from booking_items i where i.booking_id = b.id and i.superseded_at is null)`.as('services'),
-        sql<string>`(select string_agg(distinct i.staff_name, '، ') from booking_items i where i.booking_id = b.id and i.superseded_at is null)`.as('staff_names')]);
+        sql<string>`(select string_agg(distinct i.staff_name, '، ') from booking_items i where i.booking_id = b.id and i.superseded_at is null)`.as('staff_names'),
+        // Per-specialist time segments (current revision) so calendars can place each service in its specialist's column.
+        sql<BookingSegment[]>`(select coalesce(json_agg(json_build_object('staff_id', i.staff_id, 'staff_name', i.staff_name, 'starts_at', i.starts_at, 'ends_at', i.ends_at, 'service_name_ar', i.service_name_ar, 'service_name_en', i.service_name_en) order by i.sequence), '[]'::json) from booking_items i where i.booking_id = b.id and i.superseded_at is null)`.as('segments')]);
     if (!canSeeAll(access)) {
       if (!access.staffProfileId) return { items: [], next_cursor: null };
       q = q.where(sql<boolean>`exists (select 1 from booking_items i where i.booking_id = b.id and i.staff_id = ${access.staffProfileId} and i.superseded_at is null)`);
@@ -382,12 +412,14 @@ export async function listBookings(access: TenantAccess, f: { from?: string; to?
     if (f.to) q = q.where('b.starts_at', '<', new Date(f.to));
     if (f.status?.length) q = q.where('b.status', 'in', f.status);
     if (f.staffId) q = q.where(sql<boolean>`exists (select 1 from booking_items i where i.booking_id = b.id and i.staff_id = ${f.staffId} and i.superseded_at is null)`);
+    if (f.branchId) q = q.where('b.branch_id', '=', f.branchId);
     if (f.customerId) q = q.where('b.tenant_customer_id', '=', f.customerId);
     if (f.q) q = q.where((eb) => eb.or([eb('b.number', 'ilike', `%${f.q}%`), eb('c.display_name', 'ilike', `%${f.q}%`)]));
     if (f.cursor) q = q.where(sql<boolean>`(b.starts_at, b.id) > (${new Date(f.cursor.starts_at)}, ${f.cursor.id})`);
     const rows = await q.orderBy('b.starts_at').orderBy('b.id').limit(f.limit + 1).execute();
-    const items = rows.slice(0, f.limit);
-    const last = items[items.length - 1];
+    const page = rows.slice(0, f.limit);
+    const last = page[page.length - 1];
+    const items = canSeeFinancial(access) ? page : page.map(stripFinancial);
     return { items, next_cursor: rows.length > f.limit && last ? { starts_at: last.starts_at.toISOString(), id: last.id } : null };
   });
 }
