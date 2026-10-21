@@ -207,6 +207,7 @@ export interface BookingItems {
 }
 
 export interface Bookings {
+  analytics_session_id: string | null;
   attribution: Json | null;
   branch_id: string;
   campaign_id: string | null;
@@ -1042,6 +1043,7 @@ export interface OrderItems {
 }
 
 export interface Orders {
+  analytics_session_id: string | null;
   attribution: Json | null;
   booking_id: string | null;
   branch_id: string;

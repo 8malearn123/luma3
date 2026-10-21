@@ -1,4 +1,5 @@
 import type { StorefrontMode } from '@/shared/builder/storefront';
+import { storefrontSessionId } from '../analytics/track';
 
 /**
  * Storefront analytics hook (client). Posts pseudonymous events to
@@ -10,8 +11,6 @@ import type { StorefrontMode } from '@/shared/builder/storefront';
 
 export type TrackEventType = 'page_view' | 'service_view' | 'product_view' | 'booking_start' | 'checkout_start' | 'availability_empty' | 'waitlist_join';
 
-const SESSION_KEY = 'luma_sf_session';
-const IDLE_MS = 30 * 60 * 1000;
 
 export function trackingEnabled(mode: StorefrontMode): boolean {
   return mode === 'published';
@@ -25,17 +24,9 @@ function uuid() {
   });
 }
 
-/** Pseudonymous session id in sessionStorage, rotated after 30 minutes idle. */
-export function sessionId(now = Date.now()): string {
-  try {
-    const raw = sessionStorage.getItem(SESSION_KEY);
-    const cur = raw ? (JSON.parse(raw) as { id: string; last: number }) : null;
-    const id = cur && now - cur.last < IDLE_MS && /^[a-zA-Z0-9-]{8,64}$/.test(cur.id) ? cur.id : uuid();
-    sessionStorage.setItem(SESSION_KEY, JSON.stringify({ id, last: now }));
-    return id;
-  } catch {
-    return uuid();
-  }
+/** One pseudonymous session id shared with the analytics client (see ui/analytics/track.ts). */
+export function sessionId(): string {
+  return storefrontSessionId();
 }
 
 function utmFrom(search: string) {

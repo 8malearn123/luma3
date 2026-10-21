@@ -1,3 +1,4 @@
+import { recordServerEvent } from '../analytics/events';
 import { DateTime } from 'luxon';
 import { sql } from 'kysely';
 import { withSystem, withTenant, type Tx } from '../../db/client';
@@ -261,6 +262,10 @@ export async function applyHoldOutcome(trx: Tx, tenantId: string, bookingId: str
     await trx.updateTable('bookings').set({ status: target, hold_expires_at: null, version: sql`version + 1` }).where('id', '=', bookingId).execute();
   }
   await trx.insertInto('booking_events').values({ tenant_id: tenantId, booking_id: bookingId, from_status: b.status, to_status: target, actor_user_id: actor.userId, source: actor.source, reason: actor.reason ?? null }).execute();
+  if (target === 'confirmed') {
+    const b = await trx.selectFrom('bookings').select('analytics_session_id').where('id', '=', bookingId).executeTakeFirstOrThrow();
+    await recordServerEvent(trx, tenantId, { type: 'booking_confirmed', entityId: bookingId, sessionId: b.analytics_session_id });
+  }
   if (target === 'confirmed' || target === 'pending_approval') await announce(trx, tenantId, bookingId, target === 'confirmed' ? 'booking.confirmed' : 'booking.pending_approval');
   return { changed: true, status: target };
 }

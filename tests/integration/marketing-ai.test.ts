@@ -267,8 +267,9 @@ describe('Loom pipeline with a (fake) AI provider', () => {
     expect((await owner.call(versions.POST, { params: { ...p, id: planId }, body: { base_version: 2, content, change_note: 'tweak' } })).status).toBe(201);
     const d = await owner.call(diff.GET, { params: { ...p, id: planId }, query: { from: '2', to: '3' } });
     expect(d.body.data.changes).toContainEqual(expect.objectContaining({ path: 'goal', kind: 'changed', after: 'Owner-edited goal' }));
-    const csv = await owner.call(exportRoute.GET, { params: { ...p, id: planId }, query: { format: 'csv' } }).catch(() => null);
-    expect(csv).toBeNull(); // CSV is not JSON; fetched below as raw text
+    const csv = await owner.call(exportRoute.GET, { params: { ...p, id: planId }, query: { format: 'csv' } });
+    expect(csv.status).toBe(200);
+    expect(csv.headers.get('content-type')).toMatch(/text\/csv/);
     const raw = await exportRoute.GET(new (await import('next/server')).NextRequest(`http://localhost:3000/x?format=csv`, { headers: { cookie: [...owner.cookies].map(([k, v]) => `${k}=${v}`).join('; ') } }), { params: Promise.resolve({ ...p, id: planId }) });
     expect(raw.headers.get('content-disposition')).toMatch(/attachment; filename="plan-.*\.csv"/);
     expect(await raw.text()).toContain('activity');

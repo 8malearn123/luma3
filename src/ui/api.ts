@@ -1,5 +1,7 @@
 'use client';
 
+import { peekStorefrontSessionId } from './analytics/track';
+
 export class ApiError extends Error {
   constructor(public status: number, public code: string, message: string, public details?: Record<string, any>, public requestId?: string) {
     super(message);
@@ -20,6 +22,9 @@ export async function api<T = any>(path: string, opts: { method?: string; body?:
   if (method !== 'GET') headers['x-luma-csrf'] = '1';
   if (opts.body !== undefined) headers['Content-Type'] = 'application/json';
   if (opts.idempotencyKey) headers['Idempotency-Key'] = opts.idempotencyKey;
+  // Storefront writes carry the pseudonymous analytics session so a later server-side
+  // conversion (booking confirmed / order paid) can be linked to it. Never created here.
+  if (method !== 'GET' && path.startsWith('/api/v1/s/')) { const sid = peekStorefrontSessionId(); if (sid) headers['x-luma-session'] = sid; }
   let res: Response;
   try {
     res = await fetch(path, { method, headers, body: opts.form ?? (opts.body !== undefined ? JSON.stringify(opts.body) : undefined), signal: opts.signal, credentials: 'same-origin' });

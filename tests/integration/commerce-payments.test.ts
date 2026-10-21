@@ -59,3 +59,20 @@ describe('order payments (commerce ↔ payments wiring)', () => {
     expect(await stock(biz.tenantId, v.inventory_item_id)).toEqual({ on_hand: 2, reserved: 0 });
   });
 });
+
+describe('server-side conversions link to the storefront session', () => {
+  it('a paid order records order_paid once, under the session that started checkout', async () => {
+    const { owner, biz, s } = await shopWithSandbox();
+    const v = (await createProduct(owner, biz.slug, {}, { initial_stock: 2 })).variants[0]!;
+    const c = await signup('Tracked buyer');
+    await addToCart(c, s.slug, v.id, 1);
+    const sid = 'sessAbc12345';
+    const o = await c.call((await import('@/app/api/v1/s/[slug]/orders/route')).POST, { params: { slug: s.slug }, body: {}, idempotencyKey: true, headers: { 'x-luma-session': sid } });
+    expect(o.status).toBe(201);
+    const co = await c.call(orderCheckout.POST, { params: { slug: s.slug, id: o.body.data.id }, body: {}, idempotencyKey: true });
+    const pp = await payment(biz.tenantId, co.body.data.payment.id);
+    await c.call(sandboxPay.POST, { params: { providerPaymentId: pp.provider_payment_id! }, body: { outcome: 'captured' } });
+    const ev = await withTenant(biz.tenantId, (trx) => trx.selectFrom('analytics_events').select(['session_id', 'entity_id']).where('type', '=', 'order_paid').execute());
+    expect(ev).toEqual([{ session_id: sid, entity_id: o.body.data.id }]);
+  });
+});

@@ -33,6 +33,15 @@ export function storefrontSessionId(): string {
   }
 }
 
+/** The current session id if one exists (never creates one); used to link server-side conversions. */
+export function peekStorefrontSessionId(): string | null {
+  try {
+    const raw = sessionStorage.getItem(KEY);
+    const [id, at] = raw ? raw.split('.') : [];
+    return id && at && Date.now() - Number(at) < IDLE_MS ? id : null;
+  } catch { return null; }
+}
+
 function utmFromLocation(): Record<string, string> | undefined {
   const p = new URLSearchParams(window.location.search);
   const out: Record<string, string> = {};

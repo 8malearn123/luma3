@@ -161,3 +161,16 @@ export async function recordServerEvent(
   }).onConflict((oc) => oc.column('id').doNothing()).returning('id').executeTakeFirst();
   return { recorded: !!row };
 }
+
+/** Reads the storefront analytics session the browser forwarded (header `x-luma-session`). */
+export function sessionFromRequest(req: { headers: { get(name: string): string | null } }): string | null {
+  const v = req.headers.get('x-luma-session');
+  return v && /^[A-Za-z0-9_-]{8,64}$/.test(v) ? v : null;
+}
+
+/** Remembers which analytics session started a booking/order (first write wins). */
+export async function attachConversionSession(tenantId: string, table: 'bookings' | 'orders', id: string, sessionId: string | null) {
+  if (!sessionId) return;
+  await withTenant(tenantId, (trx) => trx.updateTable(table).set({ analytics_session_id: sessionId })
+    .where('id', '=', id).where('analytics_session_id', 'is', null).execute());
+}

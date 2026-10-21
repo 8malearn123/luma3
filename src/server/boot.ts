@@ -11,6 +11,7 @@ import { consumeForBooking, releaseForBooking } from './domains/memberships/serv
 import { offerFreedSlot } from './domains/waitlist/service';
 import { releaseSeats } from './domains/groups/service';
 import { paymentTargets } from './domains/payments/targets';
+import { recordServerEvent } from './domains/analytics/events';
 import { consumeMaterialsForBookingItem, markOrderPaid } from './domains/commerce';
 
 const g = globalThis as unknown as { __lumaBooted?: boolean };
@@ -28,7 +29,14 @@ if (!g.__lumaBooted) {
   });
   // A captured order payment marks the order paid (stock reservation becomes a sale).
   // A capture on an already-cancelled order is flagged and refunded by the payments service.
-  paymentTargets.order.onCaptured = (trx, tenantId, orderId, payment) => markOrderPaid(trx, tenantId, orderId, payment);
+  paymentTargets.order.onCaptured = async (trx, tenantId, orderId, payment) => {
+    const r = await markOrderPaid(trx, tenantId, orderId, payment);
+    if (r.changed) {
+      const o = await trx.selectFrom('orders').select('analytics_session_id').where('id', '=', orderId).executeTakeFirstOrThrow();
+      await recordServerEvent(trx, tenantId, { type: 'order_paid', entityId: orderId, sessionId: o.analytics_session_id });
+    }
+    return r;
+  };
   // A failed attempt does not cancel the order: the customer may retry until it expires,
   // and the expiry sweep releases the reservation exactly once.
   paymentTargets.order.onFailed = async () => undefined;
