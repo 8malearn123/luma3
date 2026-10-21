@@ -90,6 +90,7 @@ export interface Appeals {
   message: string;
   resolution_note: string | null;
   resolved_at: Timestamp | null;
+  review_scope: Generated<string>;
   reviewer_id: string | null;
   status: Generated<string>;
   tenant_id: string | null;
@@ -466,9 +467,14 @@ export interface CustomerIncidents {
   created_at: Generated<Timestamp>;
   customer_user_id: string | null;
   description: string;
+  escalated_by: string | null;
   escalated_to_platform_at: Timestamp | null;
+  escalation_note: string | null;
+  escalation_status: string | null;
   id: Generated<string>;
   occurred_at: Timestamp;
+  platform_reviewed_at: Timestamp | null;
+  platform_reviewed_by: string | null;
   status: Generated<string>;
   submitted_by: string;
   tenant_customer_id: string;
@@ -1231,15 +1237,20 @@ export interface PolicyDecisions {
   customer_explanation_en: string | null;
   customer_user_id: string | null;
   effective_at: Generated<Timestamp>;
+  end_reason: string | null;
+  ended_at: Timestamp | null;
+  ended_by: string | null;
   evidence_refs: Generated<Json>;
   expires_at: Timestamp | null;
   id: Generated<string>;
   is_experimental: Generated<boolean>;
   reason: string;
   review_at: Timestamp | null;
+  review_flagged_at: Timestamp | null;
   reviewer_id: string;
   rule_id: string | null;
   scope: string;
+  source_incident_id: string | null;
   status: Generated<string>;
   supersedes_id: string | null;
   tenant_customer_id: string | null;
@@ -1251,6 +1262,7 @@ export interface PolicyRules {
   created_at: Generated<Timestamp>;
   created_by: string | null;
   criteria: Json;
+  description: string | null;
   id: Generated<string>;
   is_enabled: Generated<boolean>;
   is_experimental: Generated<boolean>;
@@ -1259,6 +1271,7 @@ export interface PolicyRules {
   suggested_action: string;
   tenant_id: string | null;
   updated_at: Generated<Timestamp>;
+  updated_by: string | null;
   version: Generated<number>;
 }
 
@@ -1457,8 +1470,14 @@ export interface Reviews {
   business_reply: string | null;
   comment: string | null;
   created_at: Generated<Timestamp>;
+  customer_user_id: string | null;
   id: Generated<string>;
+  moderated_at: Timestamp | null;
+  moderated_by: string | null;
+  moderation_reason: string | null;
   rating: number;
+  replied_at: Timestamp | null;
+  replied_by: string | null;
   staff_id: string | null;
   status: Generated<string>;
   tenant_customer_id: string;
@@ -1835,6 +1854,7 @@ export interface TenantCounters {
 }
 
 export interface TenantCustomers {
+  archived_at: Timestamp | null;
   created_at: Generated<Timestamp>;
   display_name: string;
   email: string | null;
@@ -1850,6 +1870,7 @@ export interface TenantCustomers {
   tenant_id: string;
   updated_at: Generated<Timestamp>;
   user_id: string | null;
+  version: Generated<number>;
 }
 
 export interface TenantMemberships {

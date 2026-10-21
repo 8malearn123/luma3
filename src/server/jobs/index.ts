@@ -10,3 +10,4 @@ import '../domains/waitlist/jobs';
 import '../domains/engagement/jobs';
 import '../domains/notifications/jobs';
 import '../domains/commerce/jobs';
+import '../domains/policy/jobs';

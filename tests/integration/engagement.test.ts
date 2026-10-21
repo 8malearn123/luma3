@@ -100,14 +100,14 @@ describe('memberships', () => {
     expect(sold.status).toBe(201);
     const ap = await c.call(applyMembership.POST, { params: { slug: s.slug, id: h1.body.data.booking_id }, body: {} });
     expect(ap.body.data.totals.total).toBe(0);
-    await c.call(checkout.POST, { params: { slug: s.slug, id: h1.body.data.booking_id }, body: { option: 'on_site' }, idempotencyKey: true });
+    await c.call(checkout.POST, { params: { slug: s.slug, id: h1.body.data.booking_id }, body: { option: 'full' }, idempotencyKey: true });
     const ent = () => withTenant(s.tenantId, (trx) => trx.selectFrom('membership_entitlements').select(['used', 'reserved', 'total']).executeTakeFirstOrThrow());
     expect(await ent()).toEqual({ used: 0, reserved: 1, total: 2 });
     await complete(s, h1.body.data.booking_id);
     expect(await ent()).toEqual({ used: 1, reserved: 0, total: 2 });
     const h2 = await c.call(hold.POST, { params: { slug: s.slug }, body: { items: [{ key: 'x', service_id: s.services.haircut, staff_id: s.staff.sara, start: at(futureDate(5), '11:00') }] }, idempotencyKey: true });
     await c.call(applyMembership.POST, { params: { slug: s.slug, id: h2.body.data.booking_id }, body: {} });
-    await c.call(checkout.POST, { params: { slug: s.slug, id: h2.body.data.booking_id }, body: { option: 'on_site' }, idempotencyKey: true });
+    await c.call(checkout.POST, { params: { slug: s.slug, id: h2.body.data.booking_id }, body: { option: 'full' }, idempotencyKey: true });
     expect(await ent()).toEqual({ used: 1, reserved: 1, total: 2 });
     await c.call(accountCancel.POST, { params: { id: h2.body.data.booking_id }, body: { reason: 'travel' } });
     expect(await ent()).toEqual({ used: 1, reserved: 0, total: 2 });

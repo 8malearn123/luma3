@@ -6,6 +6,8 @@ import { audit, type AuditActor } from '../../infra/audit';
 import { idempotent, requestHash } from '../../infra/idempotency';
 import { requireFeature, type TenantAccess } from '../../tenancy/access';
 import { computeTotals } from '../booking/pricing';
+import { enabledMethods } from '../booking/service';
+import { computePaymentTerms } from '../booking/terms';
 import { post } from '../finance/journal';
 
 /**
@@ -124,10 +126,12 @@ export async function applyToBooking(tenantId: string, bookingId: string, userId
     if (!applied.length) throw Errors.invalid('no_eligible_membership', 'No active membership covers these services');
     const policy = b.policy_snapshot as { tax_rate_bp?: number; prices_include_tax?: boolean };
     const totals = computeTotals(b.subtotal_minor, discount, policy.tax_rate_bp ?? 0, policy.prices_include_tax ?? true);
-    const terms = b.payment_terms as Record<string, unknown>;
+    // The amount due changed, so the payment terms are recomputed by the one terms algorithm.
+    const prev = b.payment_terms as { requiresManualApproval?: boolean };
+    const fresh = await computePaymentTerms(trx, { tenantId, tenantCustomerId: b.tenant_customer_id, customerUserId: b.customer_user_id, amountDueMinor: totals.total - b.paid_minor, availableMethods: await enabledMethods(trx, tenantId), context: 'booking' });
     await trx.updateTable('bookings').set({
-      discount_minor: totals.discount, tax_minor: totals.tax, total_minor: totals.total, deposit_due_minor: 0,
-      payment_terms: JSON.stringify({ ...terms, amountDueMinor: totals.total, allowed: totals.total === 0 ? ['on_site'] : terms.allowed, depositMinor: null, membership_applied: applied.length }),
+      discount_minor: totals.discount, tax_minor: totals.tax, total_minor: totals.total, deposit_due_minor: fresh.depositMinor ?? 0,
+      payment_terms: JSON.stringify({ ...fresh, requiresManualApproval: fresh.requiresManualApproval || !!prev.requiresManualApproval, membership_applied: applied.length }),
     }).where('id', '=', bookingId).execute();
     return { applied_items: applied.length, totals };
   });
