@@ -64,6 +64,7 @@ export const daypartOf = (hour: number): Daypart => (hour < 12 ? 'morning' : hou
 
 export type StaffOccupancy = {
   staff_id: string;
+  display_name: string;
   available_min: number;
   booked_min: number;
   booked_outside_min: number;
@@ -100,7 +101,7 @@ export async function computeOccupancy(trx: Tx, tenantId: string, tenantTz: stri
   const start = new Date(startMs - 86_400_000), end = new Date(endMs);
   const staffFilter = opts.staffIds?.length ? opts.staffIds : null;
 
-  let staffQ = trx.selectFrom('staff_profiles').select(['id']).where('tenant_id', '=', tenantId).where('archived_at', 'is', null);
+  let staffQ = trx.selectFrom('staff_profiles').select(['id', 'display_name']).where('tenant_id', '=', tenantId).where('archived_at', 'is', null);
   if (staffFilter) staffQ = staffQ.where('id', 'in', staffFilter);
   const staff = await staffQ.execute();
   const ids = staff.map((s) => s.id);
@@ -166,7 +167,7 @@ export async function computeOccupancy(trx: Tx, tenantId: string, tenantTz: stri
     bucketize(booked, tenantTz, bookedBuckets);
     const a = minutes(available), b = minutes(booked);
     result.push({
-      staff_id: id, available_min: Math.round(a), booked_min: Math.round(b),
+      staff_id: id, display_name: staff.find((x) => x.id === id)?.display_name ?? '', available_min: Math.round(a), booked_min: Math.round(b),
       booked_outside_min: Math.max(0, Math.round(minutes(itemsInPeriod) - b)),
       occupancy: a > 0 ? b / a : null, days: perDay,
     });
