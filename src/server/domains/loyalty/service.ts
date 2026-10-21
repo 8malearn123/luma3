@@ -65,6 +65,29 @@ export async function createReward(access: TenantAccess, actor: AuditActor, inpu
   });
 }
 
+export const rewardPatch = z.object({
+  name_ar: z.string().trim().max(80).nullable().optional(), name_en: z.string().trim().max(80).nullable().optional(),
+  points_cost: z.number().int().min(1).max(1_000_000).optional(), kind: z.enum(['fixed_discount', 'percent_discount']).optional(), value: z.number().int().min(1).max(10_000_000).optional(),
+  is_active: z.boolean().optional(),
+}).strict();
+
+/** Rewards are deactivated, never deleted (past redemptions reference them). */
+export async function updateReward(access: TenantAccess, actor: AuditActor, rewardId: string, patch: z.infer<typeof rewardPatch>) {
+  requireFeature(access, 'feature.loyalty');
+  return withTenant(access.tenantId, async (trx) => {
+    const cur = await trx.selectFrom('rewards').selectAll().where('id', '=', rewardId).forUpdate().executeTakeFirst();
+    if (!cur) throw Errors.notFound('reward');
+    const next = { ...cur, ...Object.fromEntries(Object.entries(patch).filter(([, v]) => v !== undefined)) };
+    if (!next.name_ar && !next.name_en) throw Errors.invalid('name_required', 'A name is required');
+    if (next.kind === 'percent_discount' && next.value > 10000) throw Errors.invalid('invalid_value');
+    const r = await trx.updateTable('rewards').set({
+      name_ar: next.name_ar, name_en: next.name_en, points_cost: next.points_cost, kind: next.kind, value: next.value, is_active: next.is_active,
+    }).where('id', '=', rewardId).returningAll().executeTakeFirstOrThrow();
+    await audit(trx, actor, 'loyalty.reward_updated', { tenantId: access.tenantId, targetType: 'reward', targetId: rewardId, data: patch });
+    return r;
+  });
+}
+
 async function account(trx: Tx, tenantId: string, tenantCustomerId: string) {
   await trx.insertInto('loyalty_accounts').values({ tenant_id: tenantId, tenant_customer_id: tenantCustomerId })
     .onConflict((oc) => oc.columns(['tenant_id', 'tenant_customer_id']).doNothing()).execute();

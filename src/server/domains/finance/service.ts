@@ -75,7 +75,23 @@ export async function createCommissionRule(access: TenantAccess, actor: AuditAct
 }
 
 export async function listCommissionRules(access: TenantAccess) {
-  return withTenant(access.tenantId, (trx) => trx.selectFrom('commission_rules').selectAll().orderBy('created_at', 'desc').execute());
+  return withTenant(access.tenantId, (trx) => trx.selectFrom('commission_rules as r').leftJoin('staff_profiles as sp', 'sp.id', 'r.staff_id').leftJoin('services as s', 's.id', 'r.service_id')
+    .selectAll('r').select(['sp.display_name as staff_name', 's.name_ar as service_name_ar', 's.name_en as service_name_en']).orderBy('r.created_at', 'desc').execute());
+}
+
+/** Commission ledger rows in a period (earned + reversals), with what each was earned on. */
+export async function listCommissionEntries(access: TenantAccess, fromISO: string, toISO: string) {
+  const from = DateTime.fromISO(fromISO, { zone: access.timezone }).startOf('day').toJSDate();
+  const to = DateTime.fromISO(toISO, { zone: access.timezone }).endOf('day').toJSDate();
+  return withTenant(access.tenantId, (trx) => trx.selectFrom('commission_entries as e')
+    .innerJoin('staff_profiles as sp', 'sp.id', 'e.staff_id')
+    .innerJoin('booking_items as i', 'i.id', 'e.booking_item_id')
+    .innerJoin('bookings as b', 'b.id', 'i.booking_id')
+    .select(['e.id', 'e.kind', 'e.base_minor', 'e.amount_minor', 'e.reason', 'e.reverses_entry_id', 'e.rule_snapshot', 'e.created_at', 'e.staff_id', 'sp.display_name as staff_name',
+      'i.service_name_ar', 'i.service_name_en', 'b.id as booking_id', 'b.number as booking_number',
+      sql<boolean>`exists (select 1 from commission_entries x where x.reverses_entry_id = e.id)`.as('reversed')])
+    .where('e.created_at', '>=', from).where('e.created_at', '<=', to)
+    .orderBy('e.created_at', 'desc').limit(500).execute());
 }
 
 export async function deactivateCommissionRule(access: TenantAccess, actor: AuditActor, id: string) {
@@ -146,6 +162,20 @@ export async function financeReport(access: TenantAccess, fromISO: string, toISO
       .where('m.kind', '=', 'consumption').where('m.created_at', '>=', from).where('m.created_at', '<=', to).executeTakeFirstOrThrow();
     const servicesWithoutCost = await trx.selectFrom('services').select(sql<number>`count(*)::int`.as('n')).where('archived_at', 'is', null).where('cost_minor', 'is', null).executeTakeFirstOrThrow();
 
+    // Daily cash-basis series (business timezone) for charts; the totals above stay authoritative.
+    const dailyCollections = await trx.selectFrom('payments')
+      .select([sql<string>`to_char(captured_at at time zone ${tz}, 'YYYY-MM-DD')`.as('day'), sql<number>`coalesce(sum(amount_minor),0)::bigint`.as('v')])
+      .where('status', '=', 'captured').where('captured_at', '>=', from).where('captured_at', '<=', to).groupBy(sql`1`).execute();
+    const dailyExpenses = await trx.selectFrom('expenses')
+      .select([sql<string>`to_char(incurred_on, 'YYYY-MM-DD')`.as('day'), sql<number>`coalesce(sum(amount_minor),0)::bigint`.as('v')])
+      .where('voided_at', 'is', null).where('incurred_on', '>=', fromISO).where('incurred_on', '<=', toISO).groupBy(sql`1`).execute();
+    const daily: Array<{ date: string; collections_minor: number; expenses_minor: number }> = [];
+    const days = Math.min(400, Math.round(DateTime.fromISO(toISO).diff(DateTime.fromISO(fromISO), 'days').days) + 1);
+    for (let i = 0; i < days; i++) {
+      const date = DateTime.fromISO(fromISO).plus({ days: i }).toISODate()!;
+      daily.push({ date, collections_minor: Number(dailyCollections.find((r) => r.day === date)?.v ?? 0), expenses_minor: Number(dailyExpenses.find((r) => r.day === date)?.v ?? 0) });
+    }
+
     const serviceRevenue = await acct('service_revenue');
     const productRevenue = await acct('product_revenue');
     const expenseTotal = expenses.reduce((a, e) => a + e.v, 0);
@@ -172,7 +202,11 @@ export async function financeReport(access: TenantAccess, fromISO: string, toISO
       profit: profit === null
         ? { status: 'costs_incomplete', missing, amount_minor: null }
         : { status: 'computed', amount_minor: profit, formula: 'service sales + product sales − expenses − product costs − material costs − commissions' },
-      tax: { collected_minor: await acct('tax_payable'), note: 'Configured tax rules only; no tax or e-invoicing compliance is claimed.' },
+      tax: {
+        collected_minor: await acct('tax_payable'), note: 'Configured tax rules only; no tax or e-invoicing compliance is claimed.',
+        configured: await trx.selectFrom('tenant_settings').select(['tax_label', 'tax_rate_bp', 'prices_include_tax']).where('tenant_id', '=', access.tenantId).executeTakeFirst() ?? null,
+      },
+      daily,
     };
   });
 }
@@ -255,6 +289,14 @@ function csv(rows: Array<Record<string, unknown>>) {
     return /[",\n]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
   };
   return [cols.join(','), ...rows.map((r) => cols.map((c) => esc(r[c])).join(','))].join('\n');
+}
+
+export async function listExports(access: TenantAccess) {
+  return withTenant(access.tenantId, async (trx) => {
+    const rows = await trx.selectFrom('finance_exports').select(['id', 'kind', 'period_start', 'period_end', 'status', 'row_count', 'asset_id', 'error', 'created_at', 'finished_at'])
+      .orderBy('created_at', 'desc').limit(100).execute();
+    return rows.map(({ asset_id, ...r }) => ({ ...r, download_url: r.status === 'succeeded' && asset_id ? `/api/v1/media/${asset_id}` : null }));
+  });
 }
 
 export async function createExport(access: TenantAccess, actor: AuditActor, kind: 'bookings' | 'payments' | 'journal' | 'expenses', fromISO: string, toISO: string) {
