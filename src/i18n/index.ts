@@ -10,13 +10,14 @@ import { policy } from './messages/policy';
 import { platform } from './messages/platform';
 import { builder } from './messages/builder';
 import { marketing } from './messages/marketing';
+import { financeEngagementUi } from './messages/finance_engagement_ui';
 
 /**
  * Translation dictionary. Arabic is the primary language; English mirrors it.
  * Each domain owns one file in ./messages exporting { ar, en } with identical
  * keys (checked by tests/unit/i18n.test.ts).
  */
-export const dictionaries = [common, errors, auth, dashboard, onboarding, marketingSite, operations, commerce, policy, platform, builder, marketing] as const;
+export const dictionaries = [common, errors, auth, dashboard, onboarding, marketingSite, operations, commerce, policy, platform, builder, marketing, financeEngagementUi] as const;
 
 export type Locale = 'ar' | 'en';
 export const LOCALES: Locale[] = ['ar', 'en'];
