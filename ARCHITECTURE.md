@@ -67,7 +67,7 @@ Path ids are validated with `requireUuidParam` before touching the DB.
 
 ## 5. Permissions
 
-See `PERMISSIONS.md`. Capabilities are defined in `src/server/auth/capabilities.ts` (role defaults + per-role **delegable allowlists**; owner-only capabilities can never be delegated). UI hides what you cannot do; the server enforces it regardless.
+See [docs/PERMISSIONS.md](docs/PERMISSIONS.md). Capabilities are defined in `src/server/auth/capabilities.ts` (role defaults + per-role **delegable allowlists**; owner-only capabilities can never be delegated). UI hides what you cannot do; the server enforces it regardless.
 
 ## 6. Data conventions
 
