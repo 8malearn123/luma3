@@ -45,7 +45,7 @@ export async function loadEntitlements(trx: Tx | ReturnType<typeof db>, tenantId
     const rows = await trx.selectFrom('plan_features').selectAll().where('plan_id', '=', sub.plan_id).execute();
     for (const r of rows) features.set(r.feature_key, { enabled: r.enabled, limit: r.limit_value });
   }
-  const lapsed = !sub || sub.status === 'expired' || sub.status === 'cancelled'
+  const lapsed = !sub || sub.status === 'expired' || sub.status === 'cancelled' || sub.status === 'paused'
     || (sub.status === 'past_due' && sub.grace_until !== null && sub.grace_until < new Date());
   return { planCode: sub?.code ?? null, subscriptionStatus: sub?.status ?? null, features, readOnly: lapsed };
 }

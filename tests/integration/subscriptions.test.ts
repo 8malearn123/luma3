@@ -141,6 +141,10 @@ describe('subscription lifecycle', () => {
     const grace = await admin.call(subAction.POST, { params: { id: sub.id }, body: { action: 'set_grace', days: 5, reason: 'only for past due' } });
     expect(grace.status).toBe(409);
     expect((await admin.call(subAction.POST, { params: { id: sub.id }, body: { action: 'pause', reason: 'salon renovation' } })).body.data.status).toBe('paused');
+    // A paused workspace is read-only: data stays visible, writes are refused.
+    const blocked = await owner.call(services.POST, { params: { tenantSlug: biz.slug }, body: { name_ar: 'خدمة', price_minor: 1000, duration_min: 30 } });
+    expect(blocked.status).toBe(403);
+    expect(blocked.body.error.details?.reason).toBe('read_only');
     expect((await admin.call(subAction.POST, { params: { id: sub.id }, body: { action: 'resume', reason: 'salon reopened' } })).body.data.status).toBe('trialing');
     const short = await admin.call(subAction.POST, { params: { id: sub.id }, body: { action: 'pause', reason: 'short' } });
     expect(short.status).toBe(422);

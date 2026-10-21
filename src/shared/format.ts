@@ -4,7 +4,7 @@
  * Asia/Riyadh) with 12/24-hour display that never changes stored values.
  */
 export type Locale = 'ar' | 'en';
-const intlLocale = (l: Locale) => (l === 'ar' ? 'ar-SA-u-nu-latn' : 'en-SA');
+const intlLocale = (l: Locale) => (l === 'ar' ? 'ar-SA-u-ca-gregory-nu-latn' : 'en-SA');
 
 export function formatMoney(minor: number | null | undefined, currency = 'SAR', locale: Locale = 'ar') {
   if (minor == null) return '—';

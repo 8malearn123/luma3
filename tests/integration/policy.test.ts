@@ -20,6 +20,8 @@ import * as pAppealResolve from '@/app/api/v1/platform/policies/appeals/[id]/res
 import * as reauth from '@/app/api/v1/auth/reauth/route';
 import * as accountPolicy from '@/app/api/v1/account/policy/route';
 import * as accountAppeals from '@/app/api/v1/account/appeals/route';
+import * as media from '@/app/api/v1/media/[id]/route';
+import { storage } from '@/server/infra/storage';
 import { createBusinessFor, signup } from '../helpers/factory';
 import { addMember, expireStepUp, grantPlatformRole, hoursAgo, hoursFromNow, insertBooking, me, relationshipFor } from '../helpers/policy';
 
@@ -137,6 +139,28 @@ describe('incidents', () => {
 });
 
 describe('decisions & authority', () => {
+  it('platform reviewers see evidence only for escalated incidents', async () => {
+    const w = await world();
+    const b = await w.noShow();
+    const id = (await w.report(b.id)).body.data.id;
+    const ownerId = (await me(w.owner)).id;
+    const asset = await withTenant(w.biz.tenantId, async (trx) => {
+      const a = await trx.insertInto('assets').values({ tenant_id: w.biz.tenantId, kind: 'image', mime: 'image/png', bytes: 4, purpose: 'evidence', visibility: 'private', status: 'ready', storage_key: `test/evidence-${id}.png`, uploaded_by: ownerId }).returning('id').executeTakeFirstOrThrow();
+      await trx.insertInto('incident_evidence').values({ tenant_id: w.biz.tenantId, incident_id: id, asset_id: a.id, added_by: ownerId }).execute();
+      return a.id;
+    });
+    await storage().put(`test/evidence-${id}.png`, Buffer.from('PNG!'), 'image/png');
+    const reviewer = await signup('Evidence reviewer');
+    await grantPlatformRole((await me(reviewer)).id, 'policy_reviewer');
+    const stranger = await signup('Stranger');
+    expect((await stranger.call(media.GET, { params: { id: asset } })).status).toBe(404);
+    expect((await reviewer.call(media.GET, { params: { id: asset } })).status).toBe(404); // not escalated yet
+    expect((await w.owner.call(media.GET, { params: { id: asset } })).status).toBe(200);
+    await w.owner.call(transition.POST, { params: { ...w.p, id }, body: { to: 'confirmed', note: 'Checked' } });
+    expect((await w.owner.call(escalate.POST, { params: { ...w.p, id }, body: { note: 'please review' } })).status).toBe(200);
+    expect((await reviewer.call(media.GET, { params: { id: asset } })).status).toBe(200);
+  });
+
   it('a salon owner cannot create platform decisions or grant herself reviewer powers', async () => {
     const w = await world();
     // Platform endpoints are invisible to tenant members.
