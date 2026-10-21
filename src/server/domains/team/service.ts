@@ -6,7 +6,7 @@ import { Errors } from '../../http/errors';
 import { audit, type AuditActor } from '../../infra/audit';
 import { sendTransactional } from '../../infra/messaging';
 import { notifyCapability } from '../../infra/notify';
-import { canAssignRole, invalidGrants, type TenantRole } from '../../auth/capabilities';
+import { canAssignRole, capabilitiesBeyondActor, invalidGrants, type TenantRole } from '../../auth/capabilities';
 import { hashToken, newToken } from '../../auth/crypto';
 import type { SessionUser } from '../../auth/service';
 import { requireWithinLimit, type TenantAccess } from '../../tenancy/access';
@@ -153,6 +153,8 @@ export async function invite(access: TenantAccess, actor: AuditActor, input: z.i
   if (access.role === 'support' || !canAssignRole(access.role, actorCaps, input.role)) throw Errors.forbidden('You cannot invite this role');
   const bad = invalidGrants(input.role, input.granted_capabilities);
   if (bad.length) throw Errors.invalid('capability_not_delegable', 'Some capabilities cannot be granted to this role', { capabilities: bad });
+  const beyond = capabilitiesBeyondActor(access.role, actorCaps, input.role, input.granted_capabilities);
+  if (beyond.length) throw Errors.forbidden('You cannot give someone access you do not have yourself', { capabilities: beyond });
   const id = parseIdentifier(input.identifier);
   if (!id) throw Errors.invalid('invalid_identifier');
   const token = newToken();
@@ -242,6 +244,9 @@ export async function updateMembership(access: TenantAccess, actor: AuditActor, 
       const bad = invalidGrants(newRole, patch.granted_capabilities);
       if (bad.length) throw Errors.invalid('capability_not_delegable', 'Some capabilities cannot be granted to this role', { capabilities: bad });
     }
+    const beyond = capabilitiesBeyondActor(access.role as TenantRole, access.capabilities, newRole,
+      patch.granted_capabilities ?? m.granted_capabilities, patch.revoked_capabilities ?? m.revoked_capabilities);
+    if (beyond.length) throw Errors.forbidden('You cannot give someone access you do not have yourself', { capabilities: beyond });
     if (patch.staff_profile_id) {
       const sp = await trx.selectFrom('staff_profiles').select('id').where('id', '=', patch.staff_profile_id).executeTakeFirst();
       if (!sp) throw Errors.notFound('staff');

@@ -106,6 +106,20 @@ describe('tenant isolation', () => {
     expect(r.status).toBe(403);
   });
 
+  it('a manager delegated team.manage cannot hand out access she does not have (e.g. create a finance user)', async () => {
+    const owner = await signup();
+    const biz = await createBusinessFor(owner);
+    const mgr = await signup('Manager');
+    const inv = await owner.call(invitations.POST, { params: { tenantSlug: biz.slug }, body: { identifier: mgr.identifier, role: 'manager', granted_capabilities: ['team.manage'] } });
+    expect(inv.status).toBe(201);
+    expect((await mgr.call(accept.POST, { body: { token: inv.body.data.dev_invite_link.split('/invite/')[1] } })).status).toBe(200);
+    const fin = await mgr.call(invitations.POST, { params: { tenantSlug: biz.slug }, body: { identifier: 'second-account@example.test', role: 'finance' } });
+    expect(fin.status).toBe(403);
+    expect(fin.body.error.details.capabilities).toEqual(expect.arrayContaining(['refunds.approve']));
+    // Within her own powers she can still invite.
+    expect((await mgr.call(invitations.POST, { params: { tenantSlug: biz.slug }, body: { identifier: 'spec@example.test', role: 'specialist' } })).status).toBe(201);
+  });
+
   it('managers cannot be granted owner-only or non-delegable capabilities', async () => {
     const owner = await signup();
     const biz = await createBusinessFor(owner);

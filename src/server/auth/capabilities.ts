@@ -163,6 +163,19 @@ export function canAssignRole(actorRole: TenantRole, actorCaps: ReadonlySet<Capa
   return actorCaps.has('team.manage') && target !== 'manager';
 }
 
+/**
+ * Capabilities the resulting membership would hold that the acting non-owner does
+ * not hold. Non-owners can never hand out more than they have (e.g. a manager with
+ * only team.manage cannot create a finance user). Owners are unrestricted here.
+ */
+export function capabilitiesBeyondActor(actorRole: TenantRole, actorCaps: ReadonlySet<Capability>, target: TenantRole, granted: readonly string[] = [], revoked: readonly string[] = []): Capability[] {
+  if (actorRole === 'owner') return [];
+  return [...effectiveCapabilities(target, granted, revoked)].filter((c) => !actorCaps.has(c) && !SELF_SCOPED.has(c));
+}
+
+/** Capabilities that only ever reach the holder's own records; handing them out grants nothing over others. */
+const SELF_SCOPED = new Set<Capability>(['bookings.view_assigned', 'bookings.manage_assigned', 'schedule.view_own', 'leave.request', 'attendance.own', 'staff.edit_own_profile']);
+
 // ── Support access ──────────────────────────────────────────────────────────
 /** Capabilities a LUMA support user gets through a time-limited grant. */
 export function supportCapabilities(level: 'read' | 'write'): Set<Capability> {
