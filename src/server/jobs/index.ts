@@ -9,3 +9,4 @@ import '../domains/payments/jobs';
 import '../domains/waitlist/jobs';
 import '../domains/engagement/jobs';
 import '../domains/notifications/jobs';
+import '../domains/commerce/jobs';

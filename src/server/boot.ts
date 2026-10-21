@@ -10,6 +10,8 @@ import { restoreOnRefund } from './domains/giftcards/service';
 import { consumeForBooking, releaseForBooking } from './domains/memberships/service';
 import { offerFreedSlot } from './domains/waitlist/service';
 import { releaseSeats } from './domains/groups/service';
+import { paymentTargets } from './domains/payments/targets';
+import { consumeMaterialsForBookingItem, markOrderPaid } from './domains/commerce';
 
 const g = globalThis as unknown as { __lumaBooted?: boolean };
 if (!g.__lumaBooted) {
@@ -20,7 +22,16 @@ if (!g.__lumaBooted) {
     await touchCustomerVisit(trx, bookingId);
     await consumeForBooking(trx, tenantId, bookingId);
     await earnForBooking(trx, tenantId, bookingId);
+    // Materials are consumed once per completed booking item (idempotent per item).
+    const items = await trx.selectFrom('booking_items').select('id').where('booking_id', '=', bookingId).where('superseded_at', 'is', null).execute();
+    for (const it of items) await consumeMaterialsForBookingItem(trx, tenantId, it.id, actor);
   });
+  // A captured order payment marks the order paid (stock reservation becomes a sale).
+  // A capture on an already-cancelled order is flagged and refunded by the payments service.
+  paymentTargets.order.onCaptured = (trx, tenantId, orderId, payment) => markOrderPaid(trx, tenantId, orderId, payment);
+  // A failed attempt does not cancel the order: the customer may retry until it expires,
+  // and the expiry sweep releases the reservation exactly once.
+  paymentTargets.order.onFailed = async () => undefined;
   registerBookingHook.refundDue(async (trx, tenantId, bookingId, amount, basis) => {
     await refundBookingDue(trx, tenantId, bookingId, amount, basis);
   });

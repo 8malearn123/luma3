@@ -35,6 +35,7 @@ const ar = {
     },
   },
   sandbox: { title: 'بوابة الدفع التجريبية', warning: 'هذه صفحة محاكاة لبوابة دفع. لا تُدخلي بيانات بطاقة حقيقية — لا توجد حقول بطاقة ولا تُنقل أي أموال.', amount: 'المبلغ', succeed: 'محاكاة دفع ناجح', fail: 'محاكاة فشل الدفع', cancel: 'إلغاء', done: 'تمت المحاكاة. نعيدك الآن…' },
+  order_checkout: { title: 'إتمام الطلب', pickup: 'استلام من الفرع', pay_now: 'ادفعي الآن', paid_title: 'تم الدفع — شكرًا لك', cancelled: 'هذا الطلب ملغى.', expired: 'انتهت مهلة الدفع لهذا الطلب وأُعيدت الكمية للمخزون.', back_to_cart: 'العودة للسلة', qty: 'الكمية', subtotal: 'المجموع الفرعي', reserved_for: 'محجوز لك لمدة {time}', next_steps: 'سنخبرك عندما يصبح طلبك جاهزًا للاستلام.' },
   staff_portal: {
     title: 'بوابة الموظفات', today: 'مواعيد اليوم', week: 'هذا الأسبوع', clock_in: 'تسجيل الحضور', clock_out: 'تسجيل الانصراف', clocked_in_since: 'حاضرة منذ {time}',
     request_leave: 'طلب إجازة', leave_from: 'من', leave_to: 'إلى', leave_type: 'نوع الإجازة', my_leave: 'طلباتي', my_profile: 'ملفي', bio: 'النبذة', no_bookings: 'لا مواعيد مسندة إليكِ.',
@@ -115,6 +116,7 @@ const en: Shape<typeof ar> = {
     },
   },
   sandbox: { title: 'Test payment gateway', warning: 'This page simulates a payment gateway. Do not enter real card data — there are no card fields and no money moves.', amount: 'Amount', succeed: 'Simulate successful payment', fail: 'Simulate failed payment', cancel: 'Cancel', done: 'Simulated. Taking you back…' },
+  order_checkout: { title: 'Complete your order', pickup: 'Pickup at the branch', pay_now: 'Pay now', paid_title: 'Paid — thank you', cancelled: 'This order is cancelled.', expired: 'The payment window for this order ended and the items went back to stock.', back_to_cart: 'Back to cart', qty: 'Qty', subtotal: 'Subtotal', reserved_for: 'Reserved for you for {time}', next_steps: 'We will let you know when your order is ready for pickup.' },
   staff_portal: {
     title: 'Staff portal', today: 'Today’s appointments', week: 'This week', clock_in: 'Clock in', clock_out: 'Clock out', clocked_in_since: 'Clocked in since {time}',
     request_leave: 'Request leave', leave_from: 'From', leave_to: 'To', leave_type: 'Leave type', my_leave: 'My requests', my_profile: 'My profile', bio: 'Bio', no_bookings: 'No appointments assigned to you.',

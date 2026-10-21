@@ -97,7 +97,7 @@ export function LocalizedInput({ label, value, onChange, multiline, maxLength = 
 export function MoneyInput({ value, onChange, id, ...rest }: { value: number | null | undefined; onChange: (minor: number | null) => void; id?: string } & Omit<InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange'>) {
   const [text, setText] = useState(value == null ? '' : String(value / 100));
   return (
-    <div className="relative">
+    <div className="relative" dir="ltr">
       <Input id={id} inputMode="decimal" dir="ltr" value={text} {...rest}
         onChange={(e) => {
           const t = e.target.value.replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))).replace(/[^0-9.]/g, '');
