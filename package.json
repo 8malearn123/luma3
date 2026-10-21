@@ -25,6 +25,7 @@
     "@dnd-kit/core": "6.3.1",
     "@dnd-kit/sortable": "10.0.0",
     "@dnd-kit/utilities": "3.2.2",
+    "@tanstack/react-query": "5.90.5",
     "kysely": "0.29.5",
     "lucide-react": "1.40.0",
     "luxon": "3.7.2",
@@ -33,6 +34,7 @@
     "react": "19.2.9",
     "react-dom": "19.2.9",
     "sanitize-html": "2.17.0",
+    "server-only": "0.0.1",
     "sharp": "0.34.5",
     "zod": "4.6.4"
   },
