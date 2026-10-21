@@ -28,6 +28,8 @@ export function CreateBusinessForm({ verified, plans, initialPlan }: { verified:
     api<{ slug: string; available: boolean }>(`/api/v1/tenants/slug-check?name=${encodeURIComponent(dName)}`).then((r) => { setF((x) => ({ ...x, slug: r.slug })); setAvail(r.available); }).catch(() => {});
   }, [dName, slugTouched]);
   useEffect(() => {
+    // Clearing a stale availability result when the slug becomes invalid.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!slugTouched || !/^[a-z0-9][a-z0-9-]{1,46}[a-z0-9]$/.test(dSlug)) { if (slugTouched) setAvail(null); return; }
     api<{ available: boolean }>(`/api/v1/tenants/slug-check?slug=${encodeURIComponent(dSlug)}`).then((r) => setAvail(r.available)).catch(() => {});
   }, [dSlug, slugTouched]);

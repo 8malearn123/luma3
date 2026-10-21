@@ -1,7 +1,7 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient, type QueryKey } from '@tanstack/react-query';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { api, ApiError, newIdempotencyKey } from './api';
 import { useI18n } from '@/i18n/client';
 
@@ -65,13 +65,11 @@ export function useDebounced<T>(value: T, ms = 300) {
   return v;
 }
 
+const subscribeOnline = (cb: () => void) => {
+  window.addEventListener('online', cb); window.addEventListener('offline', cb);
+  return () => { window.removeEventListener('online', cb); window.removeEventListener('offline', cb); };
+};
+
 export function useOnline() {
-  const [online, setOnline] = useState(true);
-  useEffect(() => {
-    const up = () => setOnline(true), down = () => setOnline(false);
-    setOnline(navigator.onLine);
-    window.addEventListener('online', up); window.addEventListener('offline', down);
-    return () => { window.removeEventListener('online', up); window.removeEventListener('offline', down); };
-  }, []);
-  return online;
+  return useSyncExternalStore(subscribeOnline, () => navigator.onLine, () => true);
 }

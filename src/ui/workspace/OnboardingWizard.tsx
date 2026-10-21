@@ -40,11 +40,16 @@ export function OnboardingWizard({ slug }: { slug: string }) {
   useUnsavedChangesWarning(dirty);
 
   useEffect(() => {
+    // Seeding editable local form state from server data when it arrives or the step changes.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (q.data && step === null) setStep(Math.min(q.data.current_step, 8));
   }, [q.data, step]);
   useEffect(() => {
+    // Seeding editable local form state from server data when it arrives or the step changes.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (q.data && step && step <= 7) { setDraft({ ...((q.data.answers as any)[step] ?? {}) }); setDirty(false); }
   }, [q.data, step]);
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- adopt a palette suggested by the server
   useEffect(() => { if (q.data?.pending_palette?.palette) setPalette(q.data.pending_palette.palette); }, [q.data?.pending_palette]);
 
   const readiness = useApiQuery<Readiness>(['readiness', slug], step === 8 ? `/api/v1/t/${slug}/onboarding/readiness` : null);

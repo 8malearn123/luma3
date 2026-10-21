@@ -1,3 +1,4 @@
+import { sql } from 'kysely';
 import type { Tx } from '../db/client';
 import { effectiveCapabilities, type Capability, type TenantRole } from '../auth/capabilities';
 
@@ -21,6 +22,12 @@ function safePath(p?: string) {
 export async function notifyUsers(trx: Tx, tenantId: string | null, userIds: string[], n: NotificationContent) {
   const unique = [...new Set(userIds)];
   if (!unique.length) return;
+  if (tenantId === null) {
+    // Platform notifications: see migration 0021 (works from any transaction scope).
+    await sql`select app.insert_platform_notifications(${sql.val(unique)}::uuid[], ${n.kind}, ${n.title_ar}, ${n.title_en}, ${n.body_ar ?? null}, ${n.body_en ?? null},
+      ${safePath(n.target_path)}, ${JSON.stringify(n.data ?? {})}::jsonb, ${n.dedupe_key ?? null})`.execute(trx);
+    return;
+  }
   await trx.insertInto('notifications').values(unique.map((userId) => ({
     tenant_id: tenantId, user_id: userId, kind: n.kind, title_ar: n.title_ar, title_en: n.title_en,
     body_ar: n.body_ar ?? null, body_en: n.body_en ?? null, target_path: safePath(n.target_path),

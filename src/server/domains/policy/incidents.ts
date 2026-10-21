@@ -3,7 +3,7 @@ import type { z } from 'zod';
 import { withTenant, type Tx } from '../../db/client';
 import { Errors, isPgCode } from '../../http/errors';
 import { audit, type AuditActor } from '../../infra/audit';
-import { notifyCapability } from '../../infra/notify';
+import { notifyCapability, notifyUsers } from '../../infra/notify';
 import type { TenantAccess } from '../../tenancy/access';
 import { assetUrl } from '../assets/service';
 import { INCIDENT_TRANSITIONS, type IncidentStatus, type incidentCreate, type incidentEscalate, type incidentEvidenceInput, type incidentListQuery, type incidentTransition } from '@/shared/schemas/policy';
@@ -211,16 +211,10 @@ export async function escalateIncident(access: TenantAccess, actor: AuditActor, 
     }).where('id', '=', id).returningAll().executeTakeFirstOrThrow();
     await audit(trx, actor, 'incident.escalated', { tenantId: access.tenantId, targetType: 'incident', targetId: id });
     const reviewers = await trx.selectFrom('platform_roles').select('user_id').where('role', 'in', ['policy_reviewer', 'platform_owner']).where('revoked_at', 'is', null).execute();
-    // Platform-level notification (tenant_id NULL). Inserted without ON CONFLICT:
-    // under tenant RLS an upsert would also need SELECT visibility of NULL-tenant
-    // rows, which the tenant scope (correctly) does not have. Escalation happens once.
-    const uids = [...new Set(reviewers.map((r) => r.user_id))];
-    if (uids.length) {
-      await trx.insertInto('notifications').values(uids.map((u) => ({
-        tenant_id: null, user_id: u, kind: 'policy.escalation', title_ar: 'بلاغ مُصعّد بانتظار مراجعة لوما', title_en: 'Escalated incident awaiting LUMA review',
-        target_path: '/platform/policies', data: JSON.stringify({}),
-      }))).execute();
-    }
+    await notifyUsers(trx, null, reviewers.map((r) => r.user_id), {
+      kind: 'policy.escalation', title_ar: 'بلاغ مُصعّد بانتظار مراجعة لوما', title_en: 'Escalated incident awaiting LUMA review',
+      target_path: '/platform/policies', dedupe_key: `escalation:${id}`,
+    });
     return row;
   });
 }
