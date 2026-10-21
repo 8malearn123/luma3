@@ -401,8 +401,8 @@ export interface CommissionRules {
   amount_minor: number | null;
   created_at: Generated<Timestamp>;
   created_by: string | null;
-  effective_from: Generated<Timestamp>;
-  effective_to: Timestamp | null;
+  effective_from: Generated<string>;
+  effective_to: string | null;
   id: Generated<string>;
   is_active: Generated<boolean>;
   kind: string;
@@ -516,7 +516,7 @@ export interface CustomizationProposals {
 
 export interface DailyMetrics {
   computed_at: Generated<Timestamp>;
-  day: Timestamp;
+  day: string;
   dimension: Generated<string>;
   metric: string;
   tenant_id: string;
@@ -560,7 +560,7 @@ export interface Expenses {
   currency: Generated<string>;
   description: string | null;
   id: Generated<string>;
-  incurred_on: Timestamp;
+  incurred_on: string;
   receipt_asset_id: string | null;
   recorded_by: string | null;
   tenant_id: string;
@@ -831,8 +831,8 @@ export interface MarketingPlans {
   is_example: Generated<boolean>;
   kind: string;
   parent_plan_id: string | null;
-  period_end: Timestamp;
-  period_start: Timestamp;
+  period_end: string;
+  period_start: string;
   status: Generated<string>;
   tenant_id: string;
   title: string;
@@ -894,8 +894,8 @@ export interface MetricSnapshots {
   data_as_of: Timestamp;
   id: Generated<string>;
   kind: string;
-  period_end: Timestamp;
-  period_start: Timestamp;
+  period_end: string;
+  period_start: string;
   tenant_id: string;
 }
 
@@ -1077,8 +1077,8 @@ export interface Payouts {
   fees_minor: Generated<number>;
   id: Generated<string>;
   payment_account_id: string | null;
-  period_end: Timestamp | null;
-  period_start: Timestamp | null;
+  period_end: string | null;
+  period_start: string | null;
   provider_payout_id: string | null;
   status: string;
   tenant_id: string;
@@ -1144,8 +1144,8 @@ export interface PlatformInvoices {
   issued_at: Timestamp | null;
   number: string;
   paid_at: Timestamp | null;
-  period_end: Timestamp | null;
-  period_start: Timestamp | null;
+  period_end: string | null;
+  period_start: string | null;
   provider_ref: string | null;
   status: string;
   subscription_id: string | null;
@@ -1318,8 +1318,8 @@ export interface Recommendations {
   metric_snapshot_id: string | null;
   model: string | null;
   opportunity: string;
-  period_end: Timestamp | null;
-  period_start: Timestamp | null;
+  period_end: string | null;
+  period_start: string | null;
   prerequisites: Generated<Json>;
   prompt_version: string | null;
   proposed_target: string | null;
@@ -1343,8 +1343,8 @@ export interface ReconciliationRuns {
   discrepancies: Generated<Json>;
   finished_at: Timestamp | null;
   id: Generated<string>;
-  period_end: Timestamp;
-  period_start: Timestamp;
+  period_end: string;
+  period_start: string;
   provider: string;
   status: string;
   summary: Generated<Json>;
@@ -1585,7 +1585,7 @@ export interface ShiftOverrides {
   id: Generated<string>;
   kind: string;
   note: string | null;
-  on_date: Timestamp;
+  on_date: string;
   staff_id: string;
   start_time: string | null;
   tenant_id: string;
@@ -1623,7 +1623,7 @@ export interface StaffBreaks {
   end_time: string;
   id: Generated<string>;
   label: string | null;
-  on_date: Timestamp | null;
+  on_date: string | null;
   staff_id: string;
   start_time: string;
   tenant_id: string;
@@ -1818,6 +1818,9 @@ export interface TenantSettings {
   allow_full_prepay: Generated<boolean>;
   allow_pay_on_site: Generated<boolean>;
   any_staff_rule: Generated<string>;
+  booking_policy_confirmed_at: Timestamp | null;
+  booking_policy_text_ar: string | null;
+  booking_policy_text_en: string | null;
   booking_requires_account: Generated<boolean>;
   contact_email: string | null;
   contact_phone: string | null;
@@ -1876,7 +1879,7 @@ export interface TrendAssessments {
   status: Generated<string>;
   tenant_id: string;
   updated_at: Generated<Timestamp>;
-  valid_until: Timestamp | null;
+  valid_until: string | null;
   what_is_happening: string;
 }
 
@@ -1915,7 +1918,7 @@ export interface TrendSources {
 
 export interface UsageCounters {
   metric: string;
-  period_start: Timestamp;
+  period_start: string;
   tenant_id: string;
   value: Generated<number>;
 }
@@ -1957,8 +1960,8 @@ export interface WaitlistEntries {
   branch_id: string;
   created_at: Generated<Timestamp>;
   customer_user_id: string | null;
-  desired_from: Timestamp;
-  desired_to: Timestamp;
+  desired_from: string;
+  desired_to: string;
   expires_at: Timestamp;
   id: Generated<string>;
   notify_consent: Generated<boolean>;
@@ -1990,8 +1993,8 @@ export interface WaitlistOffers {
 export interface WorkingHours {
   branch_id: string;
   created_at: Generated<Timestamp>;
-  effective_from: Timestamp | null;
-  effective_to: Timestamp | null;
+  effective_from: string | null;
+  effective_to: string | null;
   end_time: string;
   id: Generated<string>;
   staff_id: string;

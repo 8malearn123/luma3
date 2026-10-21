@@ -14,7 +14,7 @@ export default async function setup() {
   await client.connect();
   try {
     const { rows } = await client.query<{ tablename: string }>(
-      `select tablename from pg_tables where schemaname = 'public' and tablename <> 'schema_migrations'`);
+      `select tablename from pg_tables where schemaname = 'public' and tablename not in ('schema_migrations', 'plans', 'plan_features')`);
     if (rows.length) {
       // TRUNCATE bypasses row-level triggers (append-only guards are UPDATE/DELETE triggers).
       await client.query(`truncate ${rows.map((r) => `"${r.tablename}"`).join(', ')} restart identity cascade`);
