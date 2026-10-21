@@ -13,6 +13,7 @@ import { Card, PageHeader } from '../components/layout';
 import { useToast } from '../components/toast';
 import { useStepUp } from './stepup';
 import { LumaLogo } from '../components/brand';
+import { safeInternalPath } from '@/shared/safe-path';
 
 function CodeInput({ value, onChange, label }: { value: string; onChange: (v: string) => void; label: string }) {
   return (
@@ -34,7 +35,7 @@ export function MfaPrompt({ next }: { next: string }) {
     setBusy(true); setErr(null);
     try {
       await api('/api/v1/platform/mfa/verify', { body: { code } });
-      window.location.href = next.startsWith('/platform') ? next : '/platform';
+      window.location.href = safeInternalPath(next, '/platform', '/platform');
     } catch (e) { setErr(e); setCode(''); } finally { setBusy(false); }
   }
   return (
