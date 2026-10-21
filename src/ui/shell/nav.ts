@@ -15,6 +15,7 @@ export type NavItem = {
 export const NAV: NavItem[] = [
   { key: 'overview', href: (s) => `/app/${s}`, icon: 'LayoutDashboard', caps: [], section: 'operate' },
   { key: 'bookings', href: (s) => `/app/${s}/bookings`, icon: 'CalendarDays', caps: ['bookings.view_all', 'bookings.view_assigned', 'bookings.view_financial'], section: 'operate' },
+  { key: 'me', href: (s) => `/app/${s}/me`, icon: 'UserRound', caps: ['schedule.view_own'], section: 'operate' },
   { key: 'customers', href: (s) => `/app/${s}/customers`, icon: 'Contact', caps: ['customers.view'], section: 'operate' },
   { key: 'waitlist', href: (s) => `/app/${s}/waitlist`, icon: 'ListOrdered', caps: ['waitlist.manage'], feature: 'feature.waitlist', section: 'operate' },
   { key: 'groups', href: (s) => `/app/${s}/groups`, icon: 'UsersRound', caps: ['bookings.manage'], feature: 'feature.group_sessions', hideFor: ['expert'], section: 'operate' },
