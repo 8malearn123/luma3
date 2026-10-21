@@ -6,11 +6,13 @@
 |---|---|---|---|
 | Unit | `tests/unit/*.test.ts` (3 files) | Vitest | Pure modules: the availability engine, the capability model, i18n dictionaries |
 | Integration | `tests/integration/*.test.ts` (24 files) | Vitest | Route handlers called **in process** through `TestClient` (`tests/helpers/http.ts`, with cookies and CSRF headers) and domain services, against a **real PostgreSQL** database with RLS, constraints and triggers |
-| E2E | `tests/e2e/*.spec.ts` (2 files) | Playwright | Browser journeys against `next dev` on port 3110 with a seeded `_e2e` database |
+| E2E | `tests/e2e/*.spec.ts` (4 files) | Playwright | Browser journeys against a production build (`next build && next start`) on port 3110 with a seeded `_e2e` database |
 
 **Integration setup**: `tests/setup/global-setup.ts` migrates `TEST_DATABASE_OWNER_URL` and truncates every table except `schema_migrations`, `plans` and `plan_features`. It **refuses** a database whose name does not end in `_test`. `tests/setup/env.ts` sets `APP_ENV=test`, `DEV_OTP_ECHO=true`, `DEMO_MODE=false`, a test webhook secret, empty AI settings, and `STORAGE_LOCAL_DIR=./storage-test`. Files run serially (`fileParallelism: false`), so concurrency tests control their own parallelism. Helpers live in `tests/helpers/` (`factory.ts` with `signup` and `createBusinessFor`, plus `salon.ts`, `commerce.ts`, `policy.ts`, `platform.ts`, `loom.ts`, `marketing-data.ts`). AI tests inject a fake provider with `setAiProviderForTests`. Trend tests inject a fake resolver and transport, so **no network is used**.
 
 ## Observed results (2026-10-21)
+
+**Latest integrated run (main branch, after all merges and fixes):** Vitest **32 files / 212 tests passed**, 0 failed; `tsc` passed; ESLint 0 errors; `next build` succeeded; Playwright **28/28 passed** (desktop + mobile projects, production build, 1.3 min). The earlier documentation-worker run below predates the last merges.
 
 Run by the documentation worker in its own worktree, against a scratch database `luma_d_test`, with the vitest command from the README (`TEST_DATABASE_URL` / `TEST_DATABASE_OWNER_URL` pointing at `luma_d_test`, credentials elided):
 
@@ -142,6 +144,8 @@ Projects: `desktop` (Desktop Chrome, all specs) and `mobile` (Pixel 7, `responsi
 
 | Spec | Tests |
 |---|---|
+| `shop-journey.spec.ts` | "customer adds a product to the cart, checks out and pays in the sandbox; the order shows as paid" |
+| `dashboard-smoke.spec.ts` | "owner dashboard pages render without errors" (overview, bookings list + calendar, services, team, finance, waitlist, groups, loyalty, gifts, memberships, settings → payments, products, orders, inventory, customers, policies, marketing, analytics, builder, settings, audit); "specialist portal shows her own day without money fields"; "platform staff must set up MFA before using the admin area"; "customer account pages render" (incl. the decision explanation with appeal route) |
 | `booking-journey.spec.ts` | "a selection made before signing in survives sign-in and is re-validated"; "customer books from the published storefront and pays in the sandbox; confirmation comes from the server"; "a signed-out visitor is sent to sign in before reserving, never shown another customer's data"; "staff role boundaries: a specialist cannot open finance; a customer cannot reach the platform admin"; "owner sees the dashboard overview for her business" |
 | `responsive.spec.ts` | "RTL + mobile: {path}" for `/`, `/pricing`, `/s/noura-salon`, `/s/noura-salon/services`, `/s/noura-salon/booking`, `/s/lamar-makeup` and `/auth/login` (status < 400, `dir="rtl"`, no horizontal scroll, no page errors); "English switches direction to LTR"; "preview links are not indexable and unknown storefronts 404" |
 
@@ -149,7 +153,7 @@ Projects: `desktop` (Desktop Chrome, all specs) and `mobile` (Pixel 7, `responsi
 
 - **Unit**: the availability engine (pure), the capability matrix, i18n key parity.
 - **Integration**: everything server-side listed above. Every test goes through real SQL, RLS, exclusion constraints, deferred journal balance, append-only triggers and idempotency records. Concurrency is tested for holds, checkout stock, refunds, coupon redemptions, loyalty redemption and group seats.
-- **E2E**: the customer booking and sandbox payment journey, sign-in resume, role boundaries in the UI, RTL and mobile layout, LTR switch, preview `noindex`, storefront 404.
+- **E2E**: the customer booking and sandbox payment journey, the retail cart → order → sandbox payment journey, a smoke pass over every dashboard page as owner, the specialist portal without money fields, the platform MFA gate, customer account pages, sign-in resume, role boundaries in the UI, RTL and mobile layout, LTR switch, preview `noindex`, storefront 404.
 
 ## Not covered by automated tests
 
@@ -159,9 +163,9 @@ Projects: `desktop` (Desktop Chrome, all specs) and `mobile` (Pixel 7, `responsi
 - **PDF rendering** (`renderPdf`, Chromium) and the CSV export file contents beyond the permission checks.
 - **Media upload pipeline** (`POST assets`: `sharp` WebP re-encoding, size and type rejection). `/api/v1/media/{id}` authorisation is covered only for evidence (policy) and private exports (finance), with assets inserted directly.
 - **Scripts**: `seed.ts` is exercised indirectly by E2E global setup only; `reset-dev.ts` guards and `migrate.ts` checksum mismatches have no tests.
-- **Booking side paths**: manual `approve` → conversion event (not recorded), rescheduling price-change acceptance (`price_changed` 409 and `acceptTotalMinor`), membership no-show handling, and group session cancellation refunds.
+- **Booking side paths**: membership no-show handling, and group session cancellation refunds.
 - **Commerce**: the return approval path with restock is exercised inside "markOrderPaid twice → one sale; …". Rejection of a return and partial-return refunds have no dedicated test.
 - **Gift cards and memberships**: online purchase (not implemented).
-- **Dashboard UIs** for bookings, services/team, finance/engagement, the staff portal and account booking detail have no E2E coverage (those UIs are being completed in parallel).
+- **Dashboard UIs** are covered by an E2E smoke pass (render without errors) plus worker-run Playwright checks; multi-step dashboard flows (refund, reschedule, invite, sell membership) are covered at the API level, not in E2E.
 - **Accessibility audits** (contrast in the rendered UI, screen readers), cross-browser runs beyond Chromium, performance and load tests.
 - **Security**: the CSP headers (`next.config.ts`) and the health endpoint have no automated assertions apart from E2E server start-up waiting on `/api/v1/health`.

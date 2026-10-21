@@ -76,3 +76,11 @@ See the end of this file (updated per session).
 2. Close the server gaps listed there, in particular: conversion events on approval and late reallocation; enforcing `builder_components`; production gate for the sandbox provider and a payer check on the simulation endpoints; assistant AI budget; order invoices, credit notes and COGS postings; online purchase of gift cards, memberships and group seats; stuck-job reclamation; mandatory admin MFA.
 3. Connect real providers once credentials and approvals exist (payments, messaging, AI). Each needs an adapter and review.
 4. Resolve the GitHub App permission (403) so the branch can be pushed.
+
+## 2026-10-21 — integration complete (main engineer)
+
+- All workers merged (builder/storefront, commerce, customers/policy, analytics/marketing, platform/subscriptions, bookings/staff portal, catalog/team/payments settings, finance/engagement/account UIs, docs).
+- Latest results: **Vitest 32 files / 212 tests pass**; `tsc` clean; ESLint 0 errors; `next build` succeeds; **Playwright 28/28 pass** on a production build.
+- Integration and security fixes are listed in [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md#fixed-during-integration-security-and-correctness).
+- E2E moved from `next dev` to a production build: Turbopack's cold dev compile of ~40 routes in one run exceeded the container memory limit (OOM-killed at ~13 GB).
+- Still blocked externally: GitHub push (403, GitHub App permission), real payment/messaging/AI providers (credentials and approval required).
