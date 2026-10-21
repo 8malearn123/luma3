@@ -1,0 +1,72 @@
+import { z } from 'zod';
+
+/**
+ * Server-side environment. Parsed once and frozen. Import only from server code;
+ * nothing here may reach the browser bundle.
+ */
+const bool = z
+  .enum(['true', 'false', '1', '0', ''])
+  .optional()
+  .transform((v) => v === 'true' || v === '1');
+
+const schema = z.object({
+  APP_ENV: z.enum(['development', 'test', 'production']).default('development'),
+  APP_URL: z.string().url().default('http://localhost:3000'),
+  DATABASE_URL: z.string().min(1),
+  DATABASE_OWNER_URL: z.string().optional(),
+  DB_APP_ROLE: z.string().regex(/^[a-z_][a-z0-9_]*$/).default('luma_app'),
+  AUTH_SECRET: z.string().min(32, 'AUTH_SECRET must be at least 32 characters'),
+  DEMO_MODE: bool,
+  DEV_OTP_ECHO: bool,
+  STORAGE_DRIVER: z.enum(['local']).default('local'),
+  STORAGE_LOCAL_DIR: z.string().default('./storage'),
+  EMAIL_PROVIDER: z.enum(['none']).default('none'),
+  SMS_PROVIDER: z.enum(['none']).default('none'),
+  WHATSAPP_PROVIDER: z.enum(['none']).default('none'),
+  OPENAI_API_KEY: z.string().optional().default(''),
+  OPENAI_MODEL: z.string().optional().default(''),
+  OPENAI_BASE_URL: z.string().url().default('https://api.openai.com/v1'),
+  OPENAI_PRICE_INPUT_PER_MTOK: z.coerce.number().optional(),
+  OPENAI_PRICE_OUTPUT_PER_MTOK: z.coerce.number().optional(),
+  AI_REQUEST_TIMEOUT_MS: z.coerce.number().int().positive().default(45_000),
+  PAYMENT_SANDBOX_WEBHOOK_SECRET: z.string().optional().default(''),
+});
+
+export type Env = z.infer<typeof schema> & {
+  isProduction: boolean;
+  /** Demo role switcher — never available in production. */
+  demoEnabled: boolean;
+  /** Development OTP echo — never available in production. */
+  devOtpEcho: boolean;
+};
+
+function emptyToUndefined(source: NodeJS.ProcessEnv) {
+  const out: Record<string, string | undefined> = {};
+  for (const [k, v] of Object.entries(source)) out[k] = v === '' ? undefined : v;
+  return out;
+}
+
+let cached: Env | null = null;
+
+export function env(): Env {
+  if (cached) return cached;
+  const parsed = schema.safeParse(emptyToUndefined(process.env));
+  if (!parsed.success) {
+    const issues = parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; ');
+    throw new Error(`Invalid server environment: ${issues}`);
+  }
+  const e = parsed.data;
+  const isProduction = e.APP_ENV === 'production';
+  cached = Object.freeze({
+    ...e,
+    isProduction,
+    demoEnabled: !isProduction && e.DEMO_MODE,
+    devOtpEcho: !isProduction && e.DEV_OTP_ECHO,
+  });
+  return cached;
+}
+
+/** Test helper: forget the cached env after mutating process.env. */
+export function resetEnvCache() {
+  cached = null;
+}
