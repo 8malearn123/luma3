@@ -48,6 +48,9 @@ describe('booking checkout & sandbox payments', () => {
     expect(co.body.data.payment.simulation).toBe(true);
     expect((await booking(s, id)).status).toBe('pending_payment');
     const pp = await providerId(s, co.body.data.payment.id);
+    // Only the payer (or the business's staff) can drive the simulated provider page.
+    const stranger = await customer('Stranger');
+    expect((await stranger.call(sandboxPay.POST, { params: { providerPaymentId: pp.provider_payment_id! }, body: { outcome: 'failed' } })).status).toBe(404);
     const done = await c.call(sandboxPay.POST, { params: { providerPaymentId: pp.provider_payment_id! }, body: { outcome: 'captured' } });
     expect(done.body.data.webhook).toBe('processed');
     const b = await booking(s, id);

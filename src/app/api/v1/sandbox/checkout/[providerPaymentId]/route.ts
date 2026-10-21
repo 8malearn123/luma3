@@ -3,6 +3,7 @@ import { route } from '@/server/http/route';
 import { env } from '@/server/env';
 import { Errors } from '@/server/http/errors';
 import { handleWebhook } from '@/server/domains/payments/service';
+import { requireSandboxActor } from '@/server/domains/payments/sandbox-access';
 import { simulateSandboxOutcome } from '@/server/domains/payments/providers/sandbox';
 
 /**
@@ -13,8 +14,9 @@ export const POST = route({
   auth: 'user',
   input: z.object({ outcome: z.enum(['captured', 'failed', 'cancelled']) }),
   rateLimit: { scope: 'user', name: 'sandbox_checkout', limit: 60, windowSec: 600 },
-  handler: async ({ params, input }) => {
+  handler: async ({ params, input, user }) => {
     if (env().isProduction) throw Errors.notFound();
+    await requireSandboxActor(user, { providerPaymentId: params.providerPaymentId! });
     const ev = await simulateSandboxOutcome(params.providerPaymentId!, input.outcome);
     if (!ev) throw Errors.notFound('payment');
     const r = await handleWebhook('sandbox', ev.body, new Headers(ev.headers));

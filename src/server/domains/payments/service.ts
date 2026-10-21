@@ -21,6 +21,8 @@ export async function activeAccount(trx: Tx, tenantId: string) {
 
 /** Connects the LUMA Sandbox (test mode). Real providers are not integrated; see providers/registry.ts. */
 export async function connectSandbox(access: TenantAccess, actor: AuditActor) {
+  // The simulated provider never exists in production: real money needs a real, approved provider.
+  if (env().isProduction) throw Errors.unavailable('provider_unavailable', 'The sandbox provider is not available in production');
   return withTenant(access.tenantId, async (trx) => {
     const row = await trx.insertInto('payment_accounts').values({
       tenant_id: access.tenantId, provider: 'sandbox', mode: 'test', status: 'active', enabled_methods: ['sandbox'], merchant_ref: `sbx_acct_${access.tenantId.slice(0, 8)}`,

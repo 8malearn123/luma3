@@ -110,12 +110,14 @@ async function releaseExpiredHolds(trx: Tx, staffIds: string[], resourceIds: str
 }
 
 async function expireBookings(trx: Tx, bookingIds: string[]) {
+  const before = await trx.selectFrom('bookings').select(['id', 'status']).where('id', 'in', bookingIds).where('status', 'in', ['held', 'pending_payment']).forUpdate().execute();
+  const prev = new Map(before.map((r) => [r.id, r.status]));
   const rows = await trx.updateTable('bookings').set({ status: 'expired', version: sql`version + 1` })
     .where('id', 'in', bookingIds).where('status', 'in', ['held', 'pending_payment'])
     .returning(['id', 'tenant_id', 'status']).execute();
   for (const b of rows) {
     await trx.updateTable('booking_allocations').set({ state: 'released', released_at: new Date() }).where('booking_id', '=', b.id).where('state', '<>', 'released').execute();
-    await trx.insertInto('booking_events').values({ tenant_id: b.tenant_id, booking_id: b.id, from_status: 'held', to_status: 'expired', source: 'system', reason: 'hold_expired' }).execute();
+    await trx.insertInto('booking_events').values({ tenant_id: b.tenant_id, booking_id: b.id, from_status: prev.get(b.id) ?? 'held', to_status: 'expired', source: 'system', reason: 'hold_expired' }).execute();
     await bookingHooks.onReleased(trx, b.tenant_id, b.id, 'expired');
   }
 }
@@ -262,11 +264,6 @@ export async function applyHoldOutcome(trx: Tx, tenantId: string, bookingId: str
     await trx.updateTable('bookings').set({ status: target, hold_expires_at: null, version: sql`version + 1` }).where('id', '=', bookingId).execute();
   }
   await trx.insertInto('booking_events').values({ tenant_id: tenantId, booking_id: bookingId, from_status: b.status, to_status: target, actor_user_id: actor.userId, source: actor.source, reason: actor.reason ?? null }).execute();
-  if (target === 'confirmed') {
-    // Storefront conversions only: walk-in/phone bookings are not storefront traffic.
-    const b = await trx.selectFrom('bookings').select(['analytics_session_id', 'source']).where('id', '=', bookingId).executeTakeFirstOrThrow();
-    if (b.source === 'storefront') await recordServerEvent(trx, tenantId, { type: 'booking_confirmed', entityId: bookingId, sessionId: b.analytics_session_id });
-  }
   if (target === 'confirmed' || target === 'pending_approval') await announce(trx, tenantId, bookingId, target === 'confirmed' ? 'booking.confirmed' : 'booking.pending_approval');
   return { changed: true, status: target };
 }
@@ -303,6 +300,12 @@ export async function tryReallocateExpired(trx: Tx, tenantId: string, bookingId:
 }
 
 async function announce(trx: Tx, tenantId: string, bookingId: string, topic: string) {
+  if (topic === 'booking.confirmed') {
+    // Every path to `confirmed` (payment, approval, late reallocation) announces here, so the
+    // storefront conversion is recorded once (idempotent per booking). Walk-ins are not storefront traffic.
+    const c = await trx.selectFrom('bookings').select(['analytics_session_id', 'source']).where('id', '=', bookingId).executeTakeFirstOrThrow();
+    if (c.source === 'storefront') await recordServerEvent(trx, tenantId, { type: 'booking_confirmed', entityId: bookingId, sessionId: c.analytics_session_id });
+  }
   const b = await trx.selectFrom('bookings').select(['id', 'number', 'customer_user_id', 'starts_at', 'timezone']).where('id', '=', bookingId).executeTakeFirstOrThrow();
   const t = await trx.selectFrom('tenants').select(['slug', 'name']).where('id', '=', tenantId).executeTakeFirstOrThrow();
   const when = DateTime.fromJSDate(b.starts_at, { zone: b.timezone });
