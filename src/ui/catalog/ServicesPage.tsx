@@ -75,6 +75,7 @@ export function ServicesPage() {
           <div className="min-w-0">
             <p className="truncate font-medium">{pick(r.name_ar, r.name_en)}</p>
             <p className="truncate text-xs text-ink-muted">{[catName(r.category_id), formatDuration(r.duration_min, locale)].filter(Boolean).join(' · ')}</p>
+            <div className="mt-1 sm:hidden"><StatusBadges r={r} /></div>
           </div>
         </div>
       ),
@@ -85,17 +86,7 @@ export function ServicesPage() {
       ),
     },
     { key: 'staff', header: t('catalog_team.services.col_staff'), className: 'hidden sm:table-cell', cell: (r) => r.staff.length || '—' },
-    {
-      key: 'status', header: t('fields.status'), cell: (r) => (
-        <span className="flex flex-wrap gap-1">
-          {r.archived_at ? <Badge tone="danger">{t('catalog_ui.archived')}</Badge>
-            : <Badge tone={r.is_active ? 'ok' : 'neutral'}>{r.is_active ? t('fields.active') : t('fields.inactive')}</Badge>}
-          {!r.is_visible && !r.archived_at ? <Badge>{t('fields.hidden')}</Badge> : null}
-          {r.requires_manual_approval ? <Badge tone="info">{t('catalog_team.services.needs_approval')}</Badge> : null}
-          {r.booking_mode === 'group' ? <Badge tone="brand">{t('catalog_ui.group')}</Badge> : null}
-        </span>
-      ),
-    },
+    { key: 'status', header: t('fields.status'), className: 'hidden sm:table-cell', cell: (r) => <StatusBadges r={r} /> },
   ];
 
   return (
@@ -135,5 +126,18 @@ export function ServicesPage() {
       )}
       {open && tab === 'services' ? <ServiceDrawer key={open} serviceId={open} categories={cats.data ?? []} onClose={() => setParams({ service: null })} /> : null}
     </div>
+  );
+}
+
+function StatusBadges({ r }: { r: ServiceRow }) {
+  const { t } = useI18n();
+  return (
+    <span className="flex flex-wrap gap-1">
+      {r.archived_at ? <Badge tone="danger">{t('catalog_ui.archived')}</Badge>
+        : <Badge tone={r.is_active ? 'ok' : 'neutral'}>{r.is_active ? t('fields.active') : t('fields.inactive')}</Badge>}
+      {!r.is_visible && !r.archived_at ? <Badge>{t('fields.hidden')}</Badge> : null}
+      {r.requires_manual_approval ? <Badge tone="info">{t('catalog_team.services.needs_approval')}</Badge> : null}
+      {r.booking_mode === 'group' ? <Badge tone="brand">{t('catalog_ui.group')}</Badge> : null}
+    </span>
   );
 }

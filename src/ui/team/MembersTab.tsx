@@ -85,7 +85,7 @@ export function MembersTab({ staff, inviteFor, onInviteHandled }: { staff: Staff
                   <div className="min-w-0 flex-1">
                     <p className="flex flex-wrap items-center gap-2">
                       <span className="font-medium">{m.user?.display_name ?? '—'}</span>
-                      <Badge tone={m.role === 'owner' ? 'brand' : 'neutral'}>{t(`dashboard.roles.${m.role}`)}</Badge>
+                      <Badge tone={m.role === 'owner' ? 'brand' : 'neutral'}>{t(`roles.${m.role}`)}</Badge>
                       {m.status !== 'active' ? <Badge tone="warn">{t(`catalog_team.members.status.${m.status}`)}</Badge> : null}
                       {isOwnRow(m) ? <Badge tone="info">{t('catalog_team.members.you')}</Badge> : null}
                     </p>
@@ -112,7 +112,7 @@ export function MembersTab({ staff, inviteFor, onInviteHandled }: { staff: Staff
             {invites.map((i) => (
               <li key={i.id} className="flex flex-wrap items-center gap-2 py-2">
                 <span className="min-w-0 flex-1 truncate" dir="ltr">{i.email ?? i.phone}</span>
-                <Badge>{t(`dashboard.roles.${i.role}`)}</Badge>
+                <Badge>{t(`roles.${i.role}`)}</Badge>
                 <span className="text-xs text-ink-muted">{t('catalog_team.members.expires', { when: when(i.expires_at) })}</span>
                 {writable ? <Button size="sm" variant="ghost" onClick={() => setRevokeInv(i)}>{t('catalog_team.members.revoke_invite')}</Button> : null}
               </li>
@@ -203,7 +203,7 @@ function InviteDialog({ staff, staffId, onClose }: { staff: StaffRow[]; staffId:
           <Field label={t('catalog_team.members.identifier')} hint={t('catalog_team.members.identifier_hint')} required>{(fp) => <Input {...fp} dir="ltr" autoComplete="off" maxLength={254} value={identifier} onChange={(e) => setIdentifier(e.target.value)} />}</Field>
           <Field label={t('team_ui.role')}>{(fp) => (
             <Select {...fp} value={role} onChange={(e) => { setRole(e.target.value as TenantRole); setCaps([]); }}>
-              {roles.map((r) => <option key={r} value={r}>{t(`dashboard.roles.${r}`)}</option>)}
+              {roles.map((r) => <option key={r} value={r}>{t(`roles.${r}`)}</option>)}
             </Select>
           )}</Field>
           <CapabilityPicker role={role} value={caps} onChange={setCaps} />
@@ -264,7 +264,7 @@ function EditMemberDialog({ member, staff, onClose }: { member: Member; staff: S
         <p className="text-xs text-ink-muted">{t('catalog_team.members.stepup_note')}</p>
         <Field label={t('team_ui.role')}>{(fp) => (
           <Select {...fp} value={role} onChange={(e) => { setRole(e.target.value as TenantRole); setCaps([]); }}>
-            {roles.map((r) => <option key={r} value={r}>{t(`dashboard.roles.${r}`)}</option>)}
+            {roles.map((r) => <option key={r} value={r}>{t(`roles.${r}`)}</option>)}
           </Select>
         )}</Field>
         <CapabilityPicker role={role} value={caps} onChange={setCaps} />

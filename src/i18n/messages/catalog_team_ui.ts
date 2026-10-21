@@ -3,7 +3,7 @@ const ar = {
   catalog_team: {
     plan: {
       limit_title: 'وصلتِ إلى حد باقتك',
-      limit_body: 'باقة {plan} تسمح بـ{limit} من «{feature}». للمزيد أرشفي عناصر غير مستخدمة أو رقّي الباقة من الإعدادات ← الاشتراك.',
+      limit_body: 'باقة {plan} تسمح بـ{limit} من «{feature}». للمزيد أوقفي أو أرشفي عناصر غير مستخدمة، أو رقّي الباقة من الإعدادات ← الاشتراك.',
       limit_body_zero: 'باقة {plan} لا تتضمن «{feature}». يمكنكِ الترقية من الإعدادات ← الاشتراك.',
       feature_title: 'غير متاح في باقتك',
       feature_body: 'ميزة «{feature}» غير مشمولة في باقة {plan}. يمكنكِ الترقية من الإعدادات ← الاشتراك.',
@@ -29,7 +29,7 @@ const ar = {
       options_after_create: 'بعد حفظ الخدمة يمكنكِ إضافة الخيارات والإضافات.',
       variants_hint: 'نسخ بديلة من الخدمة بسعر ومدة خاصة (مثلاً: شعر طويل).', addons_hint: 'إضافات اختيارية تُضاف إلى الخدمة بسعر ووقت إضافي.',
       no_variants: 'لا توجد خيارات.', no_addons: 'لا توجد إضافات.', new_row: 'جديد', extra_minutes: 'وقت إضافي (دقيقة)',
-      add_variant: 'إضافة خيار', add_addon: 'إضافة إضافة', deactivate: 'إيقاف', reactivate: 'تفعيل',
+      add_variant: 'إضافة خيار', add_addon: 'إضافة إضافة', upload_image: 'رفع صورة', deactivate: 'إيقاف', reactivate: 'تفعيل',
     },
     categories: {
       expand: 'إدارة', empty: 'لا توجد تصنيفات بعد.', new_name: 'اسم التصنيف', rename: 'إعادة تسمية',
@@ -62,12 +62,12 @@ const ar = {
     team: {
       subtitle: 'ملفات الأخصائيات وجداول العمل والإجازات والحضور وحسابات الدخول.',
       show_inactive: 'إظهار الموقوفات', limit_note: 'حد الباقة: {n} من {limit} نشطات', empty: 'لا توجد أخصائيات بعد.',
-      empty_hint: 'أضيفي ملف كل أخصائية، ثم جدولها والخدمات التي تقدّمها.', n_services: '{n} خدمة',
+      empty_hint: 'أضيفي ملف كل أخصائية، ثم جدولها والخدمات التي تقدّمها.', n_services: 'الخدمات: {n}',
       profile: 'ملف الأخصائية', not_found: 'لم يُعثر على هذا الملف أو ليست لديكِ صلاحية لعرضه.', created: 'تمت إضافة الأخصائية.',
       activated: 'تم التفعيل.', deactivated: 'تم الإيقاف.', inactive_note: 'هذه الأخصائية موقوفة ولا تظهر في الحجز.',
       reassign_hint: 'راجعي هذه المواعيد في صفحة الحجوزات وأعيدي إسنادها.',
       deactivate_title: 'إيقاف الأخصائية؟', deactivate_body: 'لن تظهر للحجز الجديد. المواعيد القادمة لا تُلغى تلقائياً، وسننبهكِ إن وُجدت.',
-      section_profile: 'الملف', photo: 'الصورة', public_hint: 'يظهر الاسم والصورة والنبذة في المتجر.', branches: 'الفروع',
+      section_profile: 'الملف', photo: 'رفع صورة', public_hint: 'يظهر الاسم والصورة والنبذة في المتجر.', branches: 'الفروع',
       services_performed: 'الخدمات التي تقدّمها', services_hint: 'التغيير هنا يحدّث قائمة الأخصائيات في كل خدمة.',
       commission: 'العمولة', no_commission: 'لا توجد قاعدة عمولة سارية.', rule_everyone: 'للجميع', all_services: 'كل الخدمات',
       commission_note: 'العمولات تُدار من صفحة المالية.',
@@ -118,7 +118,7 @@ const ar = {
       analytics: { view: 'عرض التحليلات' }, loyalty: { manage: 'إدارة الولاء' }, customers: { view: 'عرض العميلات' },
     },
     payments: {
-      sandbox_title: 'مزوّد لوما التجريبي (Sandbox)', simulation: 'محاكاة',
+      sandbox_title: 'مزوّد لوما التجريبي (Sandbox)', simulation: 'محاكاة — SIMULATION',
       simulation_title: 'وضع المحاكاة — لا تنتقل أموال حقيقية',
       simulation_body: 'المدفوعات عبر المزوّد التجريبي تُحاكى بالكامل لاختبار الحجز والدفع. لا يُخصم أي مبلغ من العميلات ولا يصل أي مبلغ إلى حسابك.',
       connected_test: 'متصل (تجريبي)', not_connected: 'غير متصل', status: { active: 'نشط', disconnected: 'مفصول', pending: 'قيد الإعداد', disabled: 'معطّل' },
@@ -150,7 +150,7 @@ const en: typeof ar = {
   catalog_team: {
     plan: {
       limit_title: 'You have reached your plan limit',
-      limit_body: 'The {plan} plan allows {limit} of “{feature}”. Archive unused items or upgrade in Settings → Subscription.',
+      limit_body: 'The {plan} plan allows {limit} of “{feature}”. Deactivate or archive unused items, or upgrade in Settings → Subscription.',
       limit_body_zero: 'The {plan} plan does not include “{feature}”. You can upgrade in Settings → Subscription.',
       feature_title: 'Not included in your plan',
       feature_body: '“{feature}” is not included in the {plan} plan. You can upgrade in Settings → Subscription.',
@@ -176,7 +176,7 @@ const en: typeof ar = {
       options_after_create: 'After saving the service you can add options and add-ons.',
       variants_hint: 'Alternative versions with their own price and duration (e.g. long hair).', addons_hint: 'Optional extras added to the service with extra price and time.',
       no_variants: 'No options.', no_addons: 'No add-ons.', new_row: 'New', extra_minutes: 'Extra time (min)',
-      add_variant: 'Add option', add_addon: 'Add add-on', deactivate: 'Deactivate', reactivate: 'Reactivate',
+      add_variant: 'Add option', add_addon: 'Add add-on', upload_image: 'Upload image', deactivate: 'Deactivate', reactivate: 'Reactivate',
     },
     categories: {
       expand: 'Manage', empty: 'No categories yet.', new_name: 'Category name', rename: 'Rename',
@@ -209,12 +209,12 @@ const en: typeof ar = {
     team: {
       subtitle: 'Specialist profiles, working schedules, leave, attendance and logins.',
       show_inactive: 'Show deactivated', limit_note: 'Plan limit: {n} of {limit} active', empty: 'No specialists yet.',
-      empty_hint: 'Add a profile for each specialist, then her schedule and the services she performs.', n_services: '{n} services',
+      empty_hint: 'Add a profile for each specialist, then her schedule and the services she performs.', n_services: 'Services: {n}',
       profile: 'Specialist profile', not_found: 'This profile was not found or you are not allowed to view it.', created: 'Specialist added.',
       activated: 'Activated.', deactivated: 'Deactivated.', inactive_note: 'This specialist is deactivated and is not offered for booking.',
       reassign_hint: 'Review these appointments on the Bookings page and reassign them.',
       deactivate_title: 'Deactivate this specialist?', deactivate_body: 'She will not be offered for new bookings. Upcoming appointments are not cancelled automatically; we will alert you if there are any.',
-      section_profile: 'Profile', photo: 'Photo', public_hint: 'Name, photo and bio are shown in the store.', branches: 'Branches',
+      section_profile: 'Profile', photo: 'Upload photo', public_hint: 'Name, photo and bio are shown in the store.', branches: 'Branches',
       services_performed: 'Services she performs', services_hint: 'Changes here update the specialist list of each service.',
       commission: 'Commission', no_commission: 'No active commission rule.', rule_everyone: 'Everyone', all_services: 'All services',
       commission_note: 'Commissions are managed on the Finance page.',

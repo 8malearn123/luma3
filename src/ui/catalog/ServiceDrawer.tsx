@@ -186,7 +186,7 @@ function ServiceForm({ service, categories, onClose, refetch }: { service: Servi
               )}</Field>
             ) : null}
           </div>
-          <ImageUpload slug={access.slug} purpose="service" value={form.image} onChange={(id) => set({ image: id })} label={t('fields.image')} />
+          <ImageUpload slug={access.slug} purpose="service" value={form.image} onChange={(id) => set({ image: id })} label={t('catalog_team.services.upload_image')} />
         </fieldset>
 
         <fieldset disabled={readOnly} className="flex flex-col gap-4">
@@ -329,7 +329,7 @@ function OptionsSection({ service, kind, readOnly, onChanged }: { service: Servi
       {rows.map((r, i) => (
         <div key={r.id ?? `new-${i}`} className="flex flex-col gap-3 rounded-xl border border-line p-3">
           <div className="flex items-center justify-between gap-2">
-            <span className="text-sm font-medium">{r.id ? `${label} ${i + 1}` : t('catalog_team.services.new_row')}</span>
+            <span className="text-sm font-medium">{r.id ? `#${i + 1}` : t('catalog_team.services.new_row')}</span>
             {!r.is_active ? <Badge>{t('fields.inactive')}</Badge> : null}
           </div>
           <fieldset disabled={readOnly} className="flex flex-col gap-3">

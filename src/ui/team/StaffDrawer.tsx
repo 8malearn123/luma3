@@ -179,7 +179,7 @@ function StaffForm({ row, onClose, onOpenSchedule, onInvite }: { row: StaffRow |
               <p className="text-sm">
                 <span className="font-medium">{member.user?.display_name ?? '—'}</span>
                 <span className="ms-2 text-ink-muted" dir="ltr">{member.user?.email ?? member.user?.phone ?? ''}</span>
-                <Badge className="ms-2">{t(`dashboard.roles.${member.role}`)}</Badge>
+                <Badge className="ms-2">{t(`roles.${member.role}`)}</Badge>
               </p>
             ) : row!.has_login ? <p className="text-sm">{t('team_ui.has_login')}</p> : (
               <div className="flex flex-col items-start gap-2">

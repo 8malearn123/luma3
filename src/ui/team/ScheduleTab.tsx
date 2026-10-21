@@ -134,14 +134,20 @@ function WeeklyEditor({ data, staffId, branchId, readOnly }: { data: Schedule; s
 
   const rangeRow = (d: number, kind: 'ranges' | 'breaks', i: number, r: Range) => (
     <div key={`${kind}${i}`} className="flex flex-wrap items-center gap-2">
-      <Input type="time" aria-label={`${WEEKDAYS[locale][d]} ${t('fields.from')}`} className="w-28" dir="ltr" value={r.start_time} disabled={readOnly}
-        onChange={(e) => update(d, kind, (rs) => rs.map((x, j) => (j === i ? { ...x, start_time: e.target.value } : x)))} />
-      <span className="text-ink-muted">–</span>
-      <Input type="time" aria-label={`${WEEKDAYS[locale][d]} ${t('fields.to')}`} className="w-28" dir="ltr" value={r.end_time} disabled={readOnly}
-        onChange={(e) => update(d, kind, (rs) => rs.map((x, j) => (j === i ? { ...x, end_time: e.target.value } : x)))} />
+      <div className="w-[7.5rem] shrink-0">
+        <Input type="time" aria-label={`${WEEKDAYS[locale][d]} ${t('fields.from')}`} dir="ltr" value={r.start_time} disabled={readOnly}
+          onChange={(e) => update(d, kind, (rs) => rs.map((x, j) => (j === i ? { ...x, start_time: e.target.value } : x)))} />
+      </div>
+      <span className="text-ink-muted" aria-hidden>–</span>
+      <div className="w-[7.5rem] shrink-0">
+        <Input type="time" aria-label={`${WEEKDAYS[locale][d]} ${t('fields.to')}`} dir="ltr" value={r.end_time} disabled={readOnly}
+          onChange={(e) => update(d, kind, (rs) => rs.map((x, j) => (j === i ? { ...x, end_time: e.target.value } : x)))} />
+      </div>
       {kind === 'breaks' ? (
-        <Input aria-label={t('catalog_team.schedule.break_label')} placeholder={t('catalog_team.schedule.break_label')} className="w-32" maxLength={60} value={r.label ?? ''} disabled={readOnly}
-          onChange={(e) => update(d, kind, (rs) => rs.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)))} />
+        <div className="w-36 shrink-0">
+          <Input aria-label={t('catalog_team.schedule.break_label')} placeholder={t('catalog_team.schedule.break_label')} maxLength={60} value={r.label ?? ''} disabled={readOnly}
+            onChange={(e) => update(d, kind, (rs) => rs.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)))} />
+        </div>
       ) : null}
       {!readOnly ? <IconButton label={t('actions.delete')} onClick={() => update(d, kind, (rs) => rs.filter((_, j) => j !== i))}><Trash2 className="size-4" /></IconButton> : null}
     </div>
