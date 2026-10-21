@@ -235,3 +235,13 @@ export async function teamPerformance(access: TenantAccess, q: { from?: string; 
     };
   });
 }
+
+/** Evaluated indicators for every specialist (internal; callers must strip names before any AI use). */
+export async function evaluatedTeam(trx: Tx, tenantId: string, tz: string, from: string, to: string) {
+  const st = await loadPerfSettings(trx, tenantId);
+  const p = resolvePeriod(tz, from, to);
+  const raw = await rawIndicators(trx, tenantId, p.start, p.end, st.punctuality_grace_min, null);
+  const occ = await computeOccupancy(trx, tenantId, tz, p.from, p.to);
+  const occById = new Map(occ.staff.map((s) => [s.staff_id, s]));
+  return raw.map((r) => ({ staff_id: r.staff_id, specialty_id: r.specialty_id, completed: r.completed, ev: evaluate(r, occById.get(r.staff_id), st) }));
+}

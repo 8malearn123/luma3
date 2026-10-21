@@ -37,6 +37,13 @@ export function weekdayOf(date: string): number {
   return DateTime.fromISO(date, { zone: 'UTC' }).weekday % 7;
 }
 
+/** First and last calendar day of the month containing `date`. */
+export function monthBounds(date: string): { from: string; to: string } {
+  const from = `${date.slice(0, 8)}01`;
+  const nextFirst = `${addDays(`${date.slice(0, 8)}28`, 4).slice(0, 8)}01`;
+  return { from, to: addDays(nextFirst, -1) };
+}
+
 /** Local hour (0-23) of an instant in a zone. */
 export function localHour(ms: number, tz: string): number {
   return DateTime.fromMillis(ms, { zone: tz }).hour;

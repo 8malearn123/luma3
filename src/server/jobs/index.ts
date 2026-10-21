@@ -4,3 +4,4 @@
  */
 import './maintenance';
 import '../domains/analytics/jobs';
+import '../domains/marketing/jobs';
