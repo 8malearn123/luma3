@@ -20,6 +20,7 @@ export const e2eEnv = {
   PAYMENT_SANDBOX_WEBHOOK_SECRET: 'e2e-webhook-secret',
   OPENAI_API_KEY: '',
   OPENAI_MODEL: '',
+  PLATFORM_MFA_REQUIRED: 'true',
   SEED_CREDENTIALS_JSON: './.e2e/credentials.json',
 };
 

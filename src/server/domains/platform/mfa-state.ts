@@ -1,4 +1,5 @@
 import { db } from '../../db/client';
+import { env } from '../../env';
 
 /** A session's second-factor verification is valid for this long. */
 export const MFA_SESSION_HOURS = 12;
@@ -17,8 +18,11 @@ export async function platformMfaState(user: { sessionId: string }): Promise<Pla
   return { enabled: !!row?.mfa_enabled_at, verified, pending: !!row?.mfa_pending_secret_enc };
 }
 
-/** True when the user enabled MFA but this session has not passed it. */
+/**
+ * True when this session may not act as platform staff yet: MFA is enabled but
+ * not passed, or MFA is required (always in production) but not set up.
+ */
 export async function mfaPending(user: { sessionId: string }) {
   const s = await platformMfaState(user);
-  return s.enabled && !s.verified;
+  return s.enabled ? !s.verified : env().platformMfaRequired;
 }

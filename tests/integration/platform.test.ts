@@ -31,6 +31,7 @@ import * as services from '@/app/api/v1/t/[tenantSlug]/services/route';
 import * as supportGrants from '@/app/api/v1/platform/support-grants/route';
 import * as userStatus from '@/app/api/v1/platform/users/[id]/status/route';
 import { maintainUsageCounters } from '@/server/domains/subscriptions/service';
+import { resetEnvCache } from '@/server/env';
 
 const PLATFORM_DIR = path.resolve(import.meta.dirname, '../../src/app/api/v1/platform');
 
@@ -145,6 +146,24 @@ describe('least privilege between platform roles', () => {
 });
 
 describe('admin MFA (TOTP)', () => {
+  it('when MFA is required (always in production), staff without MFA can only enrol', async () => {
+    process.env.PLATFORM_MFA_REQUIRED = 'true';
+    resetEnvCache();
+    try {
+      const admin = await platformUser('platform_owner', 'Must enrol');
+      const blocked = await admin.call(overview.GET);
+      expect(blocked.status).toBe(403);
+      expect(blocked.body.error.code).toBe('mfa_enrollment_required');
+      const en = await admin.call(mfaEnroll.POST, { body: {} });
+      expect(en.status).toBe(200);
+      expect((await admin.call(mfaActivate.POST, { body: { code: totpCode(en.body.data.secret) } })).status).toBe(200);
+      expect((await admin.call(overview.GET)).status).toBe(200);
+    } finally {
+      delete process.env.PLATFORM_MFA_REQUIRED;
+      resetEnvCache();
+    }
+  });
+
   it('enrols, rejects wrong codes, stores the secret encrypted, and requires per-session verification', async () => {
     const admin = await platformUser('platform_owner', 'MFA owner');
     const en = await admin.call(mfaEnroll.POST, { body: {} });

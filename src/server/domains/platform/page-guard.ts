@@ -1,4 +1,5 @@
 import 'server-only';
+import { env } from '../../env';
 import { headers } from 'next/headers';
 import { notFound, redirect } from 'next/navigation';
 import { requireUser } from '../../pages';
@@ -16,7 +17,8 @@ export async function requirePlatformPage(opts: { allowUnverified?: boolean } = 
   const caps = platformCapabilities(user.platformRoles);
   if (caps.size === 0) notFound();
   const mfa = await platformMfaState(user);
-  if (mfa.enabled && !mfa.verified && !opts.allowUnverified) redirect(`/platform/mfa?next=${encodeURIComponent(path)}`);
+  const mustEnrol = !mfa.enabled && env().platformMfaRequired;
+  if ((mfa.enabled && !mfa.verified || mustEnrol) && !opts.allowUnverified) redirect(`/platform/mfa?next=${encodeURIComponent(path)}`);
   return { user, caps, mfa };
 }
 

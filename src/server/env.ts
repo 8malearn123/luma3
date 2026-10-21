@@ -18,6 +18,8 @@ const schema = z.object({
   AUTH_SECRET: z.string().min(32, 'AUTH_SECRET must be at least 32 characters'),
   DEMO_MODE: bool,
   DEV_OTP_ECHO: bool,
+  /** Platform staff must enrol in MFA before using the admin area. Always on in production. */
+  PLATFORM_MFA_REQUIRED: bool,
   STORAGE_DRIVER: z.enum(['local']).default('local'),
   STORAGE_LOCAL_DIR: z.string().default('./storage'),
   EMAIL_PROVIDER: z.enum(['none']).default('none'),
@@ -38,6 +40,8 @@ export type Env = z.infer<typeof schema> & {
   demoEnabled: boolean;
   /** Development OTP echo — never available in production. */
   devOtpEcho: boolean;
+  /** Platform staff must have MFA enabled (forced on in production). */
+  platformMfaRequired: boolean;
 };
 
 function emptyToUndefined(source: NodeJS.ProcessEnv) {
@@ -62,6 +66,7 @@ export function env(): Env {
     isProduction,
     demoEnabled: !isProduction && e.DEMO_MODE,
     devOtpEcho: !isProduction && e.DEV_OTP_ECHO,
+    platformMfaRequired: isProduction || e.PLATFORM_MFA_REQUIRED,
   });
   return cached;
 }

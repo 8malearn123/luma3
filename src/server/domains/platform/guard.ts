@@ -1,4 +1,5 @@
 import type { z } from 'zod';
+import { env } from '../../env';
 import { platformMfaState } from './mfa-state';
 import { route, type RouteContext } from '../../http/route';
 import { AppError } from '../../http/errors';
@@ -14,6 +15,7 @@ export { MFA_SESSION_HOURS, platformMfaState, type PlatformMfaState } from './mf
 export async function requirePlatformMfa(user: Pick<SessionUser, 'sessionId'>) {
   const s = await platformMfaState(user);
   if (s.enabled && !s.verified) throw new AppError(403, 'mfa_required', 'Enter your authenticator code to continue');
+  if (!s.enabled && env().platformMfaRequired) throw new AppError(403, 'mfa_enrollment_required', 'Set up two-step verification to use the LUMA admin area');
 }
 
 type PlatformDef<S extends z.ZodTypeAny | undefined> = {

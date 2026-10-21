@@ -30,20 +30,18 @@
     }
   },
   "include": [
-    "next-env.d.ts",
     "src/**/*.ts",
     "src/**/*.tsx",
     "scripts/**/*.ts",
     "tests/**/*.ts",
     ".next/types/**/*.ts",
     "*.ts",
-    ".next/dev/types/**/*.ts",
-    ".next-e2e/types/**/*.ts",
-    ".next-e2e/dev/types/**/*.ts"
+    ".next/dev/types/**/*.ts"
   ],
   "exclude": [
-    "node_modules",
+    ".e2e",
     ".next-e2e",
-    ".e2e"
+    "next-env.d.ts",
+    "node_modules"
   ]
 }
