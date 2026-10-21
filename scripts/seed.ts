@@ -37,6 +37,10 @@ const { recognizeBookingRevenue, recognizeRetainedOnClose, earnCommissions } = a
 const { post } = await import('../src/server/domains/finance/journal');
 const { ensureTenantCustomerForUser } = await import('../src/server/domains/customers/relationship');
 const { nextReadableNumber } = await import('../src/server/infra/counters');
+const { createProduct } = await import('../src/server/domains/commerce/products');
+const { seedIncident, seedAppeal } = await import('../src/server/domains/policy/seed');
+const { publish } = await import('../src/server/domains/builder/publish');
+const { createExamplePlan } = await import('../src/server/domains/marketing/plans');
 
 const credentials: string[] = ['# LUMA demo credentials (development only — fictional people)', ''];
 const actorSystem = { userId: null, kind: 'system' as const };
@@ -219,7 +223,26 @@ async function main() {
     customer_explanation_ar: 'يتطلب الحجز لدى هذا الصالون الدفع الكامل مسبقاً. يمكنكِ تقديم تظلم من حسابك.',
     customer_explanation_en: 'Bookings at this salon require full prepayment. You can appeal from your account.',
     reviewer_id: ownerId, is_experimental: true, review_at: new Date(Date.now() + 30 * 86_400_000), expires_at: new Date(Date.now() + 90 * 86_400_000),
-  }).execute());
+  }).returning('id').executeTakeFirstOrThrow()).then(async (decision) => {
+    // An appeal from that customer, and an incident still under review.
+    await withSystem('seed appeal', (trx) => seedAppeal(trx, { customerUserId: customerFull, decisionId: decision.id, message: 'كان لدي ظرف طارئ في أحد المواعيد، أرجو مراجعة القرار.' }));
+    const noShow = await withTenant(noura.tenantId, (trx) => trx.selectFrom('bookings').select('id').where('status', '=', 'no_show').where('tenant_customer_id', '=', customers[1]!).executeTakeFirst());
+    await withTenant(noura.tenantId, (trx) => seedIncident(trx, { tenantId: noura.tenantId, tenantCustomerId: customers[1]!, bookingId: noShow?.id ?? null, type: 'no_show', status: 'under_review', submittedBy: receptionId, reviewerId: ownerId, description: 'بيانات تجريبية: لم تحضر العميلة للموعد ولم تعتذر.' }));
+  });
+
+  // Retail products (one deliberately without cost → "costs incomplete"; one low on stock).
+  for (const pr of [
+    { name_ar: 'شامبو مرطب', name_en: 'Hydrating shampoo', variants: [{ name_ar: '250 مل', name_en: '250 ml', price_minor: 6500, cost_minor: 3000, initial_stock: 24, sku: 'SH-250' }, { name_ar: '500 مل', name_en: '500 ml', price_minor: 11000, cost_minor: 5200, initial_stock: 10, sku: 'SH-500' }] },
+    { name_ar: 'زيت أرغان للشعر', name_en: 'Argan hair oil', variants: [{ price_minor: 9000, initial_stock: 3, sku: 'OIL-ARG' }] },
+    { name_ar: 'مبرد أظافر', name_en: 'Nail file', variants: [{ price_minor: 1500, cost_minor: 400, initial_stock: 60, sku: 'NF-01' }] },
+  ]) await createProduct(access, actor, { status: 'active', is_visible: true, ...pr });
+
+  // A labelled example marketing plan (rules-based; no AI provider is connected in the demo).
+  try { await createExamplePlan(access, actor, 'monthly'); } catch (e) { console.warn(`[seed] example plan skipped: ${(e as Error).message}`); }
+
+  // Publish the generated storefront if the readiness checklist passes; otherwise say why.
+  try { await publish(access, actor, `seed-publish-${noura.tenantId}`, { note: 'Seed: first publication (demo)' }); }
+  catch (e) { console.warn(`[seed] noura-salon not published: ${(e as Error).message} ${JSON.stringify((e as { details?: unknown }).details ?? '')}`); }
 
   // ── Second business: an independent expert with a different identity ─────
   const expert = await sessionFor(expertId);
@@ -240,6 +263,8 @@ async function main() {
     await trx.updateTable('tenant_settings').set({ booking_policy_confirmed_at: new Date(), allow_pay_on_site: false, deposit_mode: 'fixed', deposit_fixed_minor: 10000 }).where('tenant_id', '=', lamar.tenantId).execute();
     await trx.updateTable('tenants').set({ status: 'active' }).where('id', '=', lamar.tenantId).execute();
   });
+  try { await publish(lamarAccess, la, `seed-publish-${lamar.tenantId}`, { note: 'Seed: first publication (demo)' }); }
+  catch (e) { console.warn(`[seed] lamar-makeup not published: ${(e as Error).message} ${JSON.stringify((e as { details?: unknown }).details ?? '')}`); }
   // The ordinary customer also has a relationship with Lamar (isolation demo).
   await withTenant(lamar.tenantId, async (trx) => {
     const user = await db().selectFrom('users').select(['id', 'display_name', 'phone', 'email']).where('id', '=', customerA).executeTakeFirstOrThrow();
@@ -247,7 +272,8 @@ async function main() {
   });
 
   void actorSystem; void customerNew; void bridal; void platformOwner;
-  writeFileSync('.demo-credentials.txt', credentials.join('\n') + '\n', { mode: 0o600 });
+  const dbName = new URL(process.env.DATABASE_URL!).pathname.slice(1);
+  writeFileSync('.demo-credentials.txt', [`# Demo accounts for database "${dbName}" (seeded ${new Date().toISOString()}). Development only.`, ...credentials].join('\n') + '\n', { mode: 0o600 });
   console.log(`Seeded: ${n} historical bookings, businesses noura-salon & lamar-makeup.`);
   console.log('Demo credentials written to .demo-credentials.txt (gitignored).');
 }
