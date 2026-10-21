@@ -240,7 +240,7 @@ export function BuilderApp({ slug, initial }: { slug: string; initial: BuilderSt
       {/* Toolbar */}
       <div className="sticky top-14 z-20 flex flex-wrap items-center gap-2 rounded-xl border border-line bg-white/95 p-2 shadow-sm backdrop-blur">
         <label className="sr-only" htmlFor="builder-page">{t('builder.page')}</label>
-        <Select id="builder-page" className="!h-9 w-auto min-w-36" value={page.id} onChange={(e) => { setPageId(e.target.value); setSelected(null); }}>
+        <Select id="builder-page" className="!h-9 !w-auto min-w-36" value={page.id} onChange={(e) => { setPageId(e.target.value); setSelected(null); }}>
           {pages.filter((p) => p.status === 'active').map((p) => <option key={p.id} value={p.id}>{pick(p.title_ar, p.title_en)}</option>)}
         </Select>
         <IconButton label={`${t('builder.undo')} (Ctrl+Z)`} disabled={!b.canUndo} onClick={b.undo}><Undo2 className="size-4 flip-rtl" /></IconButton>

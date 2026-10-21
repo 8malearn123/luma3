@@ -35,8 +35,10 @@ export type SaveStatus = 'idle' | 'saving' | 'saved' | 'error' | 'conflict';
  */
 export function useBuilder(slug: string, initial: BuilderState) {
   const [server, setServer] = useState(initial);
-  const [doc, setDoc] = useState<Doc>(() => docFromState(initial));
-  const [saved, setSaved] = useState<Doc>(() => docFromState(initial));
+  // The same object seeds both, so nothing is "dirty" (or autosaved) on load.
+  const [seed] = useState<Doc>(() => docFromState(initial));
+  const [doc, setDoc] = useState<Doc>(seed);
+  const [saved, setSaved] = useState<Doc>(seed);
   const [status, setStatus] = useState<SaveStatus>('idle');
   const [error, setError] = useState<unknown>(null);
   const [conflict, setConflict] = useState<Part | null>(null);
