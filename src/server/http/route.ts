@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import '../boot';
 import { NextResponse, type NextRequest } from 'next/server';
 import { z } from 'zod';
 import { env } from '../env';

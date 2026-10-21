@@ -189,6 +189,7 @@ export interface BookingItems {
   id: Generated<string>;
   line_total_minor: number;
   materials_consumed_at: Timestamp | null;
+  revision: Generated<number>;
   sequence: number;
   service_id: string;
   service_name_ar: string | null;
@@ -196,6 +197,7 @@ export interface BookingItems {
   staff_id: string;
   staff_name: string;
   starts_at: Timestamp;
+  superseded_at: Timestamp | null;
   tenant_id: string;
   unit_price_minor: number;
   variant_id: string | null;
@@ -229,6 +231,7 @@ export interface Bookings {
   refunded_minor: Generated<number>;
   rescheduled_from_id: string | null;
   rescheduled_to_id: string | null;
+  revision: Generated<number>;
   source: string;
   starts_at: Timestamp;
   status: string;
@@ -1047,6 +1050,7 @@ export interface Payments {
   booking_id: string | null;
   captured_at: Timestamp | null;
   cash_reference: string | null;
+  checkout_url: string | null;
   collected_by: string | null;
   created_at: Generated<Timestamp>;
   created_by: string | null;
@@ -1060,6 +1064,7 @@ export interface Payments {
   method: string;
   needs_reconciliation: Generated<boolean>;
   order_id: string | null;
+  payer_user_id: string | null;
   payment_account_id: string | null;
   provider: string;
   provider_payment_id: string | null;
@@ -1440,6 +1445,26 @@ export interface Rewards {
   tenant_id: string;
   updated_at: Generated<Timestamp>;
   value: number;
+}
+
+export interface SandboxProviderPayments {
+  account_ref: string;
+  amount_minor: number;
+  created_at: Generated<Timestamp>;
+  currency: string;
+  id: string;
+  metadata: Generated<Json>;
+  refunded_minor: Generated<number>;
+  status: string;
+  updated_at: Generated<Timestamp>;
+}
+
+export interface SandboxProviderRefunds {
+  amount_minor: number;
+  created_at: Generated<Timestamp>;
+  id: string;
+  payment_id: string;
+  status: string;
 }
 
 export interface ServiceAddons {
@@ -2098,6 +2123,8 @@ export interface DB {
   reviews: Reviews;
   reward_redemptions: RewardRedemptions;
   rewards: Rewards;
+  sandbox_provider_payments: SandboxProviderPayments;
+  sandbox_provider_refunds: SandboxProviderRefunds;
   service_addons: ServiceAddons;
   service_material_recipes: ServiceMaterialRecipes;
   service_package_items: ServicePackageItems;
