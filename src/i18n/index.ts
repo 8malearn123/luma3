@@ -18,7 +18,7 @@ import { catalogTeamUi } from './messages/catalog_team_ui';
  * Each domain owns one file in ./messages exporting { ar, en } with identical
  * keys (checked by tests/unit/i18n.test.ts).
  */
-export const dictionaries = [common, errors, auth, dashboard, onboarding, marketingSite, operations, commerce, policy, platform, builder, marketing, bookingsUi, operations, commerce, policy, platform, builder, marketing, catalogTeamUi] as const;
+export const dictionaries = [common, errors, auth, dashboard, onboarding, marketingSite, operations, commerce, policy, platform, builder, marketing, bookingsUi, catalogTeamUi] as const;
 
 export type Locale = 'ar' | 'en';
 export const LOCALES: Locale[] = ['ar', 'en'];
