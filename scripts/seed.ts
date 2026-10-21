@@ -43,6 +43,7 @@ const { publish } = await import('../src/server/domains/builder/publish');
 const { createExamplePlan } = await import('../src/server/domains/marketing/plans');
 
 const credentials: string[] = ['# LUMA demo credentials (development only — fictional people)', ''];
+const credentialMap: Record<string, string> = {};
 const actorSystem = { userId: null, kind: 'system' as const };
 
 async function demoUser(email: string, name: string, opts: { phone?: string } = {}) {
@@ -58,6 +59,7 @@ async function demoUser(email: string, name: string, opts: { phone?: string } = 
     return row.id;
   });
   credentials.push(`${name.padEnd(28)} ${email.padEnd(34)} ${password}`);
+  credentialMap[email] = password;
   return u;
 }
 
@@ -273,9 +275,12 @@ async function main() {
 
   void actorSystem; void customerNew; void bridal; void platformOwner;
   const dbName = new URL(process.env.DATABASE_URL!).pathname.slice(1);
-  writeFileSync('.demo-credentials.txt', [`# Demo accounts for database "${dbName}" (seeded ${new Date().toISOString()}). Development only.`, ...credentials].join('\n') + '\n', { mode: 0o600 });
+  // E2E runs read credentials from a JSON file outside the repo root text file.
+  const credFile = process.env.SEED_CREDENTIALS_JSON;
+  if (credFile) writeFileSync(credFile, JSON.stringify(credentialMap), { mode: 0o600 });
+  else writeFileSync('.demo-credentials.txt', [`# Demo accounts for database "${dbName}" (seeded ${new Date().toISOString()}). Development only.`, ...credentials].join('\n') + '\n', { mode: 0o600 });
   console.log(`Seeded: ${n} historical bookings, businesses noura-salon & lamar-makeup.`);
-  console.log('Demo credentials written to .demo-credentials.txt (gitignored).');
+  console.log(`Demo credentials written to ${credFile ?? '.demo-credentials.txt'} (gitignored).`);
 }
 
 await main().catch((e) => { console.error(e); process.exitCode = 1; }).finally(() => closeDb());
