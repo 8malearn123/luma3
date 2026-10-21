@@ -20,7 +20,7 @@ This file is the hand-off record between work sessions: what exists, what was de
 | Resources | Each resource is a single unit (3 chairs = 3 resources) | Keeps exclusion constraints exact. |
 | Money | `bigint` minor units (halalas); inventory quantities `numeric(14,3)` | No float arithmetic. |
 | Ledgers | Append-only (trigger + revoked UPDATE/DELETE): audit_logs, booking_events, stock_movements, financial_entries (balanced double entry, deferred constraint), points, gift card entries, commissions, invoices, site_versions, plan_versions, ai_runs | Corrections are offsetting entries. |
-| Roles | Capabilities defined in code (`src/server/auth/capabilities.ts`) with per-role delegable allowlists; memberships store granted/revoked capabilities | Testable, versioned with the code; cannot escalate to platform or ownership powers. The spec's `roles/permissions/role_permissions` tables are replaced by this code registry (documented in PERMISSIONS.md). |
+| Roles | Capabilities defined in code (`src/server/auth/capabilities.ts`) with per-role delegable allowlists; memberships store granted/revoked capabilities | Testable, versioned with the code; cannot escalate to platform or ownership powers. The spec's `roles/permissions/role_permissions` tables are replaced by this code registry (documented in [PERMISSIONS.md](PERMISSIONS.md)). |
 | Storefront identity | Theme tokens stored once in `brand_settings`; layout in `site_drafts`; blocks in `page_drafts`; publish writes an immutable `site_versions` snapshot. New businesses start from a **neutral** palette, not LUMA purple. | Single source of truth; no duplicated colours. |
 | Prices/limits | Plan prices are `NULL` ("pricing not configured"); limits are labelled test values, editable by the LUMA owner | Not approved final values. |
 | Messaging | No email/SMS/WhatsApp provider connected. Dev mode (`DEV_OTP_ECHO`) writes to a labelled dev outbox and shows the code on screen; with no provider and no dev echo, registration returns 503 instead of pretending | "Do not pretend an OTP was sent." |
@@ -29,7 +29,7 @@ This file is the hand-off record between work sessions: what exists, what was de
 
 ## Status
 
-See `IMPLEMENTATION_STATUS.md` for the requirement-by-requirement table (kept at the end of the delivery).
+See [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md) for the requirement-by-requirement table (kept at the end of the delivery).
 
 ### Done (with tests)
 - Schema: identity, tenancy, catalog, staff/schedules, bookings/allocations, commerce, payments, finance, loyalty/gifts/memberships, builder, policy, marketing/AI/analytics, infra.
@@ -46,3 +46,33 @@ See `IMPLEMENTATION_STATUS.md` for the requirement-by-requirement table (kept at
 
 ### Next steps
 See the end of this file (updated per session).
+
+## Further design decisions (found in the integrated code)
+
+| Area | Decision | Where |
+|---|---|---|
+| Holds | A hold is a `booking_allocations` row in state `held` with `expires_at`. Expired holds are released lazily in the allocating transaction and by a 30 s sweeper. | `booking/service.ts`, `booking/jobs.ts` |
+| Deadlocks | Allocations are always inserted sorted by staff/resource id, then start time (hold, reschedule, late-payment reallocation). | `booking/service.ts` |
+| Rescheduling | Same booking, new item revision. The old allocations are released in the same transaction, so a failure leaves the original untouched. A price change needs explicit acceptance (`acceptTotalMinor`). | `reschedule()`, 0016 |
+| Policy snapshot | Cancellation fees, no-show grace and tax rule are read from `bookings.policy_snapshot`, never from the current settings. | `policySnapshot()`, `cancellationRefund()` |
+| Payment terms | One algorithm for bookings and orders. Strictest active decision across tenant and platform scope; `manual_approval` is additive; `require_deposit` can only be strengthened. The browser cannot re-enable an option. | `policy/payment-terms.ts` |
+| Proof of payment | Only verified webhooks or reconciliation confirm a payment; the redirect never does. A late capture re-allocates the same time if it is still free, otherwise it refunds automatically. | `payments/service.ts` |
+| Revenue recognition | Prepayments are `customer_deposits` (liability) until completion; retained cancellation money is recognised on close; order revenue is recognised at payment. | `finance/postings.ts`, `payments/service.ts` |
+| Cross-domain effects | Hooks are registered once per process in `src/server/boot.ts` and run inside the originating transaction; each handler is exactly-once by its own unique constraint. | `boot.ts`, `booking/hooks.ts` |
+| Background work | Postgres tables only (`job_runs` with `SKIP LOCKED`, `outbox_events` at-least-once); periodic tasks run in the worker process. | `jobs/runner.ts` |
+| AI budget | One unit of `limit.ai_runs_monthly` is consumed atomically per Loom job in `usage_counters`; when it is exhausted, Loom falls back to rules. | `marketing/pipeline.ts` |
+| Analytics conversions | Conversions are server-side events linked to the storefront session through `analytics_session_id`; browsers cannot claim them. | `analytics/events.ts`, 0022 |
+| Migration numbering | Foundation `0001–0024`, then workstream blocks `0100–0500`, applied in lexical order. `apply_conventions()` re-applies append-only revocations (0023). | `db/migrations/` |
+
+## 2026-10-21: repository documentation
+
+- Wrote `README.md` and the `docs/` set: `DATA_MODEL.md`, `PERMISSIONS.md`, `BOOKING_ENGINE.md`, `PAYMENT_FLOW.md`, `BUILDER_SCHEMA.md`, `AI_AND_MARKETING.md`, `TEST_PLAN.md`, `RUNBOOK.md` and `IMPLEMENTATION_STATUS.md`, all from the code on the integrated branch.
+- Observed on a scratch database (`luma_d_test`): **Vitest 27/27 files, 193/193 tests passed**; `pnpm typecheck` passed. Playwright was not run by the documentation worker; its last result is recorded by the main engineer.
+- Fixed doc references: `ARCHITECTURE.md` now links `docs/PERMISSIONS.md`.
+- Gaps and inconsistencies found while documenting are listed in `IMPLEMENTATION_STATUS.md` (no code was changed).
+
+### Next steps
+1. Merge the parallel dashboard UIs (bookings, services/team, finance/engagement, staff portal, account booking detail, account waitlist offer) and update `IMPLEMENTATION_STATUS.md`.
+2. Close the server gaps listed there, in particular: conversion events on approval and late reallocation; enforcing `builder_components`; production gate for the sandbox provider and a payer check on the simulation endpoints; assistant AI budget; order invoices, credit notes and COGS postings; online purchase of gift cards, memberships and group seats; stuck-job reclamation; mandatory admin MFA.
+3. Connect real providers once credentials and approvals exist (payments, messaging, AI). Each needs an adapter and review.
+4. Resolve the GitHub App permission (403) so the branch can be pushed.
