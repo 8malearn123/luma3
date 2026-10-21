@@ -25,7 +25,7 @@ export function BookingCheckout({ slug, bookingId, timezone, returningPaymentId,
   const [error, setError] = useState<unknown>(null);
   const [busy, setBusy] = useState(false);
   const [option, setOption] = useState<'full' | 'deposit' | 'on_site' | null>(null);
-  const [now, setNow] = useState(Date.now());
+  const [now, setNow] = useState(() => Date.now());
   const [polling, setPolling] = useState(!!returningPaymentId);
   const [gift, setGift] = useState('');
   const [key] = useState(newIdempotencyKey);
@@ -34,6 +34,8 @@ export function BookingCheckout({ slug, bookingId, timezone, returningPaymentId,
   const load = useCallback(async () => {
     try { setB(await api<Booking>(`/api/v1/s/${slug}/bookings/${bookingId}`)); } catch (e) { setError(e); }
   }, [slug, bookingId]);
+  // Fetching on mount: state is set asynchronously after the request resolves.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, [load]);
   useEffect(() => { const id = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(id); }, []);
 

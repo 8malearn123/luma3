@@ -59,6 +59,8 @@ export function BookingFlow({ slug, tenantName, timezone, services, signedIn, ve
       if (!raw) return;
       const saved = JSON.parse(raw) as { picks: Pick[]; day: string; start: string; note: string; savedAt: number };
       if (Date.now() - saved.savedAt > 30 * 60_000) { sessionStorage.removeItem(STORAGE_KEY(slug)); return; }
+      // Restoring from sessionStorage must happen after hydration, so it lives in an effect.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setPicks(saved.picks.filter((p) => services.some((s) => s.id === p.serviceId)));
       setDay(saved.day); setNote(saved.note); setResumeStart(saved.start);
       setWindowStart(DateTime.fromISO(saved.day, { zone: timezone }));
@@ -67,6 +69,8 @@ export function BookingFlow({ slug, tenantName, timezone, services, signedIn, ve
 
   const key = JSON.stringify(picks.map((p) => [p.serviceId, p.staffId]));
   useEffect(() => {
+    // Resetting request state when the inputs change; the fetch itself resolves asynchronously.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!picks.length) { setSearch(null); return; }
     const ctrl = new AbortController();
     setLoading(true); setError(null); setChosen(null);
@@ -85,6 +89,8 @@ export function BookingFlow({ slug, tenantName, timezone, services, signedIn, ve
   useEffect(() => {
     if (!resumeStart || !search || !day) return;
     const o = search.days[day]?.find((x) => x.start === resumeStart);
+    // One-shot reconciliation of a restored selection once live availability arrives.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (o) setChosen(o); else setError(new ApiError(409, 'slot_unavailable', 'slot'));
     setResumeStart(null);
     try { sessionStorage.removeItem(STORAGE_KEY(slug)); } catch { /* ignore */ }
