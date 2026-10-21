@@ -15,7 +15,8 @@ export const staffInput = z.object({
   service_ids: z.array(z.string().uuid()).max(300).optional(),
 });
 
-export const staffPatch = staffInput.partial().extend({ is_active: z.boolean().optional() });
+/** PATCH: no defaults, so omitted fields (e.g. is_public) are never reset. */
+export const staffPatch = staffInput.extend({ is_public: z.boolean() }).partial().extend({ is_active: z.boolean().optional() });
 
 /** Fields a specialist may change on her own profile. */
 export const ownProfilePatch = z.object({

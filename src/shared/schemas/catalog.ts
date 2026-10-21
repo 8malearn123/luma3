@@ -73,15 +73,23 @@ export const servicePatch = z.object({
   resource_requirements: serviceInput.shape.resource_requirements,
 });
 
-export const variantInput = z.object({
+const variantFields = z.object({
   name_ar: name.optional().nullable(), name_en: name.optional().nullable(), price_minor: money, duration_min: z.number().int().min(5).max(720),
-  is_active: z.boolean().default(true),
-}).refine((v) => !!(v.name_ar || v.name_en), { message: 'A name is required', path: ['name_ar'] });
+  is_active: z.boolean(),
+});
+export const variantInput = variantFields.extend({ is_active: z.boolean().default(true) })
+  .refine((v) => !!(v.name_ar || v.name_en), { message: 'A name is required', path: ['name_ar'] });
+/** PATCH: only the fields sent are changed (no defaults, so omitted fields are never reset). */
+export const variantPatch = variantFields.partial();
 
-export const addonInput = z.object({
-  name_ar: name.optional().nullable(), name_en: name.optional().nullable(), price_minor: money, duration_min: z.number().int().min(0).max(240).default(0),
-  is_active: z.boolean().default(true),
-}).refine((v) => !!(v.name_ar || v.name_en), { message: 'A name is required', path: ['name_ar'] });
+const addonFields = z.object({
+  name_ar: name.optional().nullable(), name_en: name.optional().nullable(), price_minor: money, duration_min: z.number().int().min(0).max(240),
+  is_active: z.boolean(),
+});
+export const addonInput = addonFields.extend({ duration_min: addonFields.shape.duration_min.default(0), is_active: z.boolean().default(true) })
+  .refine((v) => !!(v.name_ar || v.name_en), { message: 'A name is required', path: ['name_ar'] });
+/** PATCH: only the fields sent are changed. */
+export const addonPatch = addonFields.partial();
 
 export const packageInput = z.object({
   name_ar: name.optional().nullable(), name_en: name.optional().nullable(), description_ar: desc.optional().nullable(), description_en: desc.optional().nullable(),

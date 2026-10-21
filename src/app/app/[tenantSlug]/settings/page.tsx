@@ -5,7 +5,7 @@ import { SettingsPage } from '@/ui/settings/SettingsPage';
 
 export const metadata = { title: 'Settings' };
 
-/** Business settings (tabs: profile, branches, booking policy, payments link, subscription, notifications, display, legal & tax). */
+/** Business settings (tabs: profile, branches, booking policy, payments, subscription, notifications, display, legal & tax). */
 export default async function Page({ params, searchParams }: { params: Promise<{ tenantSlug: string }>; searchParams: Promise<{ tab?: string }> }) {
   const { tenantSlug } = await params;
   const { access } = await requireTenantPage(tenantSlug);
