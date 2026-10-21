@@ -4,13 +4,14 @@ import { auth } from './messages/auth';
 import { dashboard } from './messages/dashboard';
 import { onboarding } from './messages/onboarding';
 import { marketingSite } from './messages/marketing_site';
+import { policy } from './messages/policy';
 
 /**
  * Translation dictionary. Arabic is the primary language; English mirrors it.
  * Each domain owns one file in ./messages exporting { ar, en } with identical
  * keys (checked by tests/unit/i18n.test.ts).
  */
-export const dictionaries = [common, errors, auth, dashboard, onboarding, marketingSite] as const;
+export const dictionaries = [common, errors, auth, dashboard, onboarding, marketingSite, policy] as const;
 
 export type Locale = 'ar' | 'en';
 export const LOCALES: Locale[] = ['ar', 'en'];
