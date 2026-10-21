@@ -93,7 +93,7 @@ export async function offerFreedSlot(trx: Tx, tenantId: string, bookingId: strin
       if (c.customer_user_id) {
         await notifyUsers(trx, tenantId, [c.customer_user_id], {
           kind: 'waitlist.offer', title_ar: 'توفر موعد من قائمة الانتظار — العرض لفترة محدودة', title_en: 'A waitlist opening is available — limited-time offer',
-          target_path: `/account/waitlist/${inserted.id}`, dedupe_key: `waitlist-offer:${inserted.id}`,
+          target_path: `/account/waitlist/offers/${inserted.id}`, dedupe_key: `waitlist-offer:${inserted.id}`,
         });
       }
       offers.push(inserted.id);
@@ -140,6 +140,23 @@ export async function acceptOffer(user: SessionUser, offerId: string, idempotenc
   }
 }
 
+/** The customer's own offer (the slot, specialist, expiry). Another customer's offer is a 404. */
+export async function getOfferForCustomer(user: SessionUser, offerId: string) {
+  const ref = (await sql<{ tenant_id: string; tenant_slug: string }>`select * from app.waitlist_offer_ref(${user.userId}, ${offerId})`.execute(db())).rows[0];
+  if (!ref) throw Errors.notFound('offer');
+  return withTenant(ref.tenant_id, async (trx) => {
+    const o = await trx.selectFrom('waitlist_offers as o').innerJoin('waitlist_entries as e', 'e.id', 'o.waitlist_entry_id')
+      .innerJoin('services as s', 's.id', 'e.service_id').innerJoin('staff_profiles as sp', 'sp.id', 'o.staff_id')
+      .innerJoin('branches as br', 'br.id', 'e.branch_id').innerJoin('tenants as t', 't.id', 'o.tenant_id')
+      .select(['o.id', 'o.status', 'o.slot_start', 'o.slot_end', 'o.expires_at', 'o.booking_id', 'o.responded_at', 'sp.display_name as staff_name',
+        's.name_ar as service_name_ar', 's.name_en as service_name_en', 's.price_minor', 's.price_display', 'br.timezone', 't.name as tenant_name'])
+      .where('o.id', '=', offerId).executeTakeFirstOrThrow();
+    // A pending offer past its TTL is reported as expired even before the sweeper runs.
+    const status = o.status === 'pending' && o.expires_at <= new Date() ? 'expired' : o.status;
+    return { ...o, status, tenant_slug: ref.tenant_slug };
+  });
+}
+
 export async function declineOffer(user: SessionUser, offerId: string) {
   const ref = (await sql<{ tenant_id: string }>`select * from app.waitlist_offer_ref(${user.userId}, ${offerId})`.execute(db())).rows[0];
   if (!ref) throw Errors.notFound('offer');
@@ -168,12 +185,22 @@ export async function expireOffers() {
 
 export async function listWaitlist(access: TenantAccess, status?: string) {
   requireFeature(access, 'feature.waitlist');
-  return withTenant(access.tenantId, (trx) => {
+  return withTenant(access.tenantId, async (trx) => {
     let q = trx.selectFrom('waitlist_entries as e').innerJoin('tenant_customers as c', 'c.id', 'e.tenant_customer_id').innerJoin('services as s', 's.id', 'e.service_id')
-      .select(['e.id', 'e.status', 'e.desired_from', 'e.desired_to', 'e.time_windows', 'e.notify_consent', 'e.created_at', 'e.staff_id', 'c.display_name as customer_name', 's.name_ar as service_name_ar', 's.name_en as service_name_en',
+      .leftJoin('staff_profiles as sp', 'sp.id', 'e.staff_id')
+      .select(['e.id', 'e.status', 'e.desired_from', 'e.desired_to', 'e.time_windows', 'e.notify_consent', 'e.created_at', 'e.expires_at', 'e.staff_id', 'sp.display_name as staff_name',
+        'c.display_name as customer_name', 's.name_ar as service_name_ar', 's.name_en as service_name_en',
         sql<number>`(select count(*)::int from waitlist_offers o where o.waitlist_entry_id = e.id)`.as('offers')]);
     if (status) q = q.where('e.status', '=', status);
-    return q.orderBy('e.created_at').limit(300).execute();
+    const rows = await q.orderBy('e.created_at').limit(300).execute();
+    // The most recent offer per entry (the offered slot and when it expires).
+    const offers = rows.length ? await trx.selectFrom('waitlist_offers as o').innerJoin('staff_profiles as sp', 'sp.id', 'o.staff_id')
+      .select(['o.id', 'o.waitlist_entry_id', 'o.status', 'o.slot_start', 'o.slot_end', 'o.expires_at', 'o.responded_at', 'o.created_at', 'sp.display_name as staff_name'])
+      .where('o.waitlist_entry_id', 'in', rows.map((r) => r.id)).orderBy('o.created_at', 'desc').execute() : [];
+    return rows.map((r) => {
+      const o = offers.find((x) => x.waitlist_entry_id === r.id);
+      return { ...r, latest_offer: o ? { id: o.id, status: o.status, slot_start: o.slot_start, slot_end: o.slot_end, expires_at: o.expires_at, responded_at: o.responded_at, staff_name: o.staff_name } : null };
+    });
   });
 }
 

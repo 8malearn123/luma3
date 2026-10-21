@@ -41,6 +41,33 @@ export async function createPlan(access: TenantAccess, actor: AuditActor, input:
   });
 }
 
+/**
+ * Plan edits apply to future sales only: each sold membership keeps the plan
+ * snapshot it was sold with. Included services are fixed once created (make a
+ * new plan to change them); plans are deactivated, never deleted.
+ */
+export const planPatch = z.object({
+  name_ar: z.string().trim().max(120).nullable().optional(), name_en: z.string().trim().max(120).nullable().optional(),
+  description_ar: z.string().trim().max(1000).nullable().optional(), description_en: z.string().trim().max(1000).nullable().optional(),
+  price_minor: z.number().int().min(0).max(100_000_000).optional(), validity_days: z.number().int().min(1).max(1095).optional(),
+  is_active: z.boolean().optional(), is_visible: z.boolean().optional(),
+}).strict();
+
+export async function updatePlan(access: TenantAccess, actor: AuditActor, planId: string, patch: z.infer<typeof planPatch>) {
+  requireFeature(access, 'feature.memberships');
+  return withTenant(access.tenantId, async (trx) => {
+    const cur = await trx.selectFrom('membership_plans').selectAll().where('id', '=', planId).forUpdate().executeTakeFirst();
+    if (!cur) throw Errors.notFound('membership_plan');
+    const set = Object.fromEntries(Object.entries(patch).filter(([, v]) => v !== undefined));
+    const nameAr = 'name_ar' in set ? set.name_ar : cur.name_ar;
+    const nameEn = 'name_en' in set ? set.name_en : cur.name_en;
+    if (!nameAr && !nameEn) throw Errors.invalid('name_required', 'A name is required');
+    const r = Object.keys(set).length ? await trx.updateTable('membership_plans').set(set).where('id', '=', planId).returningAll().executeTakeFirstOrThrow() : cur;
+    await audit(trx, actor, 'membership.plan_updated', { tenantId: access.tenantId, targetType: 'membership_plan', targetId: planId, data: patch });
+    return r;
+  });
+}
+
 export async function listPlans(tenantId: string, publicOnly = false) {
   return withTenant(tenantId, async (trx) => {
     let q = trx.selectFrom('membership_plans').selectAll();
@@ -89,9 +116,11 @@ export async function sellMembership(access: TenantAccess, actor: AuditActor, in
   }));
 }
 
-export async function customerMemberships(tenantId: string, tenantCustomerId: string) {
+/** One customer's memberships, or (without a customer) the most recent sales across customers. */
+export async function customerMemberships(tenantId: string, tenantCustomerId?: string) {
   return withTenant(tenantId, async (trx) => {
-    const ms = await trx.selectFrom('customer_memberships').selectAll().where('tenant_customer_id', '=', tenantCustomerId).orderBy('created_at', 'desc').execute();
+    const ms = await trx.selectFrom('customer_memberships as cm').innerJoin('tenant_customers as c', 'c.id', 'cm.tenant_customer_id').selectAll('cm').select(['c.display_name as customer_name'])
+      .$if(!!tenantCustomerId, (q) => q.where('cm.tenant_customer_id', '=', tenantCustomerId!)).orderBy('cm.created_at', 'desc').limit(200).execute();
     const ents = ms.length ? await trx.selectFrom('membership_entitlements').selectAll().where('membership_id', 'in', ms.map((m) => m.id)).execute() : [];
     return ms.map((m) => ({ ...m, entitlements: ents.filter((e) => e.membership_id === m.id).map((e) => ({ id: e.id, service_id: e.service_id, total: e.total, used: e.used, reserved: e.reserved, remaining: e.total - e.used - e.reserved })) }));
   });

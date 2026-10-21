@@ -3,7 +3,7 @@ import { route } from '@/server/http/route';
 import { customerMemberships, sellMembership } from '@/server/domains/memberships/service';
 
 export const GET = route({
-  auth: 'tenant', capability: ['memberships.manage', 'bookings.manage', 'customers.view'], feature: 'feature.memberships', input: z.object({ customer_id: z.string().uuid() }),
+  auth: 'tenant', capability: ['memberships.manage', 'bookings.manage', 'customers.view'], feature: 'feature.memberships', input: z.object({ customer_id: z.string().uuid().optional() }),
   handler: async ({ tenant, input }) => ({ data: await customerMemberships(tenant.tenantId, input.customer_id) }),
 });
 /** POST sell a membership at the counter (collector identity + reference recorded). */
