@@ -13,7 +13,6 @@ export function sanitizeText(s: string): string {
   if (!/[<>&\u0000-\u0008\u000B\u000C\u000E-\u001F]/.test(s)) return s;
   const stripped = sanitizeHtml(s, { allowedTags: [], allowedAttributes: {}, disallowedTagsMode: 'discard', nonTextTags: ['script', 'style', 'textarea', 'noscript', 'iframe', 'object'] });
   return stripped.replace(/&(amp|lt|gt|quot|#39|#x27|nbsp);/g, (m) => ENTITIES[m] ?? m)
-    // eslint-disable-next-line no-control-regex
     .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '');
 }
 
