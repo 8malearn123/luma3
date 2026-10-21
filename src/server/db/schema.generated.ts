@@ -623,6 +623,7 @@ export interface GiftCards {
   code_last4: string;
   created_at: Generated<Timestamp>;
   currency: Generated<string>;
+  delivery_note: string | null;
   expires_at: Timestamp | null;
   id: Generated<string>;
   initial_minor: number;
@@ -810,6 +811,7 @@ export interface LoyaltyAccounts {
   balance: Generated<number>;
   created_at: Generated<Timestamp>;
   id: Generated<string>;
+  last_activity_at: Generated<Timestamp>;
   lifetime_earned: Generated<number>;
   tenant_customer_id: string;
   tenant_id: string;

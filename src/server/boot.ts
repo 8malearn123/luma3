@@ -4,7 +4,10 @@
  */
 import { registerBookingHook } from './domains/booking/hooks';
 import { earnCommissions, recognizeBookingRevenue, recognizeRetainedOnClose, touchCustomerVisit } from './domains/finance/postings';
-import { refundBookingDue } from './domains/payments/service';
+import { onRefundSucceeded, refundBookingDue } from './domains/payments/service';
+import { earnForBooking, reverseForRefund } from './domains/loyalty/service';
+import { restoreOnRefund } from './domains/giftcards/service';
+import { consumeForBooking, releaseForBooking } from './domains/memberships/service';
 import { offerFreedSlot } from './domains/waitlist/service';
 import { releaseSeats } from './domains/groups/service';
 
@@ -15,6 +18,8 @@ if (!g.__lumaBooted) {
     await recognizeBookingRevenue(trx, tenantId, bookingId, actor);
     await earnCommissions(trx, tenantId, bookingId, actor);
     await touchCustomerVisit(trx, bookingId);
+    await consumeForBooking(trx, tenantId, bookingId);
+    await earnForBooking(trx, tenantId, bookingId);
   });
   registerBookingHook.refundDue(async (trx, tenantId, bookingId, amount, basis) => {
     await refundBookingDue(trx, tenantId, bookingId, amount, basis);
@@ -22,6 +27,11 @@ if (!g.__lumaBooted) {
   registerBookingHook.released(async (trx, tenantId, bookingId, why) => {
     if (why !== 'expired') await recognizeRetainedOnClose(trx, tenantId, bookingId);
     await releaseSeats(trx, bookingId);
+    await releaseForBooking(trx, bookingId);
+  });
+  onRefundSucceeded(async (trx, tenantId, refundId) => {
+    await reverseForRefund(trx, tenantId, refundId);
+    await restoreOnRefund(trx, tenantId, refundId);
   });
   registerBookingHook.slotFreed(async (trx, tenantId, bookingId) => {
     await offerFreedSlot(trx, tenantId, bookingId);

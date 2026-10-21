@@ -7,3 +7,4 @@ import './maintenance';
 import '../domains/booking/jobs';
 import '../domains/payments/jobs';
 import '../domains/waitlist/jobs';
+import '../domains/engagement/jobs';

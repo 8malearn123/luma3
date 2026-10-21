@@ -188,9 +188,15 @@ export async function recordOnSitePayment(access: TenantAccess, actor: AuditActo
  * payment row lock and status). Booking: paid amount, financial status,
  * confirmation (or late-success handling). Order: delegated to commerce.
  */
+export async function applyCapturedPayment(trx: Tx, tenantId: string, paymentId: string, actorUserId: string | null) {
+  return applyCaptured(trx, tenantId, paymentId, actorUserId);
+}
+
+const ledgerAccount = (method: string) => (method === 'cash' ? 'cash_on_hand' : method === 'gift_card' ? 'gift_card_liability' : 'provider_clearing') as 'cash_on_hand' | 'gift_card_liability' | 'provider_clearing';
+
 async function applyCaptured(trx: Tx, tenantId: string, paymentId: string, actorUserId: string | null) {
   const p = await trx.selectFrom('payments').selectAll().where('id', '=', paymentId).forUpdate().executeTakeFirstOrThrow();
-  const cashAccount = p.method === 'cash' ? 'cash_on_hand' : 'provider_clearing';
+  const cashAccount = ledgerAccount(p.method);
   if (p.booking_id) {
     const b = await trx.selectFrom('bookings').selectAll().where('id', '=', p.booking_id).forUpdate().executeTakeFirstOrThrow();
     const paid = b.paid_minor + p.amount_minor;
@@ -380,8 +386,8 @@ async function requestRefundInternal(trx: Tx, tenantId: string, r: RefundRequest
 async function sendRefund(trx: Tx, tenantId: string, refundId: string) {
   const r = await trx.selectFrom('refunds').selectAll().where('id', '=', refundId).forUpdate().executeTakeFirstOrThrow();
   const p = await trx.selectFrom('payments').selectAll().where('id', '=', r.payment_id).executeTakeFirstOrThrow();
-  if (p.method === 'cash' || p.method === 'pos_terminal') {
-    // Cash refunds are handed back at the counter; mark succeeded with the staff actor recorded in audit.
+  if (p.method === 'cash' || p.method === 'pos_terminal' || p.method === 'gift_card') {
+    // Cash refunds are handed back at the counter (staff recorded in audit); gift-card payments return to the card.
     await trx.updateTable('refunds').set({ status: 'succeeded', completed_at: new Date() }).where('id', '=', r.id).execute();
     await applyRefundSucceeded(trx, tenantId, r.id);
     return;
@@ -397,7 +403,8 @@ async function sendRefund(trx: Tx, tenantId: string, refundId: string) {
 async function applyRefundSucceeded(trx: Tx, tenantId: string, refundId: string) {
   const r = await trx.selectFrom('refunds').selectAll().where('id', '=', refundId).executeTakeFirstOrThrow();
   const p = await trx.selectFrom('payments').selectAll().where('id', '=', r.payment_id).executeTakeFirstOrThrow();
-  const cashAccount = p.method === 'cash' ? 'cash_on_hand' : 'provider_clearing';
+  const cashAccount = ledgerAccount(p.method);
+  for (const h of refundHooks) await h(trx, tenantId, r.id);
   if (p.booking_id) {
     const b = await trx.selectFrom('bookings').selectAll().where('id', '=', p.booking_id).forUpdate().executeTakeFirstOrThrow();
     await trx.updateTable('bookings').set({ refunded_minor: b.refunded_minor + r.amount_minor }).where('id', '=', b.id).execute();
@@ -412,6 +419,13 @@ async function applyRefundSucceeded(trx: Tx, tenantId: string, refundId: string)
     await post(trx, tenantId, { type: 'refund', id: r.id }, [{ account: p.gift_card_id ? 'gift_card_liability' : 'membership_liability', debit: r.amount_minor }, { account: cashAccount, credit: r.amount_minor }]);
   }
   await refreshRefundStatus(trx, tenantId, p.id);
+}
+
+type RefundHook = (trx: Tx, tenantId: string, refundId: string) => Promise<void>;
+const refundHooks: RefundHook[] = [];
+/** Side effects when money actually moves back (loyalty reversal, gift card restore). */
+export function onRefundSucceeded(h: RefundHook) {
+  refundHooks.push(h);
 }
 
 /** Recomputes the target's refund status: refund_pending is not refunded; only succeeded refunds count. */
