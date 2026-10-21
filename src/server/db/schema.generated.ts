@@ -33,12 +33,14 @@ export interface AiJobs {
   finished_at: Timestamp | null;
   id: Generated<string>;
   kind: string;
+  max_attempts: Generated<number>;
   period_key: string;
   regeneration_of: string | null;
   requested_by: string | null;
   result_ref: Json | null;
   started_at: Timestamp | null;
   status: Generated<string>;
+  target_plan_id: string | null;
   tenant_id: string;
   trigger: Generated<string>;
   updated_at: Generated<Timestamp>;
@@ -314,23 +316,28 @@ export interface Campaigns {
   approved_at: Timestamp | null;
   approved_by: string | null;
   attribution_window_days: Generated<number>;
+  cancelled_at: Timestamp | null;
   channel: string;
   content: Json;
   coupon_id: string | null;
   created_at: Generated<Timestamp>;
   created_by: string | null;
+  finished_at: Timestamp | null;
   frequency_cap_days: Generated<number>;
   holdout_bp: Generated<number>;
   id: Generated<string>;
+  last_error: string | null;
   name: string;
   plan_id: string | null;
   quiet_hours: Generated<Json>;
   recommendation_id: string | null;
   scheduled_at: Timestamp | null;
   segment_id: string | null;
+  started_at: Timestamp | null;
   stats: Generated<Json>;
   status: Generated<string>;
   tenant_id: string;
+  tracking_code: string | null;
   updated_at: Generated<Timestamp>;
   utm: Generated<Json>;
 }
@@ -820,6 +827,20 @@ export interface LoyaltyPrograms {
   version: Generated<number>;
 }
 
+export interface MarketingCalendarEvents {
+  created_at: Generated<Timestamp>;
+  ends_on: string;
+  id: Generated<string>;
+  kind: string;
+  relevance_note: string | null;
+  source_url: string | null;
+  starts_on: string;
+  tenant_id: string;
+  title: string;
+  verified_at: Generated<Timestamp>;
+  verified_by: string;
+}
+
 export interface MarketingPlans {
   approved_at: Timestamp | null;
   approved_by: string | null;
@@ -841,16 +862,23 @@ export interface MarketingPlans {
 
 export interface MarketingPreferences {
   audience_notes: string | null;
+  brand_style: string | null;
   channels: Generated<string[]>;
   goals: Generated<Json>;
+  local_hour: Generated<number>;
   max_discount_bp: Generated<number>;
   monthly_budget_minor: number | null;
+  monthly_day: Generated<number>;
+  monthly_enabled: Generated<boolean>;
   photography_resources: string | null;
+  promote_products: Generated<boolean>;
   schedule_enabled: Generated<boolean>;
   tenant_id: string;
   tone: string | null;
   updated_at: Generated<Timestamp>;
   updated_by: string | null;
+  weekly_enabled: Generated<boolean>;
+  weekly_weekday: Generated<number>;
 }
 
 export interface MembershipEntitlements {
@@ -1084,6 +1112,17 @@ export interface Payouts {
   tenant_id: string;
 }
 
+export interface PerformanceSettings {
+  min_completed: Generated<number>;
+  min_reviews: Generated<number>;
+  min_timed: Generated<number>;
+  punctuality_grace_min: Generated<number>;
+  tenant_id: string;
+  updated_at: Generated<Timestamp>;
+  updated_by: string | null;
+  weights: Generated<Json>;
+}
+
 export interface PlanComments {
   author_id: string;
   body: string;
@@ -1309,6 +1348,7 @@ export interface Recommendations {
   evidence_refs: Generated<Json>;
   experiment_design: string | null;
   expires_at: Timestamp | null;
+  fingerprint: string | null;
   forecast: string | null;
   horizon: string;
   id: Generated<string>;
@@ -1320,6 +1360,7 @@ export interface Recommendations {
   opportunity: string;
   period_end: string | null;
   period_start: string | null;
+  plan_id: string | null;
   prerequisites: Generated<Json>;
   prompt_version: string | null;
   proposed_target: string | null;
@@ -2056,6 +2097,7 @@ export interface DB {
   leave_requests: LeaveRequests;
   loyalty_accounts: LoyaltyAccounts;
   loyalty_programs: LoyaltyPrograms;
+  marketing_calendar_events: MarketingCalendarEvents;
   marketing_plans: MarketingPlans;
   marketing_preferences: MarketingPreferences;
   membership_entitlements: MembershipEntitlements;
@@ -2073,6 +2115,7 @@ export interface DB {
   payment_attempts: PaymentAttempts;
   payments: Payments;
   payouts: Payouts;
+  performance_settings: PerformanceSettings;
   plan_comments: PlanComments;
   plan_features: PlanFeatures;
   plan_versions: PlanVersions;

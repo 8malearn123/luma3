@@ -3,3 +3,4 @@
  * Each domain adds exactly one line here.
  */
 import './maintenance';
+import '../domains/analytics/jobs';
