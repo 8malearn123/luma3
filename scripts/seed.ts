@@ -232,6 +232,17 @@ async function main() {
     await withTenant(noura.tenantId, (trx) => seedIncident(trx, { tenantId: noura.tenantId, tenantCustomerId: customers[1]!, bookingId: noShow?.id ?? null, type: 'no_show', status: 'under_review', submittedBy: receptionId, reviewerId: ownerId, description: 'بيانات تجريبية: لم تحضر العميلة للموعد ولم تعتذر.' }));
   });
 
+  // Reviews from verified completed visits (the DB trigger rejects anything else).
+  await withTenant(noura.tenantId, async (trx) => {
+    const visits = await trx.selectFrom('bookings as b').innerJoin('booking_items as i', 'i.booking_id', 'b.id')
+      .select(['b.id', 'b.tenant_customer_id', 'b.customer_user_id', 'i.staff_id']).where('b.status', '=', 'completed').where('b.customer_user_id', 'is not', null)
+      .orderBy('b.starts_at', 'desc').limit(3).execute();
+    const texts = ['تجربة رائعة وتعامل راقٍ، والنتيجة أجمل مما توقعت.', 'المكان نظيف والموعد كان في وقته تماماً.', 'خدمة ممتازة، سأعود بالتأكيد.'];
+    for (const [i, v] of visits.entries()) {
+      await trx.insertInto('reviews').values({ tenant_id: noura.tenantId, booking_id: v.id, tenant_customer_id: v.tenant_customer_id!, customer_user_id: v.customer_user_id, staff_id: v.staff_id, rating: i === 1 ? 4 : 5, comment: texts[i], status: 'published' }).execute();
+    }
+  });
+
   // Retail products (one deliberately without cost → "costs incomplete"; one low on stock).
   for (const pr of [
     { name_ar: 'شامبو مرطب', name_en: 'Hydrating shampoo', variants: [{ name_ar: '250 مل', name_en: '250 ml', price_minor: 6500, cost_minor: 3000, initial_stock: 24, sku: 'SH-250' }, { name_ar: '500 مل', name_en: '500 ml', price_minor: 11000, cost_minor: 5200, initial_stock: 10, sku: 'SH-500' }] },
