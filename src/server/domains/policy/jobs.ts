@@ -2,6 +2,7 @@ import { withSystem } from '../../db/client';
 import { audit } from '../../infra/audit';
 import { notifyCapability, notifyUsers } from '../../infra/notify';
 import { registerPeriodic } from '../../jobs/registry';
+import { storage } from '../../infra/storage';
 
 /**
  * Restrictions do not live forever:
@@ -43,4 +44,32 @@ export async function runPolicySweep(now = new Date()) {
   });
 }
 
+/**
+ * Evidence retention: files past `retain_until` are deleted from storage and the
+ * asset marked `deleted` (the media route then returns 404). Evidence is kept
+ * while the incident has an open appeal or backs an active decision.
+ */
+export async function runEvidencePurge(now = new Date()) {
+  const due = await withSystem('evidence retention: find expired files', (trx) => trx.selectFrom('incident_evidence as e')
+    .innerJoin('assets as a', (j) => j.onRef('a.id', '=', 'e.asset_id').onRef('a.tenant_id', '=', 'e.tenant_id'))
+    .select(['e.id', 'e.tenant_id', 'e.incident_id', 'a.id as asset_id', 'a.storage_key'])
+    .where('e.retain_until', '<=', now).where('a.status', '!=', 'deleted')
+    .where(({ not, exists, selectFrom }) => not(exists(selectFrom('appeals as ap').select('ap.id')
+      .whereRef('ap.incident_id', '=', 'e.incident_id').where('ap.status', 'in', ['submitted', 'under_review']))))
+    .where(({ not, exists, selectFrom }) => not(exists(selectFrom('policy_decisions as d').select('d.id')
+      .whereRef('d.source_incident_id', '=', 'e.incident_id').where('d.status', '=', 'active'))))
+    .limit(500).execute());
+  let purged = 0;
+  for (const r of due) {
+    await storage().delete(r.storage_key);
+    await withSystem('evidence retention: mark deleted', async (trx) => {
+      await trx.updateTable('assets').set({ status: 'deleted' }).where('id', '=', r.asset_id).execute();
+      await audit(trx, { userId: null, kind: 'system' }, 'incident_evidence.purged', { tenantId: r.tenant_id, targetType: 'incident', targetId: r.incident_id, data: { evidence_id: r.id, reason: 'retention_period_ended' } });
+    });
+    purged++;
+  }
+  return { purged };
+}
+
+registerPeriodic({ name: 'policy-evidence-retention', everySec: 6 * 3600, run: async () => { await runEvidencePurge(); } });
 registerPeriodic({ name: 'policy-decisions-sweep', everySec: 300, run: async () => { await runPolicySweep(); } });

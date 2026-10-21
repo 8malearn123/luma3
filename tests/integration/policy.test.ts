@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { withSystem, withTenant } from '@/server/db/client';
-import { runPolicySweep } from '@/server/domains/policy/jobs';
+import { runEvidencePurge, runPolicySweep } from '@/server/domains/policy/jobs';
 import { createDecision } from '@/server/domains/policy/decisions';
 import * as incidents from '@/app/api/v1/t/[tenantSlug]/policies/incidents/route';
 import * as incidentOne from '@/app/api/v1/t/[tenantSlug]/policies/incidents/[id]/route';
@@ -139,6 +139,28 @@ describe('incidents', () => {
 });
 
 describe('decisions & authority', () => {
+  it('evidence past its retention is purged unless an appeal is open or a decision relies on it', async () => {
+    const w = await world();
+    const ownerId = (await me(w.owner)).id;
+    const mk = async () => {
+      const b = await w.noShow();
+      const id = (await w.report(b.id)).body.data.id as string;
+      const asset = await withTenant(w.biz.tenantId, async (trx) => {
+        const a = await trx.insertInto('assets').values({ tenant_id: w.biz.tenantId, kind: 'image', mime: 'image/png', bytes: 4, purpose: 'evidence', visibility: 'private', status: 'ready', storage_key: `test/ret-${id}.png`, uploaded_by: ownerId }).returning('id').executeTakeFirstOrThrow();
+        await trx.insertInto('incident_evidence').values({ tenant_id: w.biz.tenantId, incident_id: id, asset_id: a.id, added_by: ownerId, retain_until: hoursAgo(1) }).execute();
+        return a.id;
+      });
+      return { id, asset };
+    };
+    const expired = await mk();
+    const relied = await mk();
+    await withTenant(w.biz.tenantId, (trx) => createDecision(trx, { scope: 'tenant', tenantId: w.biz.tenantId, tenantCustomerId: w.tcId, action: 'require_deposit', reason: 'Confirmed no-show backs this deposit requirement', reviewerId: ownerId, sourceIncidentId: relied.id, actor: { userId: ownerId, kind: 'user' }, silent: true }));
+    await runEvidencePurge();
+    const status = (id: string) => withTenant(w.biz.tenantId, (trx) => trx.selectFrom('assets').select('status').where('id', '=', id).executeTakeFirstOrThrow()).then((r) => r.status);
+    expect(await status(expired.asset)).toBe('deleted');
+    expect(await status(relied.asset)).toBe('ready');
+  });
+
   it('platform reviewers see evidence only for escalated incidents', async () => {
     const w = await world();
     const b = await w.noShow();
