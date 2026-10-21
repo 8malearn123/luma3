@@ -573,6 +573,21 @@ export interface Expenses {
   voided_by: string | null;
 }
 
+export interface FinanceExports {
+  asset_id: string | null;
+  created_at: Generated<Timestamp>;
+  error: string | null;
+  finished_at: Timestamp | null;
+  id: Generated<string>;
+  kind: string;
+  period_end: string;
+  period_start: string;
+  requested_by: string | null;
+  row_count: number | null;
+  status: Generated<string>;
+  tenant_id: string;
+}
+
 export interface FinancialEntries {
   account: string;
   created_at: Generated<Timestamp>;
@@ -2071,6 +2086,7 @@ export interface DB {
   domain_mappings: DomainMappings;
   entitlement_reservations: EntitlementReservations;
   expenses: Expenses;
+  finance_exports: FinanceExports;
   financial_entries: FinancialEntries;
   fulfillments: Fulfillments;
   gift_card_entries: GiftCardEntries;

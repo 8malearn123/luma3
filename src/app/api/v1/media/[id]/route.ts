@@ -24,7 +24,7 @@ export const GET = route({
       const slug = m.rows[0]?.slug;
       if (!slug) throw Errors.notFound();
       const access = await resolveTenantAccess(user, slug);
-      const need = a.purpose === 'evidence' ? (['incidents.submit', 'incidents.review'] as const) : (['finance.view'] as const);
+      const need = a.purpose === 'evidence' ? (['incidents.submit', 'incidents.review'] as const) : a.purpose === 'export' ? (['finance.export'] as const) : (['finance.view'] as const);
       if (!hasCapability(access, [...need])) throw Errors.notFound();
     }
     const data = await storage().get(a.storage_key);
@@ -34,7 +34,7 @@ export const GET = route({
         'Content-Type': a.mime,
         'Content-Length': String(data.length),
         'Cache-Control': a.visibility === 'public' ? 'public, max-age=31536000, immutable' : 'private, no-store',
-        'Content-Disposition': 'inline',
+        'Content-Disposition': a.purpose === 'export' ? `attachment; filename="luma-export-${params.id}.csv"` : 'inline',
         'X-Content-Type-Options': 'nosniff',
       },
     });

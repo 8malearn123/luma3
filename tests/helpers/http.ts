@@ -31,6 +31,10 @@ export class TestClient {
       else this.cookies.set(name!.trim(), value);
     }
     const text = await res.text();
-    return { status: res.status, body: text ? JSON.parse(text) : null, headers: res.headers };
+    let body: any = null;
+    if (text) {
+      try { body = JSON.parse(text); } catch { body = text; }
+    }
+    return { status: res.status, body, headers: res.headers };
   }
 }
