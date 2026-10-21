@@ -550,13 +550,33 @@ export async function reschedule(tenantId: string, bookingId: string, actor: Tra
 
     const policy = b.policy_snapshot as { tax_rate_bp?: number; prices_include_tax?: boolean };
     const subtotal = check.plan.reduce((a, p) => a + resolved.find((r) => r.key === p.key)!.staffTerms[p.staffId]!.priceMinor, 0);
-    const totals = computeTotals(subtotal, b.discount_minor, policy.tax_rate_bp ?? 0, policy.prices_include_tax ?? true);
+    // Membership sessions cover specific services: a reservation follows the new itinerary only to an
+    // item of the same service that the membership still covers on the new date; otherwise it is released
+    // and its discount removed. Other discounts carry over unchanged.
+    const memberRes = await trx.selectFrom('entitlement_reservations as r').innerJoin('booking_items as i', 'i.id', 'r.booking_item_id')
+      .innerJoin('membership_entitlements as e', 'e.id', 'r.entitlement_id').innerJoin('customer_memberships as m', 'm.id', 'e.membership_id')
+      .select(['r.id', 'r.entitlement_id', 'i.service_id', 'i.line_total_minor', 'm.ends_at'])
+      .where('i.booking_id', '=', bookingId).where('i.superseded_at', 'is', null).where('r.status', '=', 'reserved').execute();
+    const pool = [...memberRes];
+    const moves: Array<{ reservationId: string; key: string }> = [];
+    let memberDiscount = 0;
+    for (const p of check.plan) {
+      const r = resolved.find((x) => x.key === p.key)!;
+      const idx = pool.findIndex((x) => x.service_id === r.service.id && (!x.ends_at || x.ends_at.getTime() > p.start));
+      if (idx < 0) continue;
+      moves.push({ reservationId: pool[idx]!.id, key: p.key });
+      memberDiscount += r.staffTerms[p.staffId]!.priceMinor;
+      pool.splice(idx, 1);
+    }
+    const discount = Math.max(0, b.discount_minor - memberRes.reduce((a, x) => a + x.line_total_minor, 0)) + memberDiscount;
+    const totals = computeTotals(subtotal, discount, policy.tax_rate_bp ?? 0, policy.prices_include_tax ?? true);
     if (totals.total !== b.total_minor && input.acceptTotalMinor !== totals.total) {
       throw Errors.conflict('price_changed', 'The new appointment has a different price. Review and confirm the new total.', { old_total_minor: b.total_minor, new_total_minor: totals.total });
     }
     const revision = b.revision + 1;
     await trx.updateTable('booking_items').set({ superseded_at: now }).where('booking_id', '=', bookingId).where('superseded_at', 'is', null).execute();
     const allocations: AllocationRow[] = [];
+    const newItemByKey = new Map<string, string>();
     for (const [seq, p] of check.plan.entries()) {
       const r = resolved.find((x) => x.key === p.key)!;
       const term = r.staffTerms[p.staffId]!;
@@ -567,8 +587,14 @@ export async function reschedule(tenantId: string, bookingId: string, actor: Tra
         unit_price_minor: term.priceMinor - r.addons.reduce((a, x) => a + x.price_minor, 0), addons: JSON.stringify(r.addons),
         addons_price_minor: r.addons.reduce((a, x) => a + x.price_minor, 0), line_total_minor: term.priceMinor,
       }).returning('id').executeTakeFirstOrThrow();
+      newItemByKey.set(p.key, item.id);
       allocations.push({ staffId: p.staffId, resourceId: null, itemKey: item.id, start: p.occupied.start, end: p.occupied.end });
       for (const res of p.resourceIds) allocations.push({ staffId: null, resourceId: res, itemKey: item.id, start: p.occupied.start, end: p.occupied.end });
+    }
+    for (const m of moves) await trx.updateTable('entitlement_reservations').set({ booking_item_id: newItemByKey.get(m.key)! }).where('id', '=', m.reservationId).execute();
+    for (const left of pool) {
+      const rel = await trx.updateTable('entitlement_reservations').set({ status: 'released' }).where('id', '=', left.id).where('status', '=', 'reserved').returning('id').executeTakeFirst();
+      if (rel) await trx.updateTable('membership_entitlements').set({ reserved: sql`reserved - 1` }).where('id', '=', left.entitlement_id).execute();
     }
     allocations.sort((a, c) => (a.staffId ?? a.resourceId!).localeCompare(c.staffId ?? c.resourceId!) || a.start - c.start);
     for (const a of allocations) {
@@ -580,7 +606,7 @@ export async function reschedule(tenantId: string, bookingId: string, actor: Tra
     const paid = b.paid_minor - b.refunded_minor;
     await trx.updateTable('bookings').set({
       starts_at: new Date(Math.min(...check.plan.map((p) => p.start))), ends_at: new Date(Math.max(...check.plan.map((p) => p.end))),
-      subtotal_minor: totals.subtotal, tax_minor: totals.tax, total_minor: totals.total, revision,
+      subtotal_minor: totals.subtotal, discount_minor: totals.discount, tax_minor: totals.tax, total_minor: totals.total, revision,
       payment_status: paid <= 0 ? 'unpaid' : paid >= totals.total ? 'paid' : 'partially_paid',
       version: sql`version + 1`,
     }).where('id', '=', bookingId).execute();

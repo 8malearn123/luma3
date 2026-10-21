@@ -20,6 +20,8 @@ const schema = z.object({
   DEV_OTP_ECHO: bool,
   /** Platform staff must enrol in MFA before using the admin area. Always on in production. */
   PLATFORM_MFA_REQUIRED: bool,
+  /** Number of trusted reverse proxies that append to X-Forwarded-For (0 = ignore the header). */
+  TRUSTED_PROXY_HOPS: z.coerce.number().int().min(0).max(5).default(1),
   STORAGE_DRIVER: z.enum(['local']).default('local'),
   STORAGE_LOCAL_DIR: z.string().default('./storage'),
   EMAIL_PROVIDER: z.enum(['none']).default('none'),

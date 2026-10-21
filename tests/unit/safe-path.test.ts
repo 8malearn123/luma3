@@ -16,3 +16,13 @@ describe('safeInternalPath', () => {
     expect(safeInternalPath('/app', '/platform', '/platform')).toBe('/platform');
   });
 });
+
+describe('clientIp', () => {
+  it('ignores client-supplied X-Forwarded-For entries left of the trusted proxy', async () => {
+    const { clientIp } = await import('@/server/http/route');
+    const req = (xff: string) => ({ headers: new Headers({ 'x-forwarded-for': xff }) });
+    expect(clientIp(req('6.6.6.6, 203.0.113.9'), 1)).toBe('203.0.113.9');
+    expect(clientIp(req('6.6.6.6, 203.0.113.9, 10.0.0.2'), 2)).toBe('203.0.113.9');
+    expect(clientIp(req('6.6.6.6'), 0)).toBeNull();
+  });
+});

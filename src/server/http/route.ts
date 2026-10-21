@@ -57,9 +57,14 @@ type Def<S extends z.ZodTypeAny | undefined, A extends AuthMode> = {
 
 const MUTATING = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
-function clientIp(req: NextRequest): string | null {
-  const fwd = req.headers.get('x-forwarded-for');
-  const ip = fwd?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || null;
+/**
+ * Client IP for rate limiting. Entries left of our own proxies are client-supplied
+ * and spoofable, so we take the entry appended by the outermost trusted proxy:
+ * with TRUSTED_PROXY_HOPS=n, the n-th address from the right.
+ */
+export function clientIp(req: Pick<NextRequest, 'headers'>, hops = env().TRUSTED_PROXY_HOPS): string | null {
+  const chain = (req.headers.get('x-forwarded-for') ?? '').split(',').map((x) => x.trim()).filter(Boolean);
+  const ip = (hops > 0 ? chain[chain.length - hops] : undefined) ?? req.headers.get('x-real-ip') ?? null;
   return ip && /^[0-9a-fA-F:.]{3,45}$/.test(ip) ? ip : null;
 }
 

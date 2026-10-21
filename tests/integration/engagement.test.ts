@@ -16,6 +16,7 @@ import * as plans from '@/app/api/v1/t/[tenantSlug]/membership-plans/route';
 import * as sell from '@/app/api/v1/t/[tenantSlug]/memberships/route';
 import * as applyMembership from '@/app/api/v1/s/[slug]/bookings/[id]/apply-membership/route';
 import * as accountCancel from '@/app/api/v1/account/bookings/[id]/cancel/route';
+import * as accountReschedule from '@/app/api/v1/account/bookings/[id]/reschedule/route';
 import { transition } from '@/server/domains/booking/service';
 import { resolveTenantAccess } from '@/server/tenancy/access';
 import { resolveSession } from '@/server/auth/service';
@@ -113,5 +114,27 @@ describe('memberships', () => {
     expect(await ent()).toEqual({ used: 1, reserved: 0, total: 2 });
     const rev = await withTenant(s.tenantId, (trx) => trx.selectFrom('financial_entries').select(['credit_minor']).where('ref_type', '=', 'membership_session').where('account', '=', 'service_revenue').execute());
     expect(rev.map((r) => r.credit_minor)).toEqual([15000]);
+  });
+  it('rescheduling to a service the membership does not cover releases the session and removes its discount', async () => {
+    const s = await makeSalon();
+    const plan = await s.owner.call(plans.POST, { params: { tenantSlug: s.slug }, body: { name_ar: 'باقة قص', price_minor: 30000, validity_days: 90, items: [{ service_id: s.services.haircut, sessions: 2 }] } });
+    const c = await customer('Reschedule member');
+    const h = await c.call(hold.POST, { params: { slug: s.slug }, body: { items: [{ key: 'x', service_id: s.services.haircut, staff_id: s.staff.sara, start: at(futureDate(3), '11:00') }] }, idempotencyKey: true });
+    const id = h.body.data.booking_id as string;
+    const tc = await withTenant(s.tenantId, (trx) => trx.selectFrom('bookings').select('tenant_customer_id').where('id', '=', id).executeTakeFirstOrThrow());
+    await s.owner.call(sell.POST, { params: { tenantSlug: s.slug }, body: { customer_id: tc.tenant_customer_id, plan_id: plan.body.data.id, method: 'cash', reference: 'M-2' }, idempotencyKey: true });
+    await c.call(applyMembership.POST, { params: { slug: s.slug, id }, body: {} });
+    await c.call(checkout.POST, { params: { slug: s.slug, id }, body: { option: 'full' }, idempotencyKey: true });
+    const ent = () => withTenant(s.tenantId, (trx) => trx.selectFrom('membership_entitlements').select(['used', 'reserved']).executeTakeFirstOrThrow());
+    expect(await ent()).toEqual({ used: 0, reserved: 1 });
+    const items = [{ key: 'x', service_id: s.services.color, staff_id: s.staff.sara, start: at(futureDate(4), '11:00') }];
+    const ask = await c.call(accountReschedule.POST, { params: { id }, body: { items } });
+    expect(ask.status).toBe(409);
+    expect(ask.body.error.details.new_total_minor).toBe(30000); // full price: the haircut credit does not pay for colour
+    const ok = await c.call(accountReschedule.POST, { params: { id }, body: { items, accept_total_minor: 30000 } });
+    expect(ok.status).toBe(200);
+    expect(await ent()).toEqual({ used: 0, reserved: 0 });
+    const b = await withTenant(s.tenantId, (trx) => trx.selectFrom('bookings').select(['discount_minor', 'total_minor']).where('id', '=', id).executeTakeFirstOrThrow());
+    expect(b).toEqual({ discount_minor: 0, total_minor: 30000 });
   });
 });
