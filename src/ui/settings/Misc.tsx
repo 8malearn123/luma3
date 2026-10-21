@@ -1,7 +1,5 @@
 'use client';
 
-import Link from 'next/link';
-import { CreditCard, ExternalLink } from 'lucide-react';
 import { useI18n } from '@/i18n/client';
 import { formatClock } from '@/shared/format';
 import { Alert } from '../components/feedback';
@@ -87,17 +85,6 @@ export function LegalTaxSection({ slug, data }: { slug: string; data: SettingsDa
         <p className="text-xs text-ink-muted">{t('biz_settings.legal.tax_explain', { example: v.prices_include_tax ? t('biz_settings.legal.incl_example') : t('biz_settings.legal.excl_example') })}</p>
         <SaveBar dirty={s.dirty} busy={s.busy} onSave={() => s.save('legal-tax', { ...v, legal_name: v.legal_name || null, tax_number: v.tax_number || null, legal_address: v.legal_address || null, tax_label: v.tax_label || null, tax_rate_bp: intOf(String(v.tax_rate_bp)) })} />
       </div>
-    </Card>
-  );
-}
-
-/** Payment provider configuration lives on its own page (owned by the payments domain). */
-export function PaymentsLink({ slug }: { slug: string }) {
-  const { t } = useI18n();
-  return (
-    <Card title={t('biz_settings.payments.title')}>
-      <p className="mb-3 text-sm text-ink-muted">{t('biz_settings.payments.hint')}</p>
-      <Link href={`/app/${slug}/settings/payments`} className="inline-flex items-center gap-2 rounded-lg bg-luma-700 px-4 py-2 text-sm text-white hover:bg-luma-800"><CreditCard className="size-4" />{t('biz_settings.payments.open')}<ExternalLink className="size-3.5" /></Link>
     </Card>
   );
 }
