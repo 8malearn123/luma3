@@ -59,7 +59,8 @@ export async function recordConsent(trx: Tx, v: {
 // ── Suppression ─────────────────────────────────────────────────────────────
 /** Keyed hash of a destination; marketing sends must skip rows in suppression_list with this hash. */
 export function suppressionHash(channel: 'email' | 'sms' | 'whatsapp', destination: string): Buffer {
-  const norm = destination.trim().toLowerCase();
+  // One normalisation for every writer/reader of suppression_list (unsubscribe links, manual suppression, campaign sends).
+  const norm = channel === 'email' ? destination.trim().toLowerCase() : destination.replace(/[^\d+]/g, '');
   return createHmac('sha256', env().AUTH_SECRET).update(`suppression:${channel}:${norm}`).digest();
 }
 

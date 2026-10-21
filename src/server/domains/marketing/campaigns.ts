@@ -8,6 +8,7 @@ import { Errors } from '../../http/errors';
 import { audit, type AuditActor } from '../../infra/audit';
 import { channelStatus } from '../../infra/messaging';
 import { notifyUsers } from '../../infra/notify';
+import { suppressionHash, unsubscribeUrl } from '../customers/consents';
 import { schedule } from '../../infra/outbox';
 import { loadEntitlements, type TenantAccess } from '../../tenancy/access';
 import type { campaignInput, campaignPatch, SegmentDefinition } from '@/shared/schemas/marketing';
@@ -31,9 +32,9 @@ export function channelReadiness(channel: Channel): 'connected' | 'dev_simulatio
   return channelStatus(channel);
 }
 
+/** Suppression-list key: the same keyed hash the unsubscribe flow writes (customers/consents). */
 export function destinationHash(channel: string, destination: string) {
-  const norm = channel === 'email' ? destination.trim().toLowerCase() : destination.replace(/[^\d+]/g, '');
-  return createHash('sha256').update(`${channel}:${norm}`).digest();
+  return suppressionHash(channel as 'email' | 'sms' | 'whatsapp', destination);
 }
 
 const trackingCode = () => `L-${randomBytes(4).toString('hex').toUpperCase()}`;
@@ -269,7 +270,9 @@ export async function runCampaignSend(tenantId: string, campaignId: string, opts
         events.push({ tenant_customer_id: m.id, kind: 'sent', data: { channel } });
       } else if (readiness === 'dev_simulation') {
         // No provider: development simulation only — clearly labelled, nothing leaves the server.
-        await trx.insertInto('dev_message_outbox').values({ destination: dest, channel, subject: `[SIMULATED CAMPAIGN ${c.tracking_code}] ${content.subject ?? ''}`.trim(), body: content.body }).execute();
+        // Every marketing message carries a one-click, signed unsubscribe link for this customer and channel.
+        const optOut = unsubscribeUrl(tenantId, m.id, channel as 'email' | 'sms' | 'whatsapp');
+        await trx.insertInto('dev_message_outbox').values({ destination: dest, channel, subject: `[SIMULATED CAMPAIGN ${c.tracking_code}] ${content.subject ?? ''}`.trim(), body: `${content.body}\n\nإلغاء الاشتراك / Unsubscribe: ${optOut}` }).execute();
         stats.simulated++;
         events.push({ tenant_customer_id: m.id, kind: 'simulated', data: { channel, provider: 'dev-outbox' } });
       }
