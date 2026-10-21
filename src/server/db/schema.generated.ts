@@ -946,6 +946,19 @@ export interface OnboardingProgress {
   version: Generated<number>;
 }
 
+export interface OrderEvents {
+  actor_user_id: string | null;
+  created_at: Generated<Timestamp>;
+  data: Generated<Json>;
+  from_status: string | null;
+  id: Generated<string>;
+  kind: string;
+  order_id: string;
+  reason: string | null;
+  tenant_id: string;
+  to_status: string | null;
+}
+
 export interface OrderItems {
   created_at: Generated<Timestamp>;
   id: Generated<string>;
@@ -955,10 +968,14 @@ export interface OrderItems {
   order_id: string;
   product_id: string;
   quantity: number;
+  returnable: Generated<boolean>;
+  sku: string | null;
   tenant_id: string;
   unit_cost_minor: number | null;
   unit_price_minor: number;
   variant_id: string;
+  variant_name_ar: string | null;
+  variant_name_en: string | null;
 }
 
 export interface Orders {
@@ -966,10 +983,14 @@ export interface Orders {
   booking_id: string | null;
   branch_id: string;
   campaign_id: string | null;
+  cancel_reason: string | null;
+  cancelled_at: Timestamp | null;
+  cancelled_by: string | null;
   coupon_id: string | null;
   created_at: Generated<Timestamp>;
   created_by: string | null;
   currency: Generated<string>;
+  customer_note: string | null;
   customer_user_id: string | null;
   discount_minor: Generated<number>;
   expires_at: Timestamp | null;
@@ -1243,10 +1264,12 @@ export interface Products {
   max_per_order: Generated<number>;
   name_ar: string | null;
   name_en: string | null;
+  returnable: Generated<boolean>;
   sort: Generated<number>;
   status: Generated<string>;
   tenant_id: string;
   updated_at: Generated<Timestamp>;
+  version: Generated<number>;
 }
 
 export interface ProductVariants {
@@ -2065,6 +2088,7 @@ export interface DB {
   notification_deliveries: NotificationDeliveries;
   notifications: Notifications;
   onboarding_progress: OnboardingProgress;
+  order_events: OrderEvents;
   order_items: OrderItems;
   orders: Orders;
   outbox_events: OutboxEvents;
