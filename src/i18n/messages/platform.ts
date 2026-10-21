@@ -66,6 +66,8 @@ const ar = {
       mfa_on: 'التحقق بخطوتين مفعّل لهذا الحساب.', mfa_off: 'التحقق بخطوتين غير مفعّل لهذا الحساب.', mfa_reset: 'إعادة تعيين التحقق بخطوتين',
       mfa_reset_body: 'استخدميها فقط عند فقدان الجهاز بعد التحقق من الهوية. ستُسجَّل العملية ويُبلَّغ صاحب الحساب.',
       stepup_note: 'تتطلب العملية تأكيد كلمة المرور وتُسجَّل في سجل العمليات.',
+      account: 'الحساب', status: { active: 'نشط', suspended: 'موقوف', deleted: 'محذوف' }, suspend: 'إيقاف الحساب', reactivate: 'إعادة تفعيل الحساب',
+      suspend_body: 'سيُسجَّل خروج الحساب من كل الأجهزة ويُنهى أي وصول دعم. تبقى بياناته وعضوياته كما هي.',
     },
     plans: {
       title: 'الباقات', subtitle: 'سناء ووهج وفريد ومصفوفة الميزات والحدود.', not_final: 'الأسعار والحدود الحالية قيم تجريبية وليست أسعاراً نهائية معتمدة.',
@@ -244,6 +246,7 @@ const ar = {
     grant_already_revoked: 'تم سحب هذا الوصول مسبقاً.',
     grant_expired: 'انتهى هذا الوصول.',
     invalid_cursor: 'رابط الصفحة غير صالح.',
+    cannot_change_own_status: 'لا يمكنكِ تغيير حالة حسابك بنفسك.',
   },
 };
 
@@ -313,6 +316,8 @@ const en: Shape<typeof ar> = {
       mfa_on: 'Two-step verification is enabled for this account.', mfa_off: 'Two-step verification is not enabled for this account.', mfa_reset: 'Reset two-step verification',
       mfa_reset_body: 'Use only for a lost device after verifying identity. The action is audited and the account holder is notified.',
       stepup_note: 'This requires password confirmation and is recorded in the audit log.',
+      account: 'Account', status: { active: 'Active', suspended: 'Suspended', deleted: 'Deleted' }, suspend: 'Suspend account', reactivate: 'Reactivate account',
+      suspend_body: 'The account is signed out everywhere and any support access ends. Its data and memberships stay as they are.',
     },
     plans: {
       title: 'Plans', subtitle: 'Sanaa, Wahaj and Fareed with the feature & limit matrix.', not_final: 'Current prices and limits are test values, not approved final pricing.',
@@ -491,6 +496,7 @@ const en: Shape<typeof ar> = {
     grant_already_revoked: 'This access was already revoked.',
     grant_expired: 'This access has expired.',
     invalid_cursor: 'Invalid page link.',
+    cannot_change_own_status: 'You cannot change the status of your own account.',
   },
 };
 

@@ -68,7 +68,7 @@ function UserDrawer({ id, onClose }: { id: string; onClose: () => void }) {
   const stepUp = useStepUp();
   const d = useApiQuery<Detail>(['platform', 'user', id], `/api/v1/platform/users/${id}`);
   const [role, setRole] = useState<string>('support_admin');
-  const [dialog, setDialog] = useState<null | { kind: 'grant' | 'revoke'; role: string } | { kind: 'mfa' }>(null);
+  const [dialog, setDialog] = useState<null | { kind: 'grant' | 'revoke'; role: string } | { kind: 'mfa' } | { kind: 'status'; status: 'active' | 'suspended' }>(null);
   const active = d.data?.roles.filter((r) => !r.revoked_at) ?? [];
   const refresh = () => qc.invalidateQueries({ queryKey: ['platform'] });
   return (
@@ -103,16 +103,22 @@ function UserDrawer({ id, onClose }: { id: string; onClose: () => void }) {
               {d.data.user.mfa_enabled_at ? <Button variant="outline" icon={<KeyRound className="size-4" />} onClick={() => setDialog({ kind: 'mfa' })}>{t('platform.users.mfa_reset')}</Button> : null}
             </Card>
           ) : null}
+          <Card title={t('platform.users.account')}>
+            <p className="mb-2 text-sm">{t('fields.status')}: <Badge tone={d.data.user.status === 'active' ? 'ok' : 'danger'}>{t(`platform.users.status.${d.data.user.status}`)}</Badge></p>
+            {d.data.user.status === 'active' ? <Button variant="danger" size="sm" onClick={() => setDialog({ kind: 'status', status: 'suspended' })}>{t('platform.users.suspend')}</Button> : null}
+            {d.data.user.status === 'suspended' ? <Button size="sm" onClick={() => setDialog({ kind: 'status', status: 'active' })}>{t('platform.users.reactivate')}</Button> : null}
+          </Card>
           <Card title={t('platform.users.businesses')}>
             {d.data.memberships.length ? <ul className="divide-y divide-line text-sm">{d.data.memberships.map((m) => <li key={m.tenant_id} className="flex justify-between py-2"><span>{m.name} <span className="text-xs text-ink-muted" dir="ltr">/{m.slug}</span></span><span className="text-xs">{t(`roles.${m.role}`)}</span></li>)}</ul> : <p className="text-sm text-ink-muted">{t('states.none')}</p>}
           </Card>
-          <ReasonDialog open={!!dialog} danger={dialog?.kind !== 'grant'}
-            title={!dialog ? '' : dialog.kind === 'mfa' ? t('platform.users.mfa_reset') : dialog.kind === 'grant' ? `${t('platform.users.grant')}: ${t(`platform.roles.${dialog.role}`)}` : `${t('platform.users.revoke')}: ${t(`platform.roles.${dialog.role}`)}`}
-            body={dialog?.kind === 'mfa' ? t('platform.users.mfa_reset_body') : t('platform.users.stepup_note')}
+          <ReasonDialog open={!!dialog} danger={dialog?.kind !== 'grant' && !(dialog?.kind === 'status' && dialog.status === 'active')}
+            title={!dialog ? '' : dialog.kind === 'mfa' ? t('platform.users.mfa_reset') : dialog.kind === 'status' ? t(dialog.status === 'suspended' ? 'platform.users.suspend' : 'platform.users.reactivate') : dialog.kind === 'grant' ? `${t('platform.users.grant')}: ${t(`platform.roles.${dialog.role}`)}` : `${t('platform.users.revoke')}: ${t(`platform.roles.${dialog.role}`)}`}
+            body={dialog?.kind === 'mfa' ? t('platform.users.mfa_reset_body') : dialog?.kind === 'status' && dialog.status === 'suspended' ? t('platform.users.suspend_body') : t('platform.users.stepup_note')}
             onClose={() => setDialog(null)}
             onConfirm={async (reason) => {
               if (!dialog) return;
               if (dialog.kind === 'mfa') await stepUp(() => api(`/api/v1/platform/users/${id}/mfa-reset`, { body: { reason } }));
+              else if (dialog.kind === 'status') await stepUp(() => api(`/api/v1/platform/users/${id}/status`, { body: { status: dialog.status, reason } }));
               else await stepUp(() => api(`/api/v1/platform/users/${id}/roles`, { body: { role: dialog.role, action: dialog.kind, reason } }));
               setDialog(null); toast({ tone: 'ok', text: t('states.saved') }); await refresh();
             }} />

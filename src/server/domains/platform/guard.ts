@@ -1,22 +1,11 @@
 import type { z } from 'zod';
-import { db } from '../../db/client';
+import { platformMfaState } from './mfa-state';
 import { route, type RouteContext } from '../../http/route';
 import { AppError } from '../../http/errors';
 import { requireStepUp, type SessionUser } from '../../auth/service';
 import { platformCapabilities, type PlatformCapability } from '../../auth/capabilities';
 
-/** A session's second-factor verification is valid for this long. */
-export const MFA_SESSION_HOURS = 12;
-
-export type PlatformMfaState = { enabled: boolean; verified: boolean; pending: boolean };
-
-export async function platformMfaState(user: Pick<SessionUser, 'sessionId'>): Promise<PlatformMfaState> {
-  const row = await db().selectFrom('sessions as s').innerJoin('users as u', 'u.id', 's.user_id')
-    .select(['u.mfa_enabled_at', 'u.mfa_pending_secret_enc', 's.mfa_verified_at'])
-    .where('s.id', '=', user.sessionId).executeTakeFirst();
-  const verified = !!row?.mfa_verified_at && Date.now() - row.mfa_verified_at.getTime() < MFA_SESSION_HOURS * 3_600_000;
-  return { enabled: !!row?.mfa_enabled_at, verified, pending: !!row?.mfa_pending_secret_enc };
-}
+export { MFA_SESSION_HOURS, platformMfaState, type PlatformMfaState } from './mfa-state';
 
 /**
  * Guard for every LUMA administration endpoint and page: once a platform user

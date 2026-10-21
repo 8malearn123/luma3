@@ -6,6 +6,7 @@ import {
 import type { SessionUser } from '../auth/service';
 import { Errors } from '../http/errors';
 import type { PlanFeatureKey, PlanLimitKey } from '@/shared/plans';
+import { mfaPending } from '../domains/platform/mfa-state';
 
 export type PlanEntitlements = {
   planCode: string | null;
@@ -80,7 +81,8 @@ export async function resolveTenantAccess(user: SessionUser, slug: string): Prom
 
   // LUMA support: only with an active, reasoned, time-limited grant.
   const pcaps = platformCapabilities(user.platformRoles);
-  if (pcaps.has('platform.support.access')) {
+  // An admin who enabled MFA must have verified this session before a grant is usable.
+  if (pcaps.has('platform.support.access') && !(await mfaPending(user))) {
     const grant = await withSystem('check support grant', (trx) => trx.selectFrom('support_access_grants').select(['id', 'access_level'])
       .where('tenant_id', '=', tenant.id).where('platform_user_id', '=', user.userId).where('revoked_at', 'is', null)
       .where('starts_at', '<=', new Date()).where('expires_at', '>', new Date())

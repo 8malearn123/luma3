@@ -27,6 +27,10 @@ import * as audit from '@/app/api/v1/platform/audit/route';
 import * as templates from '@/app/api/v1/platform/templates/route';
 import * as templateStatus from '@/app/api/v1/platform/templates/[id]/status/route';
 import * as members from '@/app/api/v1/t/[tenantSlug]/members/route';
+import * as services from '@/app/api/v1/t/[tenantSlug]/services/route';
+import * as supportGrants from '@/app/api/v1/platform/support-grants/route';
+import * as userStatus from '@/app/api/v1/platform/users/[id]/status/route';
+import { maintainUsageCounters } from '@/server/domains/subscriptions/service';
 
 const PLATFORM_DIR = path.resolve(import.meta.dirname, '../../src/app/api/v1/platform');
 
@@ -244,5 +248,45 @@ describe('templates', () => {
     const rt = await owner.call(templateStatus.POST, { params: { id: good.body.data.id }, body: { status: 'retired', version: ap.body.data.version } });
     expect(rt.status).toBe(200);
     expect((await listApprovedTemplates('salon')).some((t) => t.key === key)).toBe(false);
+  });
+});
+
+describe('support access respects admin MFA, account suspension, usage counters', () => {
+  it('a support grant is unusable from a session that has not passed MFA', async () => {
+    const owner = await signup('MFA-supported owner');
+    const biz = await createBusinessFor(owner);
+    const support = await platformUser('support_admin', 'MFA support');
+    const en = await support.call(mfaEnroll.POST, { body: {} });
+    await support.call(mfaActivate.POST, { body: { code: totpCode(en.body.data.secret) } });
+    const g = await support.call(supportGrants.POST, { body: { tenant_slug: biz.slug, reason: 'owner asked for help with setup', hours: 1 } });
+    expect(g.status).toBe(201);
+    expect((await support.call(services.GET, { params: { tenantSlug: biz.slug } })).status).toBe(200);
+    const other = await newSession(support.identifier);
+    expect((await other.call(services.GET, { params: { tenantSlug: biz.slug } })).status).toBe(404);
+    await other.call(mfaVerify.POST, { body: { code: totpCode(en.body.data.secret, Date.now() + 30_000) } });
+    expect((await other.call(services.GET, { params: { tenantSlug: biz.slug } })).status).toBe(200);
+  });
+
+  it('suspending an account signs it out and ends its support access; reactivation restores sign-in', async () => {
+    const owner = await platformUser('platform_owner', 'Account admin');
+    const target = await platformUser('support_admin', 'To suspend');
+    const targetId = await userIdOf(target.identifier);
+    expect((await owner.call(userStatus.POST, { params: { id: await userIdOf(owner.identifier) }, body: { status: 'suspended', reason: 'cannot suspend myself' } })).status).toBe(422);
+    const s = await owner.call(userStatus.POST, { params: { id: targetId }, body: { status: 'suspended', reason: 'compromised account report' } });
+    expect(s.status).toBe(200);
+    expect((await target.call(me.GET)).status).toBe(401);
+    const r = await owner.call(userStatus.POST, { params: { id: targetId }, body: { status: 'active', reason: 'identity re-verified' } });
+    expect(r.status).toBe(200);
+    expect((await (await newSession(target.identifier)).call(me.GET)).status).toBe(200);
+  });
+
+  it('usage counter maintenance snapshots monthly usage per business', async () => {
+    const owner = await signup('Counted');
+    const biz = await createBusinessFor(owner);
+    await owner.call(services.POST, { params: { tenantSlug: biz.slug }, body: { name_ar: 'خدمة', price_minor: 1000, duration_min: 30 } });
+    await maintainUsageCounters();
+    const rows = await withSystem('test', (trx) => trx.selectFrom('usage_counters').selectAll().where('tenant_id', '=', biz.tenantId).execute());
+    expect(rows.find((r) => r.metric === 'limit.services')?.value).toBe(1);
+    expect(rows.find((r) => r.metric === 'limit.branches')?.value).toBe(1);
   });
 });

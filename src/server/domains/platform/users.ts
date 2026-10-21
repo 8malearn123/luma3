@@ -82,3 +82,33 @@ export async function changePlatformRole(actor: AuditActor & { userId: string },
     return { user_id: targetUserId, roles: roles.map((r) => r.role) };
   });
 }
+
+/**
+ * Suspends or reactivates a central account (e.g. abuse, compromised account).
+ * Suspension signs the person out everywhere and ends their support access;
+ * their data and memberships are untouched.
+ */
+export async function setUserStatus(actor: AuditActor & { userId: string }, targetUserId: string, input: { status: 'active' | 'suspended'; reason: string }) {
+  if (targetUserId === actor.userId) throw Errors.invalid('cannot_change_own_status', 'You cannot change the status of your own account');
+  return withSystem('platform: change account status', async (trx) => {
+    await sql`select pg_advisory_xact_lock(hashtext('platform_roles'))`.execute(trx);
+    const u = await trx.selectFrom('users').select(['id', 'status']).where('id', '=', targetUserId).forUpdate().executeTakeFirst();
+    if (!u) throw Errors.notFound('user');
+    if (u.status === 'deleted') throw Errors.conflict('invalid_transition', 'Deleted accounts cannot be changed');
+    if (u.status === input.status) throw Errors.conflict('invalid_transition', 'The account already has this status');
+    if (input.status === 'suspended') {
+      const isOwner = await trx.selectFrom('platform_roles').select('id').where('user_id', '=', targetUserId).where('role', '=', 'platform_owner').where('revoked_at', 'is', null).executeTakeFirst();
+      if (isOwner) {
+        const others = await sql<{ n: number }>`select count(*)::int as n from platform_roles r join users x on x.id = r.user_id
+          where r.role = 'platform_owner' and r.revoked_at is null and x.status = 'active' and r.user_id <> ${targetUserId}`.execute(trx);
+        if ((others.rows[0]?.n ?? 0) === 0) throw Errors.conflict('last_platform_owner', 'At least one active platform owner must remain');
+      }
+      await trx.updateTable('sessions').set({ revoked_at: new Date(), revoke_reason: 'account_suspended' }).where('user_id', '=', targetUserId).where('revoked_at', 'is', null).execute();
+      await trx.updateTable('support_access_grants').set({ revoked_at: new Date(), revoked_by: actor.userId, revoke_reason: 'account suspended' })
+        .where('platform_user_id', '=', targetUserId).where('revoked_at', 'is', null).where('expires_at', '>', new Date()).execute();
+    }
+    await trx.updateTable('users').set({ status: input.status }).where('id', '=', targetUserId).execute();
+    await audit(trx, actor, input.status === 'suspended' ? 'platform.user.suspended' : 'platform.user.reactivated', { targetType: 'user', targetId: targetUserId, data: { reason: input.reason } });
+    return { id: targetUserId, status: input.status };
+  });
+}

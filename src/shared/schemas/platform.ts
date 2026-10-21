@@ -28,6 +28,7 @@ export const userListQuery = z.object({
   page: z.coerce.number().int().min(1).max(10_000).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(25),
 });
+export const userStatusInput = z.object({ status: z.enum(['active', 'suspended']), reason }).strict();
 export const roleChangeInput = z.object({ role: z.enum(PLATFORM_ROLE_VALUES), action: z.enum(['grant', 'revoke']), reason }).strict();
 
 const featureKeys = Object.keys(PLAN_FEATURES) as [keyof typeof PLAN_FEATURES, ...Array<keyof typeof PLAN_FEATURES>];
