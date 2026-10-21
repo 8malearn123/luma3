@@ -509,11 +509,13 @@ export interface CustomerProfiles {
 
 export interface CustomizationProposals {
   ai_run_id: string | null;
+  applied_versions: Json | null;
   base_brand_version: number | null;
   base_draft_versions: Json | null;
   created_at: Generated<Timestamp>;
   created_by: string | null;
   decided_at: Timestamp | null;
+  diff: Generated<Json>;
   error: string | null;
   explanation: string | null;
   id: Generated<string>;
@@ -522,6 +524,8 @@ export interface CustomizationProposals {
   request_text: string;
   status: string;
   tenant_id: string;
+  undo_snapshot: Json | null;
+  updated_at: Generated<Timestamp>;
 }
 
 export interface DailyMetrics {
