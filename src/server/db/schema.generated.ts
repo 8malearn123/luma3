@@ -256,6 +256,7 @@ export interface Branches {
   tenant_id: string;
   timezone: Generated<string>;
   updated_at: Generated<Timestamp>;
+  version: Generated<number>;
 }
 
 export interface BranchHours {
@@ -1118,6 +1119,8 @@ export interface Plans {
   status: Generated<string>;
   trial_days: Generated<number>;
   updated_at: Generated<Timestamp>;
+  updated_by: string | null;
+  version: Generated<number>;
 }
 
 export interface PlanVersions {
@@ -1142,10 +1145,13 @@ export interface PlatformInvoices {
   id: Generated<string>;
   is_test: Generated<boolean>;
   issued_at: Timestamp | null;
+  marked_paid_by: string | null;
+  note: string | null;
   number: string;
   paid_at: Timestamp | null;
   period_end: string | null;
   period_start: string | null;
+  plan_id: string | null;
   provider_ref: string | null;
   status: string;
   subscription_id: string | null;
@@ -1569,6 +1575,7 @@ export interface Sessions {
   idle_expires_at: Timestamp;
   ip: string | null;
   last_seen_at: Generated<Timestamp>;
+  mfa_verified_at: Timestamp | null;
   reauthenticated_at: Timestamp | null;
   revoke_reason: string | null;
   revoked_at: Timestamp | null;
@@ -1713,6 +1720,7 @@ export interface Subscriptions {
   grace_until: Timestamp | null;
   id: Generated<string>;
   overage_state: Json | null;
+  paused_at: Timestamp | null;
   plan_id: string;
   provider: Generated<string>;
   provider_ref: string | null;
@@ -1720,6 +1728,7 @@ export interface Subscriptions {
   tenant_id: string;
   trial_ends_at: Timestamp | null;
   updated_at: Generated<Timestamp>;
+  version: Generated<number>;
 }
 
 export interface SupportAccessGrants {
@@ -1730,7 +1739,9 @@ export interface SupportAccessGrants {
   id: Generated<string>;
   platform_user_id: string;
   reason: string;
+  revoke_reason: string | null;
   revoked_at: Timestamp | null;
+  revoked_by: string | null;
   starts_at: Generated<Timestamp>;
   tenant_id: string;
 }
@@ -1745,6 +1756,8 @@ export interface SuppressionList {
 }
 
 export interface Templates {
+  approved_at: Timestamp | null;
+  approved_by: string | null;
   business_types: Generated<string[]>;
   created_at: Generated<Timestamp>;
   created_by: string | null;
@@ -1757,6 +1770,8 @@ export interface Templates {
   name_en: string;
   status: Generated<string>;
   updated_at: Generated<Timestamp>;
+  updated_by: string | null;
+  version: Generated<number>;
 }
 
 export interface TenantCounters {
@@ -1933,6 +1948,9 @@ export interface Users {
   is_demo: Generated<boolean>;
   locale: Generated<string>;
   locked_until: Timestamp | null;
+  mfa_enabled_at: Timestamp | null;
+  mfa_last_step: number | null;
+  mfa_pending_secret_enc: string | null;
   mfa_totp_secret_enc: string | null;
   password_hash: string | null;
   phone: string | null;
