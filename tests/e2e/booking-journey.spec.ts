@@ -54,8 +54,9 @@ test('staff role boundaries: a specialist cannot open finance; a customer cannot
   await signIn(page, 'sara@noura.demo', '/app/noura-salon');
   await page.waitForURL(/\/app\/noura-salon/);
   await expect(page.getByRole('link', { name: /^Finance$/ })).toHaveCount(0);
-  const res = await page.goto('/app/noura-salon/finance');
-  expect([403, 404]).toContain(res!.status());
+  await page.goto('/app/noura-salon/finance');
+  await expect(page.getByText('You do not have permission to view this page')).toBeVisible();
+  await expect(page.locator('main')).not.toContainText(/SAR|ر\.س/);
 
   await page.context().clearCookies();
   await page.context().addCookies([{ name: 'luma_locale', value: 'en', url: baseURL! }]);

@@ -5,7 +5,7 @@ test.beforeEach(async ({ context, baseURL }) => {
   await context.addCookies([{ name: 'luma_locale', value: 'en', url: baseURL! }]);
 });
 
-const OWNER_PAGES = ['', '/bookings', '/bookings?view=calendar', '/products', '/orders', '/inventory', '/customers', '/policies', '/marketing', '/analytics', '/builder', '/settings', '/audit'];
+const OWNER_PAGES = ['', '/bookings', '/bookings?view=calendar', '/services', '/team', '/finance', '/waitlist', '/groups', '/loyalty', '/gifts', '/memberships', '/settings?tab=payments', '/products', '/orders', '/inventory', '/customers', '/policies', '/marketing', '/analytics', '/builder', '/settings', '/audit'];
 
 test('owner dashboard pages render without errors', async ({ page }) => {
   await signIn(page, 'owner@noura.demo', '/app/noura-salon');

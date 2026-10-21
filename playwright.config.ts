@@ -38,9 +38,10 @@ export default defineConfig({
     { name: 'mobile', use: { ...devices['Pixel 7'] }, testMatch: /responsive\.spec\.ts/ },
   ],
   webServer: {
-    command: `pnpm exec next dev -p ${PORT}`,
+    // A production build: realistic, and avoids dev-mode compile memory spikes across many routes.
+    command: `pnpm exec next build && pnpm exec next start -p ${PORT}`,
     url: `http://localhost:${PORT}/api/v1/health`,
-    timeout: 180_000,
+    timeout: 600_000,
     reuseExistingServer: false,
     env: { ...e2eEnv, NEXT_DIST_DIR: '.next-e2e' },
   },
