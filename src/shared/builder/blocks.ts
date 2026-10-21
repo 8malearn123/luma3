@@ -65,15 +65,18 @@ export type RichText = z.infer<typeof zRich>;
 
 const align = z.enum(['start', 'center', 'end']).default('start');
 const background = z.enum(['none', 'surface', 'primary', 'secondary', 'accent', 'image']).default('none');
+/** Crop focus for images shown with a fixed aspect ratio (CSS object-position). */
+export const FOCAL_POINTS = ['center', 'top', 'bottom', 'start', 'end'] as const;
+const focal = z.enum(FOCAL_POINTS).default('center');
 
 // ── Per-type prop schemas ───────────────────────────────────────────────────
 const P = {
   hero: z.object({
     title: zShort, subtitle: zShort.optional(), image_asset_id: zAsset.default(null), overlay: z.number().min(0).max(0.8).default(0.35),
-    align, height: z.enum(['sm', 'md', 'lg']).default('md'), cta_label: zShort.optional(),
+    align, height: z.enum(['sm', 'md', 'lg']).default('md'), cta_label: zShort.optional(), focal,
   }).strict(),
-  image_ad: z.object({ image_asset_id: zAsset, alt: zShort.optional(), caption: zShort.optional(), aspect: z.enum(['16:9', '3:1', '4:3', '1:1']).default('3:1') }).strict(),
-  image: z.object({ image_asset_id: zAsset, alt: zShort.optional(), aspect: z.enum(['16:9', '4:3', '1:1', '3:4', 'auto']).default('auto'), rounded: z.boolean().default(true) }).strict(),
+  image_ad: z.object({ image_asset_id: zAsset, alt: zShort.optional(), caption: zShort.optional(), aspect: z.enum(['16:9', '3:1', '4:3', '1:1']).default('3:1'), focal }).strict(),
+  image: z.object({ image_asset_id: zAsset, alt: zShort.optional(), aspect: z.enum(['16:9', '4:3', '1:1', '3:4', 'auto']).default('auto'), rounded: z.boolean().default(true), focal }).strict(),
   text: z.object({ content: zRich, align, background }).strict(),
   cta: z.object({ label: zShort, style: z.enum(['primary', 'secondary', 'outline']).default('primary'), align: align.default('center'), full_width: z.boolean().default(false) }).strict(),
   service_list: z.object({
