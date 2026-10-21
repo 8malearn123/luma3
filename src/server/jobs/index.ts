@@ -12,3 +12,5 @@ import '../domains/notifications/jobs';
 import '../domains/commerce/jobs';
 import '../domains/policy/jobs';
 import '../domains/subscriptions/jobs';
+import '../domains/analytics/jobs';
+import '../domains/marketing/jobs';
