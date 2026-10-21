@@ -146,7 +146,7 @@ export interface AuditLogs {
 }
 
 export interface BookingAllocations {
-  booking_id: string;
+  booking_id: string | null;
   booking_item_id: string | null;
   created_at: Generated<Timestamp>;
   during: string;
@@ -643,6 +643,7 @@ export interface GroupSessionBookings {
   created_at: Generated<Timestamp>;
   group_session_id: string;
   id: Generated<string>;
+  released_at: Timestamp | null;
   seats: Generated<number>;
   status: Generated<string>;
   tenant_id: string;
@@ -650,6 +651,7 @@ export interface GroupSessionBookings {
 
 export interface GroupSessions {
   branch_id: string;
+  cancelled_reason: string | null;
   capacity: number;
   created_at: Generated<Timestamp>;
   ends_at: Timestamp;
@@ -662,6 +664,8 @@ export interface GroupSessions {
   starts_at: Timestamp;
   status: Generated<string>;
   tenant_id: string;
+  title_ar: string | null;
+  title_en: string | null;
   updated_at: Generated<Timestamp>;
 }
 
@@ -1874,6 +1878,7 @@ export interface TenantSettings {
   time_format: Generated<string>;
   updated_at: Generated<Timestamp>;
   version: Generated<number>;
+  waitlist_offer_ttl_min: Generated<number>;
 }
 
 export interface TimeBlocks {

@@ -12,3 +12,13 @@ export async function publicTenant(slug: string): Promise<PublicTenant> {
   if (!t || t.status !== 'active') throw Errors.notFound('business');
   return t;
 }
+
+import { withSystem } from '../db/client';
+import { loadEntitlements } from '../tenancy/access';
+import type { PlanFeatureKey } from '@/shared/plans';
+
+/** Plan features are enforced on public endpoints too, not only hidden in menus. */
+export async function requirePublicFeature(tenantId: string, key: PlanFeatureKey) {
+  const ent = await withSystem('public feature check', (trx) => loadEntitlements(trx, tenantId));
+  if (ent.readOnly || !ent.features.get(key)?.enabled) throw Errors.notFound();
+}

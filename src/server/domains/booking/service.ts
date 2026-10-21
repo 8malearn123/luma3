@@ -104,7 +104,7 @@ async function releaseExpiredHolds(trx: Tx, staffIds: string[], resourceIds: str
       eb.val(false),
     ]))
     .returning('booking_id').execute();
-  const ids = [...new Set(released.map((r) => r.booking_id))];
+  const ids = [...new Set(released.map((r) => r.booking_id).filter((x): x is string => !!x))];
   if (ids.length) await expireBookings(trx, ids);
 }
 
