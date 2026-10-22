@@ -41,7 +41,7 @@ See [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md) for the requirement-by-
 - UI foundation: i18n (ar/en, RTL), design system, dashboard shell, auth pages, onboarding wizard, landing & pricing.
 
 ### Blockers
-- **Git push is blocked**: GitHub returns 403 for `8malearn123/luma3` ("Claude doesn't have GitHub access … An org admin can install the Claude GitHub App"). Work is committed locally on `claude/luma-platform-implementation-valfr2`.
+- **Git push was blocked (resolved 2026-10-22 after installing the Claude GitHub App)**: GitHub returns 403 for `8malearn123/luma3` ("Claude doesn't have GitHub access … An org admin can install the Claude GitHub App"). Work is committed locally on `claude/luma-platform-implementation-valfr2`.
 - No live messaging, payment, or AI credentials were provided; integrations are adapters + sandbox/dev simulation with honest status.
 
 ### Next steps
@@ -75,7 +75,7 @@ See the end of this file (updated per session).
 1. Merge the parallel dashboard UIs (bookings, services/team, finance/engagement, staff portal, account booking detail, account waitlist offer) and update `IMPLEMENTATION_STATUS.md`.
 2. Close the server gaps listed there, in particular: conversion events on approval and late reallocation; enforcing `builder_components`; production gate for the sandbox provider and a payer check on the simulation endpoints; assistant AI budget; order invoices, credit notes and COGS postings; online purchase of gift cards, memberships and group seats; stuck-job reclamation; mandatory admin MFA.
 3. Connect real providers once credentials and approvals exist (payments, messaging, AI). Each needs an adapter and review.
-4. Resolve the GitHub App permission (403) so the branch can be pushed.
+4. ~~Resolve the GitHub App permission (403)~~ — resolved 2026-10-22; the branch is pushed.
 
 ## 2026-10-21 — integration complete (main engineer)
 
@@ -83,4 +83,4 @@ See the end of this file (updated per session).
 - Latest results: **Vitest 32 files / 212 tests pass**; `tsc` clean; ESLint 0 errors; `next build` succeeds; **Playwright 28/28 pass** on a production build.
 - Integration and security fixes are listed in [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md#fixed-during-integration-security-and-correctness).
 - E2E moved from `next dev` to a production build: Turbopack's cold dev compile of ~40 routes in one run exceeded the container memory limit (OOM-killed at ~13 GB).
-- Still blocked externally: GitHub push (403, GitHub App permission), real payment/messaging/AI providers (credentials and approval required).
+- Still blocked externally: real payment/messaging/AI providers (credentials and approval required).

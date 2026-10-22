@@ -48,7 +48,6 @@ Test results (latest integrated run): **Vitest 32 files / 212 tests pass**, `tsc
 | **Real payment providers need credentials and approval** (Moyasar, Tap, Tabby, Tamara) | Only the LUMA Sandbox simulation is integrated. Methods appear only when an account is verified and enabled, so customers never see real card, mada, Apple Pay or BNPL options. |
 | **Real SMS / email / WhatsApp providers are not connected** | `EMAIL_PROVIDER` / `SMS_PROVIDER` / `WHATSAPP_PROVIDER` accept only `none`. Development uses the labelled dev outbox (`DEV_OTP_ECHO`). In production, registration codes return 503 instead of pretending, and campaigns on those channels cannot start. |
 | **The AI provider is not connected** | No `OPENAI_API_KEY` / `OPENAI_MODEL` in this environment. AI features report `disconnected`; Loom produces rules-based output; the assistant returns 503. |
-| **Pushing to GitHub was blocked by GitHub App permissions (403)** | Work is committed locally; see [PROGRESS.md](PROGRESS.md). |
 
 ## Fixed during integration (security and correctness)
 
