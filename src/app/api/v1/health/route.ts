@@ -1,14 +1,20 @@
-import { sql } from 'kysely';
-import { db } from '@/server/db/client';
+import { checkRuntimeRole } from '@/server/db/role-guard';
+import { env } from '@/server/env';
 
 export const dynamic = 'force-dynamic';
 
-/** GET /api/v1/health — liveness plus a database round-trip. Reveals no configuration. */
+/**
+ * GET /api/v1/health — liveness, a database round-trip, and whether row-level
+ * security applies to the connected role. Reveals no names or configuration values.
+ */
 export async function GET() {
+  const headers = { 'Cache-Control': 'no-store' };
   try {
-    await sql`select 1`.execute(db());
-    return Response.json({ ok: true, db: 'up' }, { headers: { 'Cache-Control': 'no-store' } });
+    const role = await checkRuntimeRole();
+    const rls = role.safe ? 'enforced' : 'bypassed';
+    const ok = role.safe || !env().isDeployed;
+    return Response.json({ ok, db: 'up', rls }, { status: ok ? 200 : 503, headers });
   } catch {
-    return Response.json({ ok: false, db: 'down' }, { status: 503, headers: { 'Cache-Control': 'no-store' } });
+    return Response.json({ ok: false, db: 'down' }, { status: 503, headers });
   }
 }

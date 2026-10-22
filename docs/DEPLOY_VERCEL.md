@@ -58,7 +58,7 @@ Later, migrations run automatically whenever `db/migrations/**` changes on `main
 |---|---|
 | `APP_ENV` | `review` |
 | `APP_URL` | your Vercel URL |
-| `DATABASE_URL` | `postgresql://luma_app:<APP_DB_PASSWORD>@<POOLED-HOST>/<DB>?sslmode=require`, where host and database are copied from the pooled owner string and only the user and password change |
+| `LUMA_DATABASE_URL` | `postgresql://luma_app:<APP_DB_PASSWORD>@<POOLED-HOST>/<DB>?sslmode=require`, where host and database are copied from the pooled owner string and only the user and password change. It takes precedence over the `DATABASE_URL` that the Neon integration injects (that one is the table **owner**, which would bypass row-level security; deployed builds refuse to serve with it) |
 | `DB_APP_ROLE` | `luma_app` |
 | `DB_POOL_MAX` | `3` |
 | `AUTH_SECRET` | same as GitHub |
@@ -71,6 +71,10 @@ Later, migrations run automatically whenever `db/migrations/**` changes on `main
 | `PAYMENT_SANDBOX_WEBHOOK_SECRET` | another random value |
 
 Do **not** set `DATABASE_OWNER_URL` in Vercel: the app never needs owner rights. Then redeploy.
+
+## 4b. Production branch
+
+Vercel → Project → **Settings → Git → Production Branch** = `main`, then **Deployments → Redeploy** the latest `main` commit. A Vercel-styled page saying `404 NOT_FOUND` with an id like `bom1::…` comes from Vercel, not the app: there is no deployment at that address yet (wrong URL, or no production deployment).
 
 ## 5. Keep it private (recommended)
 
@@ -92,5 +96,5 @@ Storefronts: `/s/noura-salon`, `/s/lamar-makeup`.
 
 ## Checks
 
-- `GET /api/v1/health` returns `{"ok":true,"db":"up"}`.
+- `GET /api/v1/health` returns `{"ok":true,"db":"up","rls":"enforced"}`. `"rls":"bypassed"` with status 503 means the app is connected as the owner: set `LUMA_DATABASE_URL` (step 4).
 - GitHub → Actions → **Scheduled jobs**: runs every ~5 minutes and logs `{"ok":true,...}`. GitHub may delay scheduled runs, and disables them after 60 days without repository activity.

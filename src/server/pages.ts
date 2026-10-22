@@ -4,9 +4,11 @@ import { notFound, redirect } from 'next/navigation';
 import { resolveSession, SESSION_COOKIE, type SessionUser } from './auth/service';
 import { resolveTenantAccess, type TenantAccess } from './tenancy/access';
 import { AppError } from './http/errors';
+import { requireSafeRuntimeRole } from './db/role-guard';
 
 /** Session for server components (no redirect). */
 export async function getSessionUser(): Promise<SessionUser | null> {
+  await requireSafeRuntimeRole();
   return resolveSession((await cookies()).get(SESSION_COOKIE)?.value);
 }
 
