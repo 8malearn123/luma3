@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { applyVercelDefaults } from './hosting/vercel';
 
 /**
  * Server-side environment. Parsed once and frozen. Import only from server code;
@@ -66,7 +67,7 @@ let cached: Env | null = null;
 
 export function env(): Env {
   if (cached) return cached;
-  const raw = emptyToUndefined(process.env);
+  const raw = applyVercelDefaults(emptyToUndefined(process.env));
   // Hosts that inject their own DATABASE_URL (e.g. Vercel's Neon integration, which uses the
   // table owner) can point the app at the non-owner runtime role with LUMA_DATABASE_URL.
   if (raw.LUMA_DATABASE_URL) raw.DATABASE_URL = raw.LUMA_DATABASE_URL;

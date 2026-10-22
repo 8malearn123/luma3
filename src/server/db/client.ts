@@ -24,7 +24,7 @@ const globalForDb = globalThis as unknown as { __lumaDb?: Kysely<DB>; __lumaPool
 function createPool() {
   return new pg.Pool({
     connectionString: env().DATABASE_URL,
-    max: Number(process.env.DB_POOL_MAX ?? 10),
+    max: Number(process.env.DB_POOL_MAX ?? (process.env.VERCEL ? 3 : 10)),
     idleTimeoutMillis: 30_000,
     statement_timeout: 15_000,
     application_name: 'luma',

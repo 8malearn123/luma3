@@ -1,5 +1,34 @@
 # Deploying a private review build on Vercel + Neon
 
+## Quick start (zero configuration)
+
+On a Vercel project with the **Neon integration** (Storage → Neon), just deploy `main`. The build command `vercel-build` (`scripts/vercel-setup.ts`) then does all of the following automatically:
+
+- creates the non-owner runtime role `luma_app`;
+- applies migrations;
+- loads the demo data once.
+
+At runtime the app derives everything else from the injected owner connection. The secrets are derived from the owner password and never printed:
+
+| Value | Default |
+|---|---|
+| Database role | `luma_app` |
+| `APP_ENV` | `review` |
+| `AUTH_SECRET` | derived |
+| Sandbox webhook secret | derived |
+| `STORAGE_DRIVER` | `db` |
+| On-screen codes | on |
+| `APP_URL` | from the Vercel URL |
+
+Any variable you set yourself wins. Set `LUMA_DATABASE_URL` to manage the database manually (the steps below), and `LUMA_SKIP_SEED=1` to skip demo data.
+
+The demo data is fake. Review builds show verification codes on screen, so enable **Deployment Protection** (step 5) if the URL could be found by others.
+
+Sign in through `/auth/recover` (step 6). Background jobs are optional here: expired holds are released whenever a booking or availability request touches them. Add `CRON_SECRET` plus the scheduled-jobs workflow for reminders and other sweeps.
+
+The detailed manual setup follows.
+
+
 This deploys LUMA as a **review build** (`APP_ENV=review`). The payment sandbox and
 on-screen verification codes keep working, and the build is hardened like production:
 secure cookies, mandatory admin MFA, and `noindex` on every page. It is **not** for
