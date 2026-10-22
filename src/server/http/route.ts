@@ -12,6 +12,7 @@ import type { AuditActor } from '../infra/audit';
 import { enforce } from '../infra/rate-limit';
 import { AppError, Errors, fromPgError } from './errors';
 import type { PlanFeatureKey } from '@/shared/plans';
+import { requireSafeRuntimeRole } from '../db/role-guard';
 
 type AuthMode = 'public' | 'optional' | 'user' | 'tenant' | 'platform';
 
@@ -138,6 +139,7 @@ export function route<S extends z.ZodTypeAny | undefined = undefined, A extends 
     const requestId = req.headers.get('x-request-id')?.slice(0, 64) || randomUUID();
     try {
       checkCsrf(req);
+      await requireSafeRuntimeRole();
       const ip = clientIp(req);
       const userAgent = req.headers.get('user-agent');
       const rawParams = (await segment?.params) ?? {};
