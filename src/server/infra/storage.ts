@@ -1,6 +1,8 @@
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { sql } from 'kysely';
 import { env } from '../env';
+import { db } from '../db/client';
 
 /**
  * Object storage adapter. The local driver stores files outside the web root
@@ -40,8 +42,36 @@ class LocalStorage implements Storage {
   }
 }
 
+/** Files in PostgreSQL (STORAGE_DRIVER=db) for serverless hosts with no persistent disk. */
+class DbStorage implements Storage {
+  private check(key: string) {
+    if (!SAFE_KEY.test(key) || key.includes('..')) throw new Error('invalid storage key');
+  }
+  async put(key: string, data: Buffer, contentType: string) {
+    this.check(key);
+    await sql`insert into stored_files (key, content, content_type, bytes) values (${key}, ${data}, ${contentType}, ${data.length})
+      on conflict (key) do update set content = excluded.content, content_type = excluded.content_type, bytes = excluded.bytes`.execute(db());
+  }
+  async get(key: string) {
+    this.check(key);
+    const r = await sql<{ content: Buffer }>`select content from stored_files where key = ${key}`.execute(db());
+    return r.rows[0]?.content ?? null;
+  }
+  async delete(key: string) {
+    this.check(key);
+    await sql`delete from stored_files where key = ${key}`.execute(db());
+  }
+}
+
 let instance: Storage | null = null;
 export function storage(): Storage {
-  if (!instance) instance = new LocalStorage(path.resolve(process.cwd(), env().STORAGE_LOCAL_DIR));
+  if (!instance) {
+    instance = env().STORAGE_DRIVER === 'db' ? new DbStorage() : new LocalStorage(path.resolve(process.cwd(), env().STORAGE_LOCAL_DIR));
+  }
   return instance;
+}
+
+/** Test helper: forget the cached driver after changing STORAGE_DRIVER. */
+export function resetStorage() {
+  instance = null;
 }

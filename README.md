@@ -114,5 +114,6 @@ tests/unit|integration|e2e|helpers|setup
 | [docs/AI_AND_MARKETING.md](docs/AI_AND_MARKETING.md) | AI adapter, Loom Marketing, trends, campaigns, analytics |
 | [docs/TEST_PLAN.md](docs/TEST_PLAN.md) | Coverage map and observed results |
 | [docs/RUNBOOK.md](docs/RUNBOOK.md) | Environment, operations, incidents, production checklist |
+| [docs/DEPLOY_VERCEL.md](docs/DEPLOY_VERCEL.md) | Private review deployment on Vercel + Neon (secrets, database workflow, scheduled jobs) |
 | [docs/IMPLEMENTATION_STATUS.md](docs/IMPLEMENTATION_STATUS.md) | Status per spec area, gaps, external blockers |
 | [docs/PROGRESS.md](docs/PROGRESS.md) | Decisions log and hand-off notes |

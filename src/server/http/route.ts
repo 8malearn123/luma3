@@ -236,10 +236,10 @@ export function sessionCookie(token: string, expires: Date): { name: string; val
   return {
     name: SESSION_COOKIE,
     value: token,
-    options: { httpOnly: true, secure: env().isProduction, sameSite: 'lax', path: '/', expires },
+    options: { httpOnly: true, secure: env().isDeployed, sameSite: 'lax', path: '/', expires },
   };
 }
 
 export function clearSessionCookie() {
-  return { name: SESSION_COOKIE, value: '', options: { httpOnly: true, secure: env().isProduction, sameSite: 'lax' as const, path: '/', maxAge: 0 } };
+  return { name: SESSION_COOKIE, value: '', options: { httpOnly: true, secure: env().isDeployed, sameSite: 'lax' as const, path: '/', maxAge: 0 } };
 }

@@ -15,7 +15,7 @@ export function cartIdentity(req: { cookies: { get(name: string): { value: strin
 export function cartCookie(token: string) {
   return {
     name: CART_COOKIE, value: token,
-    options: { httpOnly: true, secure: env().isProduction, sameSite: 'lax' as const, path: '/', maxAge: 60 * 60 * 24 * 30 },
+    options: { httpOnly: true, secure: env().isDeployed, sameSite: 'lax' as const, path: '/', maxAge: 60 * 60 * 24 * 30 },
   };
 }
 

@@ -10,7 +10,12 @@ const bool = z
   .transform((v) => v === 'true' || v === '1');
 
 const schema = z.object({
-  APP_ENV: z.enum(['development', 'test', 'production']).default('development'),
+  /**
+   * development / test: local machines. review: a private, deployed review build (HTTPS, secure cookies,
+   * mandatory admin MFA, never indexed) that still uses the payment sandbox and on-screen codes.
+   * production: real customers; sandbox, demo switcher and on-screen codes are forced off.
+   */
+  APP_ENV: z.enum(['development', 'test', 'review', 'production']).default('development'),
   APP_URL: z.string().url().default('http://localhost:3000'),
   DATABASE_URL: z.string().min(1),
   DATABASE_OWNER_URL: z.string().optional(),
@@ -22,7 +27,10 @@ const schema = z.object({
   PLATFORM_MFA_REQUIRED: bool,
   /** Number of trusted reverse proxies that append to X-Forwarded-For (0 = ignore the header). */
   TRUSTED_PROXY_HOPS: z.coerce.number().int().min(0).max(5).default(1),
-  STORAGE_DRIVER: z.enum(['local']).default('local'),
+  /** local: files on disk (development). db: files in PostgreSQL (serverless hosts such as Vercel have no writable disk). */
+  STORAGE_DRIVER: z.enum(['local', 'db']).default('local'),
+  /** Shared secret for the scheduled job endpoint (/api/v1/internal/cron). Unset = endpoint disabled. */
+  CRON_SECRET: z.string().min(24).optional(),
   STORAGE_LOCAL_DIR: z.string().default('./storage'),
   EMAIL_PROVIDER: z.enum(['none']).default('none'),
   SMS_PROVIDER: z.enum(['none']).default('none'),
@@ -38,6 +46,8 @@ const schema = z.object({
 
 export type Env = z.infer<typeof schema> & {
   isProduction: boolean;
+  /** Served to others over HTTPS (review or production): secure cookies, mandatory admin MFA. */
+  isDeployed: boolean;
   /** Demo role switcher — never available in production. */
   demoEnabled: boolean;
   /** Development OTP echo — never available in production. */
@@ -63,12 +73,14 @@ export function env(): Env {
   }
   const e = parsed.data;
   const isProduction = e.APP_ENV === 'production';
+  const isDeployed = isProduction || e.APP_ENV === 'review';
   cached = Object.freeze({
     ...e,
     isProduction,
+    isDeployed,
     demoEnabled: !isProduction && e.DEMO_MODE,
     devOtpEcho: !isProduction && e.DEV_OTP_ECHO,
-    platformMfaRequired: isProduction || e.PLATFORM_MFA_REQUIRED,
+    platformMfaRequired: isDeployed || e.PLATFORM_MFA_REQUIRED,
   });
   return cached;
 }
