@@ -1,0 +1,33 @@
+name: Scheduled jobs
+
+# Drives the background worker on hosts without long-running processes (Vercel):
+# hold expiry, reminders, outbox delivery, subscription and policy sweeps.
+# Needs repository variable APP_URL (e.g. https://your-app.vercel.app) and secret
+# CRON_SECRET (same value as in Vercel). If Vercel Deployment Protection is on, add
+# secret VERCEL_AUTOMATION_BYPASS_SECRET ("Protection Bypass for Automation").
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Call the job endpoint
+        env:
+          APP_URL: ${{ vars.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          BYPASS: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+        run: |
+          if [ -z "$APP_URL" ] || [ -z "$CRON_SECRET" ]; then
+            echo "APP_URL variable or CRON_SECRET secret not set; nothing to do."
+            exit 0
+          fi
+          curl -fsS --max-time 90 \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            ${BYPASS:+-H "x-vercel-protection-bypass: $BYPASS"} \
+            "$APP_URL/api/v1/internal/cron"

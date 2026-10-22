@@ -2,7 +2,7 @@
   "name": "luma",
   "version": "0.1.0",
   "private": true,
-  "description": "LUMA — SaaS platform for salons, beauty businesses and independent beauty experts",
+  "description": "LUMA \u2014 SaaS platform for salons, beauty businesses and independent beauty experts",
   "type": "module",
   "engines": {
     "node": ">=22"
@@ -19,7 +19,8 @@
     "db:reset-dev": "tsx scripts/reset-dev.ts",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "db:create-app-role": "tsx scripts/create-app-role.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "6.3.1",

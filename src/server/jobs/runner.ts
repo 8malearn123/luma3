@@ -55,11 +55,22 @@ export async function runOutbox(limit = 50) {
   return events.rows.length;
 }
 
-const lastRun = new Map<string, number>();
-export async function runPeriodic(now = Date.now()) {
+/**
+ * Runs each periodic task whose interval has elapsed. The claim is an atomic
+ * upsert in `periodic_runs`, so concurrent workers or serverless invocations
+ * run a task at most once per interval.
+ */
+export async function runPeriodic(now = new Date()) {
+  const ran: string[] = [];
   for (const task of registry.periodic) {
-    if (now - (lastRun.get(task.name) ?? 0) < task.everySec * 1000) continue;
-    lastRun.set(task.name, now);
+    const claimed = await withSystem('claim periodic task', (trx) => sql<{ name: string }>`
+      insert into periodic_runs (name, last_started_at) values (${task.name}, ${now})
+      on conflict (name) do update set last_started_at = excluded.last_started_at
+        where periodic_runs.last_started_at <= ${now}::timestamptz - make_interval(secs => ${task.everySec})
+      returning name`.execute(trx));
+    if (!claimed.rows.length) continue;
+    ran.push(task.name);
     try { await task.run(); } catch (e) { console.error(`[periodic:${task.name}]`, (e as Error).message); }
   }
+  return ran;
 }

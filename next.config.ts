@@ -35,6 +35,8 @@ const config: NextConfig = {
           { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
         ],
       },
+      // Anything that is not the real production site (local, review builds) is never indexed.
+      ...(process.env.APP_ENV === 'production' ? [] : [{ source: '/:path*', headers: [{ key: 'X-Robots-Tag', value: 'noindex, nofollow' }] }]),
       {
         // Draft previews must never be indexed or leak through referrers.
         source: '/preview/:token*',
