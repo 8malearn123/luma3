@@ -1,0 +1,68 @@
+@import "tailwindcss";
+
+/*
+ * Two separate token namespaces:
+ *  - luma-*  LUMA's own identity (brand guide: #E4B5CA #CF97BA #9E6898 #5B3764),
+ *            used ONLY for LUMA surfaces (marketing site, dashboard, admin).
+ *  - sf-*    A storefront's theme, set per business from brand_settings via CSS
+ *            variables on the storefront root. Never LUMA's palette by default.
+ */
+@theme {
+  --color-luma-50: #fbf1f6;
+  --color-luma-100: #f7e1eb;
+  --color-luma-200: #e4b5ca;
+  --color-luma-300: #cf97ba;
+  --color-luma-500: #9e6898;
+  --color-luma-700: #5b3764;
+  --color-luma-800: #4a2c52;
+  --color-luma-900: #331d39;
+  --color-ink: #2a2230;
+  --color-ink-muted: #6b5f70;
+  --color-line: #eadde4;
+  --color-ok: #2f7a55;
+  --color-ok-bg: #e7f4ec;
+  --color-warn: #8a5a00;
+  --color-warn-bg: #fdf3dc;
+  --color-danger: #b3261e;
+  --color-danger-bg: #fbe9e7;
+  --color-info: #2b5a8a;
+  --color-info-bg: #e6eff8;
+
+  --color-sf-primary: var(--sf-primary, #2f2a26);
+  --color-sf-on-primary: var(--sf-on-primary, #ffffff);
+  --color-sf-secondary: var(--sf-secondary, #8c7b6b);
+  --color-sf-accent: var(--sf-accent, #b9975b);
+  --color-sf-bg: var(--sf-background, #fbf9f6);
+  --color-sf-surface: var(--sf-surface, #ffffff);
+  --color-sf-text: var(--sf-text, #1f1b18);
+  --color-sf-muted: var(--sf-muted, #6e655d);
+  --color-sf-border: var(--sf-border, #e7e0d8);
+
+  --font-sans: 'IBM Plex Sans Arabic', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-display: 'Cinzel', 'IBM Plex Sans Arabic', serif;
+  --font-serif: 'EB Garamond', 'Amiri', serif;
+  --font-sf-heading: var(--sf-font-heading, 'IBM Plex Sans Arabic', sans-serif);
+  --font-sf-body: var(--sf-font-body, 'IBM Plex Sans Arabic', sans-serif);
+
+  --radius-sf: var(--sf-radius, 10px);
+}
+
+@layer base {
+  html { -webkit-text-size-adjust: 100%; }
+  body { @apply bg-luma-50 text-ink antialiased; font-family: var(--font-sans); }
+  :focus-visible { outline: 2px solid var(--color-luma-500); outline-offset: 2px; }
+  .storefront :focus-visible { outline-color: var(--sf-primary, #2f2a26); }
+  [dir='rtl'] .flip-rtl { transform: scaleX(-1); }
+  input, select, textarea, button { font: inherit; }
+}
+
+@layer components {
+  .luma-pattern {
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='120' viewBox='0 0 160 120'><g fill='none' stroke='%23f7e1eb' stroke-opacity='.35' stroke-width='1.2'><path d='M10 40c20-30 60-30 60 0s-40 40-60 10'/><path d='M90 20c30-10 60 10 50 40s-50 20-50-10'/><path d='M40 110c10-30 50-40 70-20'/></g></svg>");
+  }
+  .skeleton { @apply animate-pulse rounded-md bg-luma-100; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}

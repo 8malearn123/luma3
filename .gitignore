@@ -11,3 +11,11 @@ playwright-report/
 test-results/
 coverage/
 .DS_Store
+.claude/worktrees/
+.demo-credentials.txt
+.e2e/
+.next-e2e/
+playwright-report/
+test-results/
+storage-test/
+*.bundle

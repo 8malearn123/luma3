@@ -20,6 +20,8 @@ const csp = [
 
 const config: NextConfig = {
   reactStrictMode: true,
+  // A separate build dir lets the E2E server run beside a dev server.
+  distDir: process.env.NEXT_DIST_DIR || '.next',
   poweredByHeader: false,
   serverExternalPackages: ['pg', 'sharp'],
   async headers() {

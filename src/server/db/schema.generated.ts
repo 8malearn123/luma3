@@ -33,12 +33,14 @@ export interface AiJobs {
   finished_at: Timestamp | null;
   id: Generated<string>;
   kind: string;
+  max_attempts: Generated<number>;
   period_key: string;
   regeneration_of: string | null;
   requested_by: string | null;
   result_ref: Json | null;
   started_at: Timestamp | null;
   status: Generated<string>;
+  target_plan_id: string | null;
   tenant_id: string;
   trigger: Generated<string>;
   updated_at: Generated<Timestamp>;
@@ -90,6 +92,7 @@ export interface Appeals {
   message: string;
   resolution_note: string | null;
   resolved_at: Timestamp | null;
+  review_scope: Generated<string>;
   reviewer_id: string | null;
   status: Generated<string>;
   tenant_id: string | null;
@@ -146,7 +149,7 @@ export interface AuditLogs {
 }
 
 export interface BookingAllocations {
-  booking_id: string;
+  booking_id: string | null;
   booking_item_id: string | null;
   created_at: Generated<Timestamp>;
   during: string;
@@ -189,6 +192,7 @@ export interface BookingItems {
   id: Generated<string>;
   line_total_minor: number;
   materials_consumed_at: Timestamp | null;
+  revision: Generated<number>;
   sequence: number;
   service_id: string;
   service_name_ar: string | null;
@@ -196,12 +200,14 @@ export interface BookingItems {
   staff_id: string;
   staff_name: string;
   starts_at: Timestamp;
+  superseded_at: Timestamp | null;
   tenant_id: string;
   unit_price_minor: number;
   variant_id: string | null;
 }
 
 export interface Bookings {
+  analytics_session_id: string | null;
   attribution: Json | null;
   branch_id: string;
   campaign_id: string | null;
@@ -229,6 +235,7 @@ export interface Bookings {
   refunded_minor: Generated<number>;
   rescheduled_from_id: string | null;
   rescheduled_to_id: string | null;
+  revision: Generated<number>;
   source: string;
   starts_at: Timestamp;
   status: string;
@@ -256,6 +263,7 @@ export interface Branches {
   tenant_id: string;
   timezone: Generated<string>;
   updated_at: Generated<Timestamp>;
+  version: Generated<number>;
 }
 
 export interface BranchHours {
@@ -314,23 +322,28 @@ export interface Campaigns {
   approved_at: Timestamp | null;
   approved_by: string | null;
   attribution_window_days: Generated<number>;
+  cancelled_at: Timestamp | null;
   channel: string;
   content: Json;
   coupon_id: string | null;
   created_at: Generated<Timestamp>;
   created_by: string | null;
+  finished_at: Timestamp | null;
   frequency_cap_days: Generated<number>;
   holdout_bp: Generated<number>;
   id: Generated<string>;
+  last_error: string | null;
   name: string;
   plan_id: string | null;
   quiet_hours: Generated<Json>;
   recommendation_id: string | null;
   scheduled_at: Timestamp | null;
   segment_id: string | null;
+  started_at: Timestamp | null;
   stats: Generated<Json>;
   status: Generated<string>;
   tenant_id: string;
+  tracking_code: string | null;
   updated_at: Generated<Timestamp>;
   utm: Generated<Json>;
 }
@@ -401,8 +414,8 @@ export interface CommissionRules {
   amount_minor: number | null;
   created_at: Generated<Timestamp>;
   created_by: string | null;
-  effective_from: Generated<Timestamp>;
-  effective_to: Timestamp | null;
+  effective_from: Generated<string>;
+  effective_to: string | null;
   id: Generated<string>;
   is_active: Generated<boolean>;
   kind: string;
@@ -463,9 +476,14 @@ export interface CustomerIncidents {
   created_at: Generated<Timestamp>;
   customer_user_id: string | null;
   description: string;
+  escalated_by: string | null;
   escalated_to_platform_at: Timestamp | null;
+  escalation_note: string | null;
+  escalation_status: string | null;
   id: Generated<string>;
   occurred_at: Timestamp;
+  platform_reviewed_at: Timestamp | null;
+  platform_reviewed_by: string | null;
   status: Generated<string>;
   submitted_by: string;
   tenant_customer_id: string;
@@ -499,11 +517,13 @@ export interface CustomerProfiles {
 
 export interface CustomizationProposals {
   ai_run_id: string | null;
+  applied_versions: Json | null;
   base_brand_version: number | null;
   base_draft_versions: Json | null;
   created_at: Generated<Timestamp>;
   created_by: string | null;
   decided_at: Timestamp | null;
+  diff: Generated<Json>;
   error: string | null;
   explanation: string | null;
   id: Generated<string>;
@@ -512,11 +532,13 @@ export interface CustomizationProposals {
   request_text: string;
   status: string;
   tenant_id: string;
+  undo_snapshot: Json | null;
+  updated_at: Generated<Timestamp>;
 }
 
 export interface DailyMetrics {
   computed_at: Generated<Timestamp>;
-  day: Timestamp;
+  day: string;
   dimension: Generated<string>;
   metric: string;
   tenant_id: string;
@@ -560,7 +582,7 @@ export interface Expenses {
   currency: Generated<string>;
   description: string | null;
   id: Generated<string>;
-  incurred_on: Timestamp;
+  incurred_on: string;
   receipt_asset_id: string | null;
   recorded_by: string | null;
   tenant_id: string;
@@ -568,6 +590,21 @@ export interface Expenses {
   void_reason: string | null;
   voided_at: Timestamp | null;
   voided_by: string | null;
+}
+
+export interface FinanceExports {
+  asset_id: string | null;
+  created_at: Generated<Timestamp>;
+  error: string | null;
+  finished_at: Timestamp | null;
+  id: Generated<string>;
+  kind: string;
+  period_end: string;
+  period_start: string;
+  requested_by: string | null;
+  row_count: number | null;
+  status: Generated<string>;
+  tenant_id: string;
 }
 
 export interface FinancialEntries {
@@ -620,6 +657,7 @@ export interface GiftCards {
   code_last4: string;
   created_at: Generated<Timestamp>;
   currency: Generated<string>;
+  delivery_note: string | null;
   expires_at: Timestamp | null;
   id: Generated<string>;
   initial_minor: number;
@@ -640,6 +678,7 @@ export interface GroupSessionBookings {
   created_at: Generated<Timestamp>;
   group_session_id: string;
   id: Generated<string>;
+  released_at: Timestamp | null;
   seats: Generated<number>;
   status: Generated<string>;
   tenant_id: string;
@@ -647,6 +686,7 @@ export interface GroupSessionBookings {
 
 export interface GroupSessions {
   branch_id: string;
+  cancelled_reason: string | null;
   capacity: number;
   created_at: Generated<Timestamp>;
   ends_at: Timestamp;
@@ -659,6 +699,8 @@ export interface GroupSessions {
   starts_at: Timestamp;
   status: Generated<string>;
   tenant_id: string;
+  title_ar: string | null;
+  title_en: string | null;
   updated_at: Generated<Timestamp>;
 }
 
@@ -803,6 +845,7 @@ export interface LoyaltyAccounts {
   balance: Generated<number>;
   created_at: Generated<Timestamp>;
   id: Generated<string>;
+  last_activity_at: Generated<Timestamp>;
   lifetime_earned: Generated<number>;
   tenant_customer_id: string;
   tenant_id: string;
@@ -820,6 +863,20 @@ export interface LoyaltyPrograms {
   version: Generated<number>;
 }
 
+export interface MarketingCalendarEvents {
+  created_at: Generated<Timestamp>;
+  ends_on: string;
+  id: Generated<string>;
+  kind: string;
+  relevance_note: string | null;
+  source_url: string | null;
+  starts_on: string;
+  tenant_id: string;
+  title: string;
+  verified_at: Generated<Timestamp>;
+  verified_by: string;
+}
+
 export interface MarketingPlans {
   approved_at: Timestamp | null;
   approved_by: string | null;
@@ -831,8 +888,8 @@ export interface MarketingPlans {
   is_example: Generated<boolean>;
   kind: string;
   parent_plan_id: string | null;
-  period_end: Timestamp;
-  period_start: Timestamp;
+  period_end: string;
+  period_start: string;
   status: Generated<string>;
   tenant_id: string;
   title: string;
@@ -841,16 +898,23 @@ export interface MarketingPlans {
 
 export interface MarketingPreferences {
   audience_notes: string | null;
+  brand_style: string | null;
   channels: Generated<string[]>;
   goals: Generated<Json>;
+  local_hour: Generated<number>;
   max_discount_bp: Generated<number>;
   monthly_budget_minor: number | null;
+  monthly_day: Generated<number>;
+  monthly_enabled: Generated<boolean>;
   photography_resources: string | null;
+  promote_products: Generated<boolean>;
   schedule_enabled: Generated<boolean>;
   tenant_id: string;
   tone: string | null;
   updated_at: Generated<Timestamp>;
   updated_by: string | null;
+  weekly_enabled: Generated<boolean>;
+  weekly_weekday: Generated<number>;
 }
 
 export interface MembershipEntitlements {
@@ -894,8 +958,8 @@ export interface MetricSnapshots {
   data_as_of: Timestamp;
   id: Generated<string>;
   kind: string;
-  period_end: Timestamp;
-  period_start: Timestamp;
+  period_end: string;
+  period_start: string;
   tenant_id: string;
 }
 
@@ -946,6 +1010,19 @@ export interface OnboardingProgress {
   version: Generated<number>;
 }
 
+export interface OrderEvents {
+  actor_user_id: string | null;
+  created_at: Generated<Timestamp>;
+  data: Generated<Json>;
+  from_status: string | null;
+  id: Generated<string>;
+  kind: string;
+  order_id: string;
+  reason: string | null;
+  tenant_id: string;
+  to_status: string | null;
+}
+
 export interface OrderItems {
   created_at: Generated<Timestamp>;
   id: Generated<string>;
@@ -955,21 +1032,30 @@ export interface OrderItems {
   order_id: string;
   product_id: string;
   quantity: number;
+  returnable: Generated<boolean>;
+  sku: string | null;
   tenant_id: string;
   unit_cost_minor: number | null;
   unit_price_minor: number;
   variant_id: string;
+  variant_name_ar: string | null;
+  variant_name_en: string | null;
 }
 
 export interface Orders {
+  analytics_session_id: string | null;
   attribution: Json | null;
   booking_id: string | null;
   branch_id: string;
   campaign_id: string | null;
+  cancel_reason: string | null;
+  cancelled_at: Timestamp | null;
+  cancelled_by: string | null;
   coupon_id: string | null;
   created_at: Generated<Timestamp>;
   created_by: string | null;
   currency: Generated<string>;
+  customer_note: string | null;
   customer_user_id: string | null;
   discount_minor: Generated<number>;
   expires_at: Timestamp | null;
@@ -1047,6 +1133,7 @@ export interface Payments {
   booking_id: string | null;
   captured_at: Timestamp | null;
   cash_reference: string | null;
+  checkout_url: string | null;
   collected_by: string | null;
   created_at: Generated<Timestamp>;
   created_by: string | null;
@@ -1060,6 +1147,7 @@ export interface Payments {
   method: string;
   needs_reconciliation: Generated<boolean>;
   order_id: string | null;
+  payer_user_id: string | null;
   payment_account_id: string | null;
   provider: string;
   provider_payment_id: string | null;
@@ -1077,11 +1165,22 @@ export interface Payouts {
   fees_minor: Generated<number>;
   id: Generated<string>;
   payment_account_id: string | null;
-  period_end: Timestamp | null;
-  period_start: Timestamp | null;
+  period_end: string | null;
+  period_start: string | null;
   provider_payout_id: string | null;
   status: string;
   tenant_id: string;
+}
+
+export interface PerformanceSettings {
+  min_completed: Generated<number>;
+  min_reviews: Generated<number>;
+  min_timed: Generated<number>;
+  punctuality_grace_min: Generated<number>;
+  tenant_id: string;
+  updated_at: Generated<Timestamp>;
+  updated_by: string | null;
+  weights: Generated<Json>;
 }
 
 export interface PlanComments {
@@ -1118,6 +1217,8 @@ export interface Plans {
   status: Generated<string>;
   trial_days: Generated<number>;
   updated_at: Generated<Timestamp>;
+  updated_by: string | null;
+  version: Generated<number>;
 }
 
 export interface PlanVersions {
@@ -1142,10 +1243,13 @@ export interface PlatformInvoices {
   id: Generated<string>;
   is_test: Generated<boolean>;
   issued_at: Timestamp | null;
+  marked_paid_by: string | null;
+  note: string | null;
   number: string;
   paid_at: Timestamp | null;
-  period_end: Timestamp | null;
-  period_start: Timestamp | null;
+  period_end: string | null;
+  period_start: string | null;
+  plan_id: string | null;
   provider_ref: string | null;
   status: string;
   subscription_id: string | null;
@@ -1184,15 +1288,20 @@ export interface PolicyDecisions {
   customer_explanation_en: string | null;
   customer_user_id: string | null;
   effective_at: Generated<Timestamp>;
+  end_reason: string | null;
+  ended_at: Timestamp | null;
+  ended_by: string | null;
   evidence_refs: Generated<Json>;
   expires_at: Timestamp | null;
   id: Generated<string>;
   is_experimental: Generated<boolean>;
   reason: string;
   review_at: Timestamp | null;
+  review_flagged_at: Timestamp | null;
   reviewer_id: string;
   rule_id: string | null;
   scope: string;
+  source_incident_id: string | null;
   status: Generated<string>;
   supersedes_id: string | null;
   tenant_customer_id: string | null;
@@ -1204,6 +1313,7 @@ export interface PolicyRules {
   created_at: Generated<Timestamp>;
   created_by: string | null;
   criteria: Json;
+  description: string | null;
   id: Generated<string>;
   is_enabled: Generated<boolean>;
   is_experimental: Generated<boolean>;
@@ -1212,6 +1322,7 @@ export interface PolicyRules {
   suggested_action: string;
   tenant_id: string | null;
   updated_at: Generated<Timestamp>;
+  updated_by: string | null;
   version: Generated<number>;
 }
 
@@ -1243,10 +1354,12 @@ export interface Products {
   max_per_order: Generated<number>;
   name_ar: string | null;
   name_en: string | null;
+  returnable: Generated<boolean>;
   sort: Generated<number>;
   status: Generated<string>;
   tenant_id: string;
   updated_at: Generated<Timestamp>;
+  version: Generated<number>;
 }
 
 export interface ProductVariants {
@@ -1309,6 +1422,7 @@ export interface Recommendations {
   evidence_refs: Generated<Json>;
   experiment_design: string | null;
   expires_at: Timestamp | null;
+  fingerprint: string | null;
   forecast: string | null;
   horizon: string;
   id: Generated<string>;
@@ -1318,8 +1432,9 @@ export interface Recommendations {
   metric_snapshot_id: string | null;
   model: string | null;
   opportunity: string;
-  period_end: Timestamp | null;
-  period_start: Timestamp | null;
+  period_end: string | null;
+  period_start: string | null;
+  plan_id: string | null;
   prerequisites: Generated<Json>;
   prompt_version: string | null;
   proposed_target: string | null;
@@ -1343,8 +1458,8 @@ export interface ReconciliationRuns {
   discrepancies: Generated<Json>;
   finished_at: Timestamp | null;
   id: Generated<string>;
-  period_end: Timestamp;
-  period_start: Timestamp;
+  period_end: string;
+  period_start: string;
   provider: string;
   status: string;
   summary: Generated<Json>;
@@ -1408,8 +1523,14 @@ export interface Reviews {
   business_reply: string | null;
   comment: string | null;
   created_at: Generated<Timestamp>;
+  customer_user_id: string | null;
   id: Generated<string>;
+  moderated_at: Timestamp | null;
+  moderated_by: string | null;
+  moderation_reason: string | null;
   rating: number;
+  replied_at: Timestamp | null;
+  replied_by: string | null;
   staff_id: string | null;
   status: Generated<string>;
   tenant_customer_id: string;
@@ -1440,6 +1561,26 @@ export interface Rewards {
   tenant_id: string;
   updated_at: Generated<Timestamp>;
   value: number;
+}
+
+export interface SandboxProviderPayments {
+  account_ref: string;
+  amount_minor: number;
+  created_at: Generated<Timestamp>;
+  currency: string;
+  id: string;
+  metadata: Generated<Json>;
+  refunded_minor: Generated<number>;
+  status: string;
+  updated_at: Generated<Timestamp>;
+}
+
+export interface SandboxProviderRefunds {
+  amount_minor: number;
+  created_at: Generated<Timestamp>;
+  id: string;
+  payment_id: string;
+  status: string;
 }
 
 export interface ServiceAddons {
@@ -1569,6 +1710,7 @@ export interface Sessions {
   idle_expires_at: Timestamp;
   ip: string | null;
   last_seen_at: Generated<Timestamp>;
+  mfa_verified_at: Timestamp | null;
   reauthenticated_at: Timestamp | null;
   revoke_reason: string | null;
   revoked_at: Timestamp | null;
@@ -1585,7 +1727,7 @@ export interface ShiftOverrides {
   id: Generated<string>;
   kind: string;
   note: string | null;
-  on_date: Timestamp;
+  on_date: string;
   staff_id: string;
   start_time: string | null;
   tenant_id: string;
@@ -1623,7 +1765,7 @@ export interface StaffBreaks {
   end_time: string;
   id: Generated<string>;
   label: string | null;
-  on_date: Timestamp | null;
+  on_date: string | null;
   staff_id: string;
   start_time: string;
   tenant_id: string;
@@ -1713,6 +1855,7 @@ export interface Subscriptions {
   grace_until: Timestamp | null;
   id: Generated<string>;
   overage_state: Json | null;
+  paused_at: Timestamp | null;
   plan_id: string;
   provider: Generated<string>;
   provider_ref: string | null;
@@ -1720,6 +1863,7 @@ export interface Subscriptions {
   tenant_id: string;
   trial_ends_at: Timestamp | null;
   updated_at: Generated<Timestamp>;
+  version: Generated<number>;
 }
 
 export interface SupportAccessGrants {
@@ -1730,7 +1874,9 @@ export interface SupportAccessGrants {
   id: Generated<string>;
   platform_user_id: string;
   reason: string;
+  revoke_reason: string | null;
   revoked_at: Timestamp | null;
+  revoked_by: string | null;
   starts_at: Generated<Timestamp>;
   tenant_id: string;
 }
@@ -1745,6 +1891,8 @@ export interface SuppressionList {
 }
 
 export interface Templates {
+  approved_at: Timestamp | null;
+  approved_by: string | null;
   business_types: Generated<string[]>;
   created_at: Generated<Timestamp>;
   created_by: string | null;
@@ -1757,6 +1905,8 @@ export interface Templates {
   name_en: string;
   status: Generated<string>;
   updated_at: Generated<Timestamp>;
+  updated_by: string | null;
+  version: Generated<number>;
 }
 
 export interface TenantCounters {
@@ -1766,6 +1916,7 @@ export interface TenantCounters {
 }
 
 export interface TenantCustomers {
+  archived_at: Timestamp | null;
   created_at: Generated<Timestamp>;
   display_name: string;
   email: string | null;
@@ -1781,6 +1932,7 @@ export interface TenantCustomers {
   tenant_id: string;
   updated_at: Generated<Timestamp>;
   user_id: string | null;
+  version: Generated<number>;
 }
 
 export interface TenantMemberships {
@@ -1818,6 +1970,9 @@ export interface TenantSettings {
   allow_full_prepay: Generated<boolean>;
   allow_pay_on_site: Generated<boolean>;
   any_staff_rule: Generated<string>;
+  booking_policy_confirmed_at: Timestamp | null;
+  booking_policy_text_ar: string | null;
+  booking_policy_text_en: string | null;
   booking_requires_account: Generated<boolean>;
   contact_email: string | null;
   contact_phone: string | null;
@@ -1846,6 +2001,7 @@ export interface TenantSettings {
   time_format: Generated<string>;
   updated_at: Generated<Timestamp>;
   version: Generated<number>;
+  waitlist_offer_ttl_min: Generated<number>;
 }
 
 export interface TimeBlocks {
@@ -1876,7 +2032,7 @@ export interface TrendAssessments {
   status: Generated<string>;
   tenant_id: string;
   updated_at: Generated<Timestamp>;
-  valid_until: Timestamp | null;
+  valid_until: string | null;
   what_is_happening: string;
 }
 
@@ -1915,7 +2071,7 @@ export interface TrendSources {
 
 export interface UsageCounters {
   metric: string;
-  period_start: Timestamp;
+  period_start: string;
   tenant_id: string;
   value: Generated<number>;
 }
@@ -1930,6 +2086,9 @@ export interface Users {
   is_demo: Generated<boolean>;
   locale: Generated<string>;
   locked_until: Timestamp | null;
+  mfa_enabled_at: Timestamp | null;
+  mfa_last_step: number | null;
+  mfa_pending_secret_enc: string | null;
   mfa_totp_secret_enc: string | null;
   password_hash: string | null;
   phone: string | null;
@@ -1957,8 +2116,8 @@ export interface WaitlistEntries {
   branch_id: string;
   created_at: Generated<Timestamp>;
   customer_user_id: string | null;
-  desired_from: Timestamp;
-  desired_to: Timestamp;
+  desired_from: string;
+  desired_to: string;
   expires_at: Timestamp;
   id: Generated<string>;
   notify_consent: Generated<boolean>;
@@ -1990,8 +2149,8 @@ export interface WaitlistOffers {
 export interface WorkingHours {
   branch_id: string;
   created_at: Generated<Timestamp>;
-  effective_from: Timestamp | null;
-  effective_to: Timestamp | null;
+  effective_from: string | null;
+  effective_to: string | null;
   end_time: string;
   id: Generated<string>;
   staff_id: string;
@@ -2036,6 +2195,7 @@ export interface DB {
   domain_mappings: DomainMappings;
   entitlement_reservations: EntitlementReservations;
   expenses: Expenses;
+  finance_exports: FinanceExports;
   financial_entries: FinancialEntries;
   fulfillments: Fulfillments;
   gift_card_entries: GiftCardEntries;
@@ -2053,6 +2213,7 @@ export interface DB {
   leave_requests: LeaveRequests;
   loyalty_accounts: LoyaltyAccounts;
   loyalty_programs: LoyaltyPrograms;
+  marketing_calendar_events: MarketingCalendarEvents;
   marketing_plans: MarketingPlans;
   marketing_preferences: MarketingPreferences;
   membership_entitlements: MembershipEntitlements;
@@ -2062,6 +2223,7 @@ export interface DB {
   notification_deliveries: NotificationDeliveries;
   notifications: Notifications;
   onboarding_progress: OnboardingProgress;
+  order_events: OrderEvents;
   order_items: OrderItems;
   orders: Orders;
   outbox_events: OutboxEvents;
@@ -2070,6 +2232,7 @@ export interface DB {
   payment_attempts: PaymentAttempts;
   payments: Payments;
   payouts: Payouts;
+  performance_settings: PerformanceSettings;
   plan_comments: PlanComments;
   plan_features: PlanFeatures;
   plan_versions: PlanVersions;
@@ -2095,6 +2258,8 @@ export interface DB {
   reviews: Reviews;
   reward_redemptions: RewardRedemptions;
   rewards: Rewards;
+  sandbox_provider_payments: SandboxProviderPayments;
+  sandbox_provider_refunds: SandboxProviderRefunds;
   service_addons: ServiceAddons;
   service_material_recipes: ServiceMaterialRecipes;
   service_package_items: ServicePackageItems;

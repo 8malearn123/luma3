@@ -1,0 +1,104 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  # Test-only credentials for the throwaway PostgreSQL service container below.
+  PGHOST: localhost
+  PGUSER: postgres
+  PGPASSWORD: postgres
+  TEST_DATABASE_URL: postgres://luma_app:luma_app_dev@localhost:5432/luma_test
+  TEST_DATABASE_OWNER_URL: postgres://luma_owner:luma_owner_dev@localhost:5432/luma_test
+
+jobs:
+  checks:
+    name: Typecheck, lint, unit + integration tests, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Install Chromium (invoice/receipt PDF rendering is tested)
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Create database roles and the test database
+        run: |
+          # Migrations run as the owner; the app connects as a non-owner role so RLS applies.
+          psql -v ON_ERROR_STOP=1 -c "create role luma_owner login password 'luma_owner_dev'" \
+                                  -c "create role luma_app login password 'luma_app_dev'" \
+                                  -c "create database luma_test owner luma_owner" \
+                                  -c "grant connect on database luma_test to luma_app"
+      - run: pnpm typecheck
+      - run: pnpm lint
+      - name: Unit and integration tests (real PostgreSQL with RLS)
+        run: pnpm test
+      - name: Production build
+        run: pnpm build
+        env:
+          DATABASE_URL: postgres://luma_app:luma_app_dev@localhost:5432/luma_test
+          AUTH_SECRET: ci-build-secret-ci-build-secret-0123456789
+
+  e2e:
+    name: Playwright end-to-end journeys
+    runs-on: ubuntu-latest
+    needs: checks
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Install Chromium for Playwright
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Create database roles and the disposable E2E database
+        run: |
+          psql -v ON_ERROR_STOP=1 -c "create role luma_owner login password 'luma_owner_dev'" \
+                                  -c "create role luma_app login password 'luma_app_dev'" \
+                                  -c "create database luma_e2e owner luma_owner" \
+                                  -c "grant connect on database luma_e2e to luma_app"
+      - name: End-to-end journeys (production build, seeded demo data)
+        run: pnpm test:e2e
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7

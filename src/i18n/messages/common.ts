@@ -1,0 +1,56 @@
+export const common = {
+  ar: {
+    brand: { name: 'لوما', tagline: 'جمالك، خبرتنا.', tagline_en: 'Your Beauty, Our Expertise.', powered_by: 'بدعم من لوما' },
+    actions: {
+      save: 'حفظ', saving: 'جارٍ الحفظ…', cancel: 'إلغاء', close: 'إغلاق', confirm: 'تأكيد', delete: 'حذف', archive: 'أرشفة', restore: 'استعادة',
+      edit: 'تعديل', add: 'إضافة', create: 'إنشاء', back: 'رجوع', next: 'التالي', previous: 'السابق', skip: 'تخطٍّ', retry: 'إعادة المحاولة',
+      search: 'بحث', filter: 'تصفية', clear: 'مسح', apply: 'تطبيق', continue: 'متابعة', done: 'تم', view: 'عرض', more: 'المزيد',
+      reload: 'إعادة التحميل', copy: 'نسخ', copied: 'تم النسخ', export: 'تصدير', upload: 'رفع', choose_file: 'اختيار ملف', move_up: 'تحريك للأعلى', move_down: 'تحريك للأسفل',
+      duplicate: 'تكرار', hide: 'إخفاء', show: 'إظهار', undo: 'تراجع', redo: 'إعادة', approve: 'اعتماد', reject: 'رفض', submit: 'إرسال', sign_out: 'تسجيل الخروج',
+    },
+    states: {
+      loading: 'جارٍ التحميل…', empty: 'لا توجد بيانات بعد', error: 'تعذّر تحميل البيانات', denied: 'ليست لديكِ صلاحية لعرض هذه الصفحة',
+      denied_hint: 'اطلبي من مالكة النشاط منحكِ الصلاحية المناسبة.', offline: 'لا يوجد اتصال بالإنترنت', saved: 'تم الحفظ', unsaved: 'لديكِ تغييرات غير محفوظة',
+      unsaved_leave: 'لديكِ تغييرات غير محفوظة. هل تريدين المغادرة؟', not_found: 'الصفحة غير موجودة', success: 'تمت العملية بنجاح',
+      last_saved: 'آخر حفظ: {time}', unknown: 'غير معروف', none: 'لا يوجد', simulated: 'محاكاة', test_data: 'بيانات تجريبية', example: 'مثال',
+    },
+    fields: {
+      name: 'الاسم', name_ar: 'الاسم بالعربية', name_en: 'الاسم بالإنجليزية', description: 'الوصف', price: 'السعر', duration: 'المدة', status: 'الحالة',
+      email: 'البريد الإلكتروني', phone: 'رقم الجوال', password: 'كلمة المرور', date: 'التاريخ', time: 'الوقت', notes: 'ملاحظات', category: 'التصنيف',
+      active: 'نشط', inactive: 'غير نشط', visible: 'ظاهر', hidden: 'مخفي', required: 'مطلوب', optional: 'اختياري', minutes: 'دقيقة', branch: 'الفرع',
+      from: 'من', to: 'إلى', total: 'الإجمالي', quantity: 'الكمية', reason: 'السبب', role: 'الدور', image: 'الصورة', alt_text: 'نص بديل للصورة',
+    },
+    locale: { switch: 'English', current: 'العربية' },
+    time: { tz_note: 'الأوقات معروضة {tz}', h12: '١٢ ساعة', h24: '٢٤ ساعة' },
+    pagination: { prev: 'السابق', next: 'التالي', page: 'صفحة {n}' },
+    a11y: { skip_to_content: 'تخطي إلى المحتوى', menu: 'القائمة', open_menu: 'فتح القائمة', close_menu: 'إغلاق القائمة', notifications: 'الإشعارات' },
+    demo: { banner: 'نسخة مراجعة خاصة — بيانات تجريبية، لا يتم تحصيل أموال حقيقية ولا إرسال رسائل.' },
+  },
+  en: {
+    brand: { name: 'LUMA', tagline: 'Your Beauty, Our Expertise.', tagline_en: 'Your Beauty, Our Expertise.', powered_by: 'Powered by LUMA' },
+    actions: {
+      save: 'Save', saving: 'Saving…', cancel: 'Cancel', close: 'Close', confirm: 'Confirm', delete: 'Delete', archive: 'Archive', restore: 'Restore',
+      edit: 'Edit', add: 'Add', create: 'Create', back: 'Back', next: 'Next', previous: 'Previous', skip: 'Skip', retry: 'Try again',
+      search: 'Search', filter: 'Filter', clear: 'Clear', apply: 'Apply', continue: 'Continue', done: 'Done', view: 'View', more: 'More',
+      reload: 'Reload', copy: 'Copy', copied: 'Copied', export: 'Export', upload: 'Upload', choose_file: 'Choose file', move_up: 'Move up', move_down: 'Move down',
+      duplicate: 'Duplicate', hide: 'Hide', show: 'Show', undo: 'Undo', redo: 'Redo', approve: 'Approve', reject: 'Reject', submit: 'Submit', sign_out: 'Sign out',
+    },
+    states: {
+      loading: 'Loading…', empty: 'Nothing here yet', error: 'Could not load data', denied: 'You do not have permission to view this page',
+      denied_hint: 'Ask the business owner to grant you the right access.', offline: 'You are offline', saved: 'Saved', unsaved: 'You have unsaved changes',
+      unsaved_leave: 'You have unsaved changes. Leave anyway?', not_found: 'Page not found', success: 'Done',
+      last_saved: 'Last saved: {time}', unknown: 'Unknown', none: 'None', simulated: 'Simulated', test_data: 'Test data', example: 'Example',
+    },
+    fields: {
+      name: 'Name', name_ar: 'Arabic name', name_en: 'English name', description: 'Description', price: 'Price', duration: 'Duration', status: 'Status',
+      email: 'Email', phone: 'Mobile number', password: 'Password', date: 'Date', time: 'Time', notes: 'Notes', category: 'Category',
+      active: 'Active', inactive: 'Inactive', visible: 'Visible', hidden: 'Hidden', required: 'Required', optional: 'Optional', minutes: 'min', branch: 'Branch',
+      from: 'From', to: 'To', total: 'Total', quantity: 'Quantity', reason: 'Reason', role: 'Role', image: 'Image', alt_text: 'Image alt text',
+    },
+    locale: { switch: 'العربية', current: 'English' },
+    time: { tz_note: 'Times shown in {tz}', h12: '12-hour', h24: '24-hour' },
+    pagination: { prev: 'Previous', next: 'Next', page: 'Page {n}' },
+    a11y: { skip_to_content: 'Skip to content', menu: 'Menu', open_menu: 'Open menu', close_menu: 'Close menu', notifications: 'Notifications' },
+    demo: { banner: 'Private review build — test data only. No real money is charged and no messages are sent.' },
+  },
+};
