@@ -17,8 +17,10 @@ if (process.env.VERCEL !== '1') {
 }
 const { pooled, direct } = neonOwnerUrls(process.env);
 if (!pooled || !direct) {
-  log('no database connection injected (add Neon under Storage); skipping database setup');
-  process.exit(0);
+  // Fail loudly: a deployment without a database cannot serve any page.
+  console.error(`[vercel-setup] No database connection in this environment (${process.env.VERCEL_ENV ?? 'unknown'}).`);
+  console.error('[vercel-setup] Vercel → Storage → your Neon database → Connect project, and tick this environment (Production / Preview).');
+  process.exit(1);
 }
 if (process.env.LUMA_DATABASE_URL) {
   log('LUMA_DATABASE_URL is set: database is managed manually; skipping');

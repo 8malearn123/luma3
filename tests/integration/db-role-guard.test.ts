@@ -24,6 +24,20 @@ describe('runtime database role guard', () => {
     expect(await (await health.GET()).json()).toEqual({ ok: true, db: 'up', rls: 'enforced' });
   });
 
+  it('health names a missing setting or the connection error code, never values', async () => {
+    await closeDb();
+    const saved = process.env.DATABASE_URL;
+    delete process.env.DATABASE_URL; resetEnvCache(); resetRoleCheck();
+    expect(await (await health.GET()).json()).toMatchObject({ ok: false, reason: 'config', settings: ['DATABASE_URL'], database_injected: false });
+    process.env.DATABASE_URL = 'postgres://luma_app:wrong-password@localhost:5432/luma_test';
+    resetEnvCache(); resetRoleCheck();
+    const bad = await (await health.GET()).json();
+    expect(bad).toMatchObject({ ok: false, reason: 'connect', error: '28P01', database_injected: true });
+    expect(JSON.stringify(bad)).not.toContain('wrong-password');
+    process.env.DATABASE_URL = saved;
+    await connectAs(appUrl, 'test');
+  });
+
   it('a deployed build connected as the table owner refuses to serve', async () => {
     await connectAs(ownerUrl, 'review');
     const h = await health.GET();
