@@ -63,6 +63,7 @@ pnpm worker                   # in a second terminal: jobs, outbox, sweepers
 | Command | What it runs | Database |
 |---|---|---|
 | `pnpm test` | Vitest unit and integration tests (`tests/unit`, `tests/integration`). Files run serially. | `TEST_DATABASE_URL` / `TEST_DATABASE_OWNER_URL` (default `luma_test`). Global setup migrates the database and truncates it, and refuses any name that does not end in `_test`. |
+| CI | `.github/workflows/ci.yml` runs on every PR and push to `main`: typecheck, lint, Vitest against a PostgreSQL 16 service container, `next build`, then the Playwright journeys. | Throwaway service databases created by the workflow. |
 | `pnpm test:e2e` | Playwright journeys (`tests/e2e`). Builds and starts the app (`next build && next start`, build dir `.next-e2e`) on port 3110 (`E2E_PORT`). | `luma_e2e` (`E2E_DATABASE`; must end in `_e2e` and be local). Global setup drops and recreates its schemas, migrates and seeds. An operator creates the database once. |
 | `pnpm typecheck` | `tsc --noEmit` | none |
 | `pnpm lint` | ESLint | none |
