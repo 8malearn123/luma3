@@ -20,7 +20,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "db:create-app-role": "tsx scripts/create-app-role.ts"
+    "db:create-app-role": "tsx scripts/create-app-role.ts",
+    "vercel-build": "tsx scripts/vercel-setup.ts && next build"
   },
   "dependencies": {
     "@dnd-kit/core": "6.3.1",
