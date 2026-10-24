@@ -65,7 +65,7 @@ export function pgliteSqlClient(db: PGliteInterface) {
 const g = globalThis as unknown as { __lumaPglite?: Promise<PGlite> };
 
 /** Registers an already-prepared instance (build script). */
-export function usePglite(instance: PGlite) {
+export function registerPglite(instance: PGlite) {
   g.__lumaPglite = Promise.resolve(instance);
 }
 

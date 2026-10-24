@@ -27,13 +27,13 @@ Object.assign(process.env, {
 });
 
 const t0 = Date.now();
-const { createPglite, pgliteSqlClient, usePglite } = await import('../src/server/db/pglite');
+const { createPglite, pgliteSqlClient, registerPglite } = await import('../src/server/db/pglite');
 const { migrate } = await import('../src/server/db/migrator');
 const pg = await createPglite();
 await pg.exec(`create role ${appRole}`);
 await migrate({ client: pgliteSqlClient(pg), appRole, log: (m) => console.log(`[demo-db] ${m}`) });
 await pg.exec(`set role ${appRole}`);
-usePglite(pg);
+registerPglite(pg);
 
 await import('./seed');
 

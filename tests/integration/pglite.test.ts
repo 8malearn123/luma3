@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { closeDb, db, sql, withSystem, withTenant } from '@/server/db/client';
 import { checkRuntimeRole, resetRoleCheck } from '@/server/db/role-guard';
 import { resetEnvCache } from '@/server/env';
-import { createPglite, usePglite } from '@/server/db/pglite';
+import { createPglite, registerPglite } from '@/server/db/pglite';
 
 const saved = { DB_DRIVER: process.env.DB_DRIVER, DATABASE_URL: process.env.DATABASE_URL };
 const g = globalThis as unknown as { __lumaPglite?: unknown };
@@ -20,7 +20,7 @@ describe('embedded database (DB_DRIVER=pglite)', () => {
     const { pgliteSqlClient } = await import('@/server/db/pglite');
     await migrate({ client: pgliteSqlClient(fresh), appRole: 'luma_app' });
     await fresh.exec('set role luma_app');
-    usePglite(fresh);
+    registerPglite(fresh);
   }, 120_000);
 
   afterAll(async () => {
