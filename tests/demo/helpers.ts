@@ -43,7 +43,7 @@ export async function expectPageRenders(page: Page, path: string) {
   // Pages with external resources (web fonts, map embeds) may never go idle offline.
   await page.waitForLoadState('networkidle', { timeout: 15_000 }).catch(() => {});
   await expect(page.getByRole('alert').filter({ hasText: /went wrong|unexpected|not found/i }), path).toHaveCount(0);
-  expect(page.url(), `${path} redirected to sign-in`).not.toMatch(/\/auth\/login/);
+  if (!path.startsWith('/auth/')) expect(page.url(), `${path} redirected to sign-in`).not.toMatch(/\/auth\/login/);
   done();
 }
 
