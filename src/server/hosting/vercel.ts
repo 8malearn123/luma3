@@ -71,7 +71,11 @@ function embeddedDefaults(raw: Env): Env {
   if (out.AUTH_SECRET) out.PAYMENT_SANDBOX_WEBHOOK_SECRET ??= createHmac('sha256', out.AUTH_SECRET).update('luma:sandbox-webhook').digest('base64url');
   out.APP_ENV ??= 'review';
   out.STORAGE_DRIVER ??= 'db';
-  if (out.APP_ENV !== 'production') out.DEV_OTP_ECHO ??= 'true';
+  if (out.APP_ENV !== 'production') {
+    out.DEV_OTP_ECHO ??= 'true';
+    // Fake, temporary data only: one-click sign-in as the seeded demo accounts on the login page.
+    out.DEMO_MODE ??= 'true';
+  }
   const host = out.VERCEL_PROJECT_PRODUCTION_URL || out.VERCEL_URL;
   if (host) out.APP_URL ??= `https://${host}`;
   return out;
