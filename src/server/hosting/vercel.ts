@@ -1,4 +1,6 @@
 import { createHmac } from 'node:crypto';
+import { existsSync, readFileSync } from 'node:fs';
+import path from 'node:path';
 
 /**
  * Zero-configuration defaults for a Vercel project with the Neon integration.
@@ -39,7 +41,7 @@ export function appRoleUrl(ownerUrl: string) {
 export function applyVercelDefaults(raw: Env): Env {
   if (raw.VERCEL !== '1' || raw.LUMA_DATABASE_URL) return raw;
   const { pooled } = neonOwnerUrls(raw);
-  if (!pooled) return raw;
+  if (!pooled) return embeddedDefaults(raw);
   const out: Env = { ...raw };
   // The injected DATABASE_URL is the table owner; the app connects as luma_app instead.
   out.DATABASE_URL = appRoleUrl(pooled);
@@ -49,6 +51,26 @@ export function applyVercelDefaults(raw: Env): Env {
   out.PAYMENT_SANDBOX_WEBHOOK_SECRET ??= derive(pooled, 'sandbox-webhook');
   out.STORAGE_DRIVER ??= 'db';
   out.DB_POOL_MAX ??= '3';
+  if (out.APP_ENV !== 'production') out.DEV_OTP_ECHO ??= 'true';
+  const host = out.VERCEL_PROJECT_PRODUCTION_URL || out.VERCEL_URL;
+  if (host) out.APP_URL ??= `https://${host}`;
+  return out;
+}
+
+/**
+ * No database attached: run the embedded demo database (PGlite) built at deploy
+ * time by scripts/build-demo-db.ts, with the secret generated in that build.
+ */
+function embeddedDefaults(raw: Env): Env {
+  const out: Env = { ...raw };
+  out.DB_DRIVER ??= 'pglite';
+  out.DATABASE_URL ??= 'pglite://embedded';
+  out.DB_APP_ROLE ??= 'luma_app';
+  const secretFile = path.join(process.cwd(), '.demo-db', 'secret');
+  if (!out.AUTH_SECRET && existsSync(secretFile)) out.AUTH_SECRET = readFileSync(secretFile, 'utf8').trim();
+  if (out.AUTH_SECRET) out.PAYMENT_SANDBOX_WEBHOOK_SECRET ??= createHmac('sha256', out.AUTH_SECRET).update('luma:sandbox-webhook').digest('base64url');
+  out.APP_ENV ??= 'review';
+  out.STORAGE_DRIVER ??= 'db';
   if (out.APP_ENV !== 'production') out.DEV_OTP_ECHO ??= 'true';
   const host = out.VERCEL_PROJECT_PRODUCTION_URL || out.VERCEL_URL;
   if (host) out.APP_URL ??= `https://${host}`;

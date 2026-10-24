@@ -12,13 +12,21 @@ import pg from 'pg';
  * - `{{APP_ROLE}}` is replaced with the runtime role name so grants follow the deployment.
  * - Nothing here drops or resets data.
  */
-export async function migrate(opts: { connectionString: string; appRole: string; log?: (m: string) => void }) {
+type SqlClient = { query<R = Record<string, unknown>>(text: string, params?: unknown[]): Promise<{ rows: R[] }>; end(): Promise<void> };
+
+export async function migrate(opts: { connectionString?: string; client?: SqlClient; appRole: string; log?: (m: string) => void }) {
   const log = opts.log ?? (() => {});
   if (!/^[a-z_][a-z0-9_]*$/.test(opts.appRole)) throw new Error('invalid app role name');
   const dir = path.resolve(process.cwd(), 'db/migrations');
   const files = (await readdir(dir)).filter((f) => f.endsWith('.sql')).sort();
-  const client = new pg.Client({ connectionString: opts.connectionString });
-  await client.connect();
+  let client: SqlClient;
+  if (opts.client) {
+    client = opts.client;
+  } else {
+    const c = new pg.Client({ connectionString: opts.connectionString });
+    await c.connect();
+    client = c as unknown as SqlClient;
+  }
   try {
     await client.query(`create table if not exists schema_migrations (
       filename text primary key,

@@ -17,7 +17,9 @@ if (process.env.VERCEL !== '1') {
 }
 const { pooled, direct } = neonOwnerUrls(process.env);
 if (!pooled || !direct) {
-  log('no database connection injected (add Neon under Storage); skipping database setup');
+  // No database attached: build the embedded demo database instead (DB_DRIVER=pglite).
+  log(`no database attached in this environment (${process.env.VERCEL_ENV ?? 'unknown'}): building the embedded demo database`);
+  execFileSync('pnpm', ['-s', 'exec', 'tsx', 'scripts/build-demo-db.ts'], { stdio: 'inherit' });
   process.exit(0);
 }
 if (process.env.LUMA_DATABASE_URL) {
