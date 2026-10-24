@@ -19,14 +19,13 @@ export async function platformMfaState(user: { sessionId: string }): Promise<Pla
 }
 
 /**
- * What this session still owes before acting as platform staff: a code check
- * (MFA enabled, not passed), enrolment (MFA required but not set up), or nothing.
+ * Whether this session still owes a second-factor check before acting as
+ * platform staff: when MFA is required (always in production) or the user set
+ * up an authenticator app, and the session has not passed it yet.
  */
-export function mfaGate(s: PlatformMfaState): 'verify' | 'enrol' | null {
-  // Embedded demo database: an instance that rebuilt a verified session may not know about the enrolment.
-  if (s.verified && env().DB_DRIVER === 'pglite') return null;
-  if (s.enabled) return s.verified ? null : 'verify';
-  return env().platformMfaRequired ? 'enrol' : null;
+export function mfaGate(s: PlatformMfaState): 'verify' | null {
+  if (s.verified) return null;
+  return s.enabled || env().platformMfaRequired ? 'verify' : null;
 }
 
 /** True when this session may not act as platform staff yet. */

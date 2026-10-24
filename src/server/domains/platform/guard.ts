@@ -14,8 +14,7 @@ export { MFA_SESSION_HOURS, platformMfaState, type PlatformMfaState } from './mf
  */
 export async function requirePlatformMfa(user: Pick<SessionUser, 'sessionId'>) {
   const gate = mfaGate(await platformMfaState(user));
-  if (gate === 'verify') throw new AppError(403, 'mfa_required', 'Enter your authenticator code to continue');
-  if (gate === 'enrol') throw new AppError(403, 'mfa_enrollment_required', 'Set up two-step verification to use the LUMA admin area');
+  if (gate === 'verify') throw new AppError(403, 'mfa_required', 'Enter your verification code to continue');
 }
 
 type PlatformDef<S extends z.ZodTypeAny | undefined> = {

@@ -22,7 +22,7 @@ export type CodeDelivery = {
   status: DeliveryResult['status'];
   /** Present ONLY when DEV_OTP_ECHO is enabled outside production. */
   dev_code?: string;
-  channel: 'email' | 'sms';
+  channel: 'email' | 'sms' | 'whatsapp';
 };
 
 export function validatePassword(pw: string) {
@@ -32,7 +32,7 @@ export function validatePassword(pw: string) {
 }
 
 // ── Verification codes ──────────────────────────────────────────────────────
-async function issueCode(opts: { userId: string | null; purpose: Purpose; channel: 'email' | 'sms'; destination: string; locale: 'ar' | 'en' }): Promise<CodeDelivery> {
+export async function issueCode(opts: { userId: string | null; purpose: Purpose; channel: 'email' | 'sms' | 'whatsapp'; destination: string; locale: 'ar' | 'en' }): Promise<CodeDelivery> {
   await enforce(`code:${opts.destination}`, 5, 3600);
   const code = newOtp();
   // Invalidate earlier unconsumed codes for the same purpose/destination.
@@ -58,7 +58,7 @@ async function issueCode(opts: { userId: string | null; purpose: Purpose; channe
   return out;
 }
 
-async function consumeCode(destination: string, purpose: Purpose, code: string): Promise<{ userId: string | null }> {
+export async function consumeCode(destination: string, purpose: Purpose, code: string): Promise<{ userId: string | null }> {
   const row = await db().selectFrom('verification_codes').selectAll()
     .where('destination', '=', destination).where('purpose', '=', purpose).where('consumed_at', 'is', null)
     .orderBy('created_at', 'desc').executeTakeFirst();

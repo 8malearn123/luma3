@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { ACCOUNTS, demoSignIn, english, expectPageRenders, totp } from './helpers';
+import { ACCOUNTS, demoSignIn, english, expectPageRenders } from './helpers';
 
 /**
  * Every request alternates between two server instances that each hold their
@@ -79,26 +79,30 @@ test('signed-out visitors are sent to sign in', async ({ page }) => {
   }
 });
 
-test('platform owner: sets up two-step verification at first sign-in, then the whole admin area works on every instance', async ({ browser, baseURL }) => {
-  // Setting up MFA is a few requests in a row: on Vercel they reach the same warm instance.
-  const setup = await browser.newContext({ extraHTTPHeaders: { 'x-demo-route': 'sticky' }, locale: 'en-US' });
-  const page = await setup.newPage();
-  await english(page, baseURL!);
+test('platform staff: the demo two-step code is the fixed 2002; then the whole admin area opens on every instance', async ({ page }) => {
   await demoSignIn(page, ACCOUNTS.platformOwner);
   await expect(page.getByRole('heading', { name: 'Two-step verification' })).toBeVisible();
-  await page.getByRole('button', { name: 'Start setup' }).click();
-  const secret = (await page.getByTestId('mfa-secret').textContent())!.replace(/\s/g, '');
-  await page.getByLabel('Verification code').fill(totp(secret));
-  await page.getByRole('button', { name: 'Confirm and enable' }).click();
-  await page.waitForURL(/\/platform$/);
+  // Nothing is sent on the demo: no WhatsApp button, just the code.
+  await expect(page.getByRole('button', { name: 'Send code on WhatsApp' })).toHaveCount(0);
+  await page.getByLabel('Verification code').fill('1234');
+  await page.getByRole('button', { name: 'Verify' }).click();
+  await expect(page.getByText('The verification code is incorrect.')).toBeVisible();
+  await expect(page).toHaveURL(/\/platform\/mfa/);
 
-  // The same browser session, now alternating instances: every admin page opens without asking again.
-  const roaming = await browser.newContext({ storageState: await setup.storageState(), locale: 'en-US' });
-  const p2 = await roaming.newPage();
+  await page.getByLabel('Verification code').fill('2002');
+  await page.getByRole('button', { name: 'Verify' }).click();
+  await page.waitForURL(/\/platform$/);
+  // Every following request alternates instance: none asks for the code again.
   for (const path of PLATFORM_PAGES) {
-    await expectPageRenders(p2, `/platform${path}`);
-    expect(p2.url(), path).not.toMatch(/\/platform\/mfa/);
+    await expectPageRenders(page, `/platform${path}`);
+    expect(page.url(), path).not.toMatch(/\/platform\/mfa/);
   }
-  await setup.close();
-  await roaming.close();
+});
+
+test('policy reviewer: verifies with 2002, then her admin pages open', async ({ page }) => {
+  await demoSignIn(page, ACCOUNTS.policyReviewer);
+  await page.getByLabel('Verification code').fill('2002');
+  await page.getByRole('button', { name: 'Verify' }).click();
+  await page.waitForURL(/\/platform$/);
+  for (const path of ['', '/policies']) await expectPageRenders(page, `/platform${path}`);
 });
