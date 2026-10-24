@@ -7,7 +7,7 @@ Deploy `main` to a Vercel project **without** any database attached. The build (
 - `DB_DRIVER=pglite` and the other settings are set automatically. The secrets are generated per build and never printed.
 - **Same app, same rules.** The full platform runs on the same schema, row-level security (as the `luma_app` role) and SQL as production.
 - **Data is temporary.** Each server instance starts from the snapshot. Changes live in memory and disappear when Vercel recycles the instance. With several instances active, a session made on one may not exist on another, so you may need to sign in again.
-- **Sign-in.** Use `/auth/recover` with a demo account; the code is shown on screen.
+- **Sign-in.** The login page lists the demo accounts for one-click sign-in (demo mode is on only in this embedded setup, never in production). Password recovery with on-screen codes also works.
 
 Attach Neon later (Quick start below) for persistent data. The build then switches to it automatically.
 
