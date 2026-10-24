@@ -23,7 +23,11 @@ const config: NextConfig = {
   // A separate build dir lets the E2E server run beside a dev server.
   distDir: process.env.NEXT_DIST_DIR || '.next',
   poweredByHeader: false,
-  serverExternalPackages: ['pg', 'sharp'],
+  serverExternalPackages: ['pg', 'sharp', '@electric-sql/pglite'],
+  // Embedded demo database (DB_DRIVER=pglite): ship the snapshot and the WASM runtime with every function.
+  outputFileTracingIncludes: {
+    '/**': ['./.demo-db/**/*', './node_modules/@electric-sql/pglite/dist/**/*'],
+  },
   async headers() {
     return [
       {

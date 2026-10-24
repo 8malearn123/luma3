@@ -27,4 +27,10 @@ describe('Vercel + Neon zero-config defaults', () => {
   it('never enables on-screen codes in production', () => {
     expect(applyVercelDefaults({ VERCEL: '1', DATABASE_URL: owner, APP_ENV: 'production' }).DEV_OTP_ECHO).toBeUndefined();
   });
+
+  it('with no database attached, runs the embedded demo database', () => {
+    const e = applyVercelDefaults({ VERCEL: '1', VERCEL_URL: 'luma3-x.vercel.app', AUTH_SECRET: 'from-build-secret-from-build-secret-01' });
+    expect(e).toMatchObject({ DB_DRIVER: 'pglite', DATABASE_URL: 'pglite://embedded', DB_APP_ROLE: 'luma_app', APP_ENV: 'review', STORAGE_DRIVER: 'db', DEV_OTP_ECHO: 'true', APP_URL: 'https://luma3-x.vercel.app' });
+    expect(e.PAYMENT_SANDBOX_WEBHOOK_SECRET).toBeTruthy();
+  });
 });

@@ -1,4 +1,5 @@
-import { Kysely, PostgresDialect, sql, type Transaction } from 'kysely';
+import { AsyncLocalStorage } from 'node:async_hooks';
+import { Kysely, PostgresAdapter, PostgresDialect, PostgresIntrospector, PostgresQueryCompiler, sql, type Dialect, type Driver, type Transaction } from 'kysely';
 import pg from 'pg';
 import { env } from '../env';
 import type { DB } from './schema.generated';
@@ -41,10 +42,44 @@ export function pool(): pg.Pool {
  * withTenant()/withSystem() return no rows because of row-level security.
  */
 export function db(): Kysely<DB> {
+  // Embedded single-connection database: inside a transaction, every query joins it.
+  const active = embedded() ? openTx.getStore() : undefined;
+  if (active) return active;
   if (!globalForDb.__lumaDb) {
-    globalForDb.__lumaDb = new Kysely<DB>({ dialect: new PostgresDialect({ pool: pool() }) });
+    globalForDb.__lumaDb = embedded()
+      ? new Kysely<DB>({ dialect: createPgliteDialect() })
+      : new Kysely<DB>({ dialect: new PostgresDialect({ pool: pool() }) });
   }
   return globalForDb.__lumaDb;
+}
+
+const embedded = () => env().DB_DRIVER === 'pglite';
+/** The open transaction of the current async context (embedded mode only). */
+const openTx = new AsyncLocalStorage<Tx>();
+
+function createPgliteDialect(): Dialect {
+  // The WASM build is imported lazily (on first connection) so the regular server never loads it.
+  const role = env().DB_APP_ROLE;
+  let inner: Driver | undefined;
+  const driver: Driver = {
+    async init() {
+      const { PgliteDialect } = await import('./pglite');
+      inner = new PgliteDialect(role).createDriver();
+      await inner.init();
+    },
+    acquireConnection: () => inner!.acquireConnection(),
+    beginTransaction: (c, s) => inner!.beginTransaction(c, s),
+    commitTransaction: (c) => inner!.commitTransaction(c),
+    rollbackTransaction: (c) => inner!.rollbackTransaction(c),
+    releaseConnection: (c) => inner!.releaseConnection(c),
+    destroy: async () => inner?.destroy(),
+  };
+  return {
+    createAdapter: () => new PostgresAdapter(),
+    createDriver: () => driver,
+    createQueryCompiler: () => new PostgresQueryCompiler(),
+    createIntrospector: (k) => new PostgresIntrospector(k),
+  };
 }
 
 export async function closeDb() {
@@ -62,13 +97,28 @@ export function isUuid(v: unknown): v is string {
 type TxOptions = { isolation?: 'read committed' | 'repeatable read' | 'serializable' };
 
 async function scoped<T>(settings: Record<string, string>, fn: (trx: Tx) => Promise<T>, opts?: TxOptions): Promise<T> {
+  const outer = embedded() ? openTx.getStore() : undefined;
+  if (outer) {
+    // Embedded database has one connection: run nested scopes inside the open
+    // transaction, restoring the outer scope's settings afterwards.
+    const prev: Record<string, string> = {};
+    for (const k of Object.keys(settings)) {
+      prev[k] = (await sql<{ v: string | null }>`select current_setting(${k}, true) as v`.execute(outer)).rows[0]?.v ?? '';
+    }
+    for (const [k, v] of Object.entries(settings)) await sql`select set_config(${k}, ${v}, true)`.execute(outer);
+    try {
+      return await fn(outer);
+    } finally {
+      for (const [k, v] of Object.entries(prev)) await sql`select set_config(${k}, ${v}, true)`.execute(outer);
+    }
+  }
   let builder = db().transaction();
   if (opts?.isolation) builder = builder.setIsolationLevel(opts.isolation);
   return builder.execute(async (trx) => {
     for (const [k, v] of Object.entries(settings)) {
       await sql`select set_config(${k}, ${v}, true)`.execute(trx);
     }
-    return fn(trx);
+    return embedded() ? openTx.run(trx, () => fn(trx)) : fn(trx);
   });
 }
 

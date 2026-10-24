@@ -19,6 +19,8 @@ const schema = z.object({
   APP_ENV: z.enum(['development', 'test', 'review', 'production']).default('development'),
   APP_URL: z.string().url().default('http://localhost:3000'),
   DATABASE_URL: z.string().min(1),
+  /** pg: a PostgreSQL server (default). pglite: embedded in-process PostgreSQL for zero-infrastructure demos. */
+  DB_DRIVER: z.enum(['pg', 'pglite']).default('pg'),
   DATABASE_OWNER_URL: z.string().optional(),
   DB_APP_ROLE: z.string().regex(/^[a-z_][a-z0-9_]*$/).default('luma_app'),
   AUTH_SECRET: z.string().min(32, 'AUTH_SECRET must be at least 32 characters'),

@@ -1,5 +1,16 @@
 # Deploying a private review build on Vercel + Neon
 
+## Fastest: no database at all (embedded demo)
+
+Deploy `main` to a Vercel project **without** any database attached. The build (`vercel-build` → `scripts/build-demo-db.ts`) runs PostgreSQL in-process (PGlite, WASM): it applies every migration, loads the demo data and ships a 7 MB snapshot (`.demo-db/`) with the functions. At runtime:
+
+- `DB_DRIVER=pglite` and the other settings are set automatically. The secrets are generated per build and never printed.
+- **Same app, same rules.** The full platform runs on the same schema, row-level security (as the `luma_app` role) and SQL as production.
+- **Data is temporary.** Each server instance starts from the snapshot. Changes live in memory and disappear when Vercel recycles the instance. With several instances active, a session made on one may not exist on another, so you may need to sign in again.
+- **Sign-in.** Use `/auth/recover` with a demo account; the code is shown on screen.
+
+Attach Neon later (Quick start below) for persistent data. The build then switches to it automatically.
+
 ## Quick start (zero configuration)
 
 On a Vercel project with the **Neon integration** (Storage → Neon), just deploy `main`. The build command `vercel-build` (`scripts/vercel-setup.ts`) then does all of the following automatically:

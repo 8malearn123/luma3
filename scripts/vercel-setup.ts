@@ -17,10 +17,10 @@ if (process.env.VERCEL !== '1') {
 }
 const { pooled, direct } = neonOwnerUrls(process.env);
 if (!pooled || !direct) {
-  // Fail loudly: a deployment without a database cannot serve any page.
-  console.error(`[vercel-setup] No database connection in this environment (${process.env.VERCEL_ENV ?? 'unknown'}).`);
-  console.error('[vercel-setup] Vercel → Storage → your Neon database → Connect project, and tick this environment (Production / Preview).');
-  process.exit(1);
+  // No database attached: build the embedded demo database instead (DB_DRIVER=pglite).
+  log(`no database attached in this environment (${process.env.VERCEL_ENV ?? 'unknown'}): building the embedded demo database`);
+  execFileSync('pnpm', ['-s', 'exec', 'tsx', 'scripts/build-demo-db.ts'], { stdio: 'inherit' });
+  process.exit(0);
 }
 if (process.env.LUMA_DATABASE_URL) {
   log('LUMA_DATABASE_URL is set: database is managed manually; skipping');
