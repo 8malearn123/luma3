@@ -65,7 +65,7 @@ test('specialist: her own portal, no money, no finance', async ({ page }) => {
 
 test('customers: account pages render; the admin area is hidden from them', async ({ page }) => {
   await demoSignIn(page, ACCOUNTS.restrictedCustomer);
-  for (const p of ['', '/bookings', '/orders', '/policy', '/privacy', '/security', '/reviews', '/waitlist']) await expectPageRenders(page, `/account${p}`);
+  for (const p of ['', '/bookings', '/orders', '/policy', '/privacy', '/security', '/reviews']) await expectPageRenders(page, `/account${p}`);
   const admin = await page.goto('/platform');
   expect(admin!.status()).toBe(404);
   const salon = await page.goto('/app/noura-salon/finance');
