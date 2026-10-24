@@ -9,7 +9,7 @@ export function AuthCard({ title, children, footer }: { title: string; children:
   const { t, locale, setLocale } = useI18n();
   return (
     <div className="luma-pattern flex min-h-dvh items-center justify-center bg-gradient-to-b from-luma-100 to-luma-300/60 p-4">
-      <div className="w-full max-w-md">
+      <main id="main" className="w-full max-w-md">
         <div className="mb-6 flex flex-col items-center gap-2">
           <Link href="/" aria-label="LUMA"><LumaLogo variant="vertical" className="h-28 w-auto" /></Link>
           <p className="font-serif text-sm text-luma-700" dir="ltr">{t('brand.tagline_en')}</p>
@@ -22,7 +22,7 @@ export function AuthCard({ title, children, footer }: { title: string; children:
         <div className="mt-4 text-center">
           <button onClick={() => setLocale(locale === 'ar' ? 'en' : 'ar')} className="text-xs text-luma-800 underline">{t('locale.switch')}</button>
         </div>
-      </div>
+      </main>
     </div>
   );
 }

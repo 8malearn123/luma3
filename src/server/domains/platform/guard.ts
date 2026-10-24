@@ -1,6 +1,6 @@
 import type { z } from 'zod';
 import { env } from '../../env';
-import { platformMfaState } from './mfa-state';
+import { mfaGate, platformMfaState } from './mfa-state';
 import { route, type RouteContext } from '../../http/route';
 import { AppError } from '../../http/errors';
 import { requireStepUp, type SessionUser } from '../../auth/service';
@@ -13,9 +13,9 @@ export { MFA_SESSION_HOURS, platformMfaState, type PlatformMfaState } from './mf
  * has enabled MFA, the current session must have passed a TOTP check.
  */
 export async function requirePlatformMfa(user: Pick<SessionUser, 'sessionId'>) {
-  const s = await platformMfaState(user);
-  if (s.enabled && !s.verified) throw new AppError(403, 'mfa_required', 'Enter your authenticator code to continue');
-  if (!s.enabled && env().platformMfaRequired) throw new AppError(403, 'mfa_enrollment_required', 'Set up two-step verification to use the LUMA admin area');
+  const gate = mfaGate(await platformMfaState(user));
+  if (gate === 'verify') throw new AppError(403, 'mfa_required', 'Enter your authenticator code to continue');
+  if (gate === 'enrol') throw new AppError(403, 'mfa_enrollment_required', 'Set up two-step verification to use the LUMA admin area');
 }
 
 type PlatformDef<S extends z.ZodTypeAny | undefined> = {
