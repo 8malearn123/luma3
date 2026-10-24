@@ -1,4 +1,5 @@
-import { db, withCentral, sql, type Tx } from '../db/client';
+import { randomUUID } from 'node:crypto';
+import { db, isUuid, withCentral, sql, type Tx } from '../db/client';
 import { env } from '../env';
 import { AppError, Errors } from '../http/errors';
 import { audit, type AuditActor } from '../infra/audit';
@@ -175,18 +176,80 @@ export async function login(input: { identifier: string; password: string; ip: s
 }
 
 export async function createSession(userId: string, ip: string | null, userAgent: string | null, trx?: Tx) {
-  const token = newToken();
   const now = Date.now();
+  const expiresAt = new Date(now + SESSION_ABSOLUTE_DAYS * 86_400_000);
+  const id = randomUUID();
+  const token = embeddedDb() ? signedSessionToken({ sessionId: id, userId, expiresAt: expiresAt.getTime(), signedInAt: now, mfaAt: 0 }) : newToken();
   const row = await (trx ?? db()).insertInto('sessions').values({
+    id,
     user_id: userId,
     token_hash: hashToken(token, 'session'),
-    expires_at: new Date(now + SESSION_ABSOLUTE_DAYS * 86_400_000),
+    expires_at: expiresAt,
     idle_expires_at: new Date(now + SESSION_IDLE_DAYS * 86_400_000),
     reauthenticated_at: new Date(now),
     ip,
     user_agent: userAgent?.slice(0, 300) ?? null,
   }).returning(['id', 'expires_at']).executeTakeFirstOrThrow();
   return { id: row.id, token, expiresAt: row.expires_at };
+}
+
+// ── Embedded demo database: sessions that survive across server instances ──
+// Each server instance has its own in-memory copy of the demo data, so a
+// session created on one is unknown to the next. In that mode the cookie is a
+// self-contained token signed with the per-build AUTH_SECRET (sign-in time and
+// second-factor time included); an instance that has not seen the session, or
+// holds an older copy of it, rebuilds it from the verified token.
+const embeddedDb = () => env().DB_DRIVER === 'pglite';
+const SIGNED_PREFIX = 'e1';
+
+type SignedSession = { sessionId: string; userId: string; expiresAt: number; signedInAt: number; mfaAt: number };
+
+function signedSessionToken(t: SignedSession) {
+  const body = [SIGNED_PREFIX, t.sessionId, t.userId, t.expiresAt, t.signedInAt, t.mfaAt].join('.');
+  return `${body}.${hashToken(body, 'signed-session').toString('base64url')}`;
+}
+
+function readSignedSession(token: string): SignedSession | null {
+  const parts = token.split('.');
+  if (parts.length !== 7 || parts[0] !== SIGNED_PREFIX) return null;
+  if (!safeEqual(Buffer.from(parts[6]!, 'base64url'), hashToken(parts.slice(0, 6).join('.'), 'signed-session'))) return null;
+  const [sessionId, userId] = [parts[1]!, parts[2]!];
+  const [expiresAt, signedInAt, mfaAt] = parts.slice(3, 6).map(Number) as [number, number, number];
+  if (!isUuid(sessionId) || !isUuid(userId) || ![expiresAt, signedInAt, mfaAt].every(Number.isSafeInteger) || expiresAt < Date.now()) return null;
+  return { sessionId, userId, expiresAt, signedInAt, mfaAt };
+}
+
+async function restoreSignedSession(token: string) {
+  const t = readSignedSession(token);
+  // The user may not exist on this instance (e.g. registered on another one): stay signed out.
+  if (!t || !(await db().selectFrom('users').select('id').where('id', '=', t.userId).executeTakeFirst())) return;
+  const tokenHash = hashToken(token, 'session');
+  const mfaVerifiedAt = t.mfaAt ? new Date(t.mfaAt) : null;
+  await db().insertInto('sessions').values({
+    id: t.sessionId,
+    user_id: t.userId,
+    token_hash: tokenHash,
+    expires_at: new Date(t.expiresAt),
+    idle_expires_at: new Date(Math.min(t.expiresAt, Date.now() + SESSION_IDLE_DAYS * 86_400_000)),
+    reauthenticated_at: new Date(t.signedInAt),
+    mfa_verified_at: mfaVerifiedAt,
+  }).onConflict((oc) => oc.column('id').doUpdateSet({ token_hash: tokenHash, mfa_verified_at: mfaVerifiedAt })).execute();
+}
+
+/**
+ * Embedded demo database only: after the session passes the second factor,
+ * returns a new cookie token that carries that fact to every server instance.
+ */
+export async function refreshSignedSession(user: SessionUser): Promise<{ token: string; expiresAt: Date } | null> {
+  if (!embeddedDb()) return null;
+  const s = await db().selectFrom('sessions').select(['expires_at', 'created_at', 'mfa_verified_at']).where('id', '=', user.sessionId).executeTakeFirst();
+  if (!s) return null;
+  const token = signedSessionToken({
+    sessionId: user.sessionId, userId: user.userId, expiresAt: s.expires_at.getTime(),
+    signedInAt: (user.reauthenticatedAt ?? s.created_at).getTime(), mfaAt: s.mfa_verified_at?.getTime() ?? 0,
+  });
+  await db().updateTable('sessions').set({ token_hash: hashToken(token, 'session') }).where('id', '=', user.sessionId).execute();
+  return { token, expiresAt: s.expires_at };
 }
 
 export type SessionUser = {
@@ -204,13 +267,17 @@ export type SessionUser = {
   reauthenticatedAt: Date | null;
 };
 
-/** Resolves a session cookie value. Slides the idle expiry at most once per hour. */
-export async function resolveSession(token: string | undefined | null): Promise<SessionUser | null> {
-  if (!token || token.length > 200) return null;
-  const row = await db().selectFrom('sessions as s').innerJoin('users as u', 'u.id', 's.user_id')
+function findSession(token: string) {
+  return db().selectFrom('sessions as s').innerJoin('users as u', 'u.id', 's.user_id')
     .select(['s.id as session_id', 's.user_id', 's.expires_at', 's.idle_expires_at', 's.revoked_at', 's.last_seen_at', 's.reauthenticated_at',
       'u.display_name', 'u.email', 'u.phone', 'u.email_verified_at', 'u.phone_verified_at', 'u.locale', 'u.time_format', 'u.status', 'u.is_demo'])
     .where('s.token_hash', '=', hashToken(token, 'session')).executeTakeFirst();
+}
+
+/** Resolves a session cookie value. Slides the idle expiry at most once per hour. */
+export async function resolveSession(token: string | undefined | null): Promise<SessionUser | null> {
+  if (!token || token.length > 200) return null;
+  const row = await findSession(token) ?? (embeddedDb() ? await restoreSignedSession(token).then(() => findSession(token)) : undefined);
   const now = new Date();
   if (!row || row.revoked_at || row.expires_at < now || row.idle_expires_at < now || row.status !== 'active') return null;
   if (now.getTime() - row.last_seen_at.getTime() > 3_600_000) {

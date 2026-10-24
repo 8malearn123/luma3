@@ -20,3 +20,5 @@ test-results/
 storage-test/
 *.bundle
 .demo-db/
+.next-demo/
+playwright-report-demo/

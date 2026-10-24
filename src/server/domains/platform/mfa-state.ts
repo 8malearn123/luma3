@@ -24,5 +24,7 @@ export async function platformMfaState(user: { sessionId: string }): Promise<Pla
  */
 export async function mfaPending(user: { sessionId: string }) {
   const s = await platformMfaState(user);
+  // Embedded demo database: an instance that rebuilt a verified session may not know about the enrolment.
+  if (s.verified && env().DB_DRIVER === 'pglite') return false;
   return s.enabled ? !s.verified : env().platformMfaRequired;
 }

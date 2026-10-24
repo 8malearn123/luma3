@@ -94,7 +94,6 @@ class PgliteConnection implements DatabaseConnection {
     const r = await this.db.query<R>(q.sql, [...q.parameters]);
     return { rows: r.rows, ...(r.affectedRows !== undefined ? { numAffectedRows: BigInt(r.affectedRows) } : {}) };
   }
-  // eslint-disable-next-line require-yield
   async *streamQuery<R>(): AsyncIterableIterator<QueryResult<R>> {
     throw new Error('streaming is not supported by the embedded database');
   }
