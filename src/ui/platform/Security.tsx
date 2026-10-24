@@ -14,6 +14,7 @@ import { useToast } from '../components/toast';
 import { useStepUp } from './stepup';
 import { LumaLogo } from '../components/brand';
 import { safeInternalPath } from '@/shared/safe-path';
+import { DeliveryNotice } from '../auth/AuthCard';
 
 function CodeInput({ value, onChange, label }: { value: string; onChange: (v: string) => void; label: string }) {
   return (
@@ -55,71 +56,47 @@ function EnrolForm({ enroll, busy, onActivate, onCancel }: { enroll: { secret: s
 }
 
 /** Session second-factor prompt (gate page: no navigation until verified). */
-export function MfaPrompt({ next, enrolled = true }: { next: string; enrolled?: boolean }) {
-  if (!enrolled) return <MfaGateEnrolment next={next} />;
-  return <MfaVerify next={next} />;
-}
-
-/** First sign-in of platform staff when MFA is required: set it up before entering the admin area. */
-function MfaGateEnrolment({ next }: { next: string }) {
-  const { t } = useI18n();
-  const msg = useErrorMessage();
-  const stepUp = useStepUp();
-  const [enroll, setEnroll] = useState<{ secret: string; otpauth_uri: string } | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState<unknown>(null);
-  async function run(fn: () => Promise<void>) {
-    setBusy(true); setErr(null);
-    try { await fn(); } catch (e) { setErr(e); } finally { setBusy(false); }
-  }
-  return (
-    <div className="mx-auto flex max-w-md flex-col gap-4 py-10">
-      <LumaLogo className="h-10 w-auto self-center" />
-      <Card>
-        <div className="flex flex-col gap-4">
-          <div className="flex items-center gap-2"><KeyRound className="size-5 text-luma-700" aria-hidden /><h1 className="text-lg font-semibold">{t('platform.security.mfa')}</h1></div>
-          <p className="text-sm text-ink-muted">{t('platform.security.explain')}</p>
-          <FormErrorSummary message={err ? msg(err) : null} />
-          {enroll ? (
-            <EnrolForm enroll={enroll} busy={busy} onActivate={(code) => run(async () => {
-              await api('/api/v1/platform/mfa/activate', { body: { code } });
-              window.location.href = safeInternalPath(next, '/platform', '/platform');
-            })} />
-          ) : (
-            <Button className="self-start" loading={busy} icon={<KeyRound className="size-4" />} onClick={() => run(async () => {
-              setEnroll(await stepUp(() => api<{ secret: string; otpauth_uri: string }>('/api/v1/platform/mfa/enroll', { body: {} })));
-            })}>{t('platform.security.start')}</Button>
-          )}
-        </div>
-      </Card>
-    </div>
-  );
-}
-
-function MfaVerify({ next }: { next: string }) {
+export function MfaPrompt({ next, demo = false }: { next: string; demo?: boolean }) {
   const { t } = useI18n();
   const msg = useErrorMessage();
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<unknown>(null);
+  const [sent, setSent] = useState<{ destination?: string; delivery?: { status: string; dev_code?: string } } | null>(null);
+  async function send() {
+    setBusy(true); setErr(null);
+    try { setSent(await api('/api/v1/platform/mfa/send', { body: {} })); } catch (e) { setErr(e); } finally { setBusy(false); }
+  }
   async function submit() {
     setBusy(true); setErr(null);
     try {
       await api('/api/v1/platform/mfa/verify', { body: { code } });
       window.location.href = safeInternalPath(next, '/platform', '/platform');
-    } catch (e) { setErr(e); setCode(''); } finally { setBusy(false); }
+    } catch (e) { setErr(e); setCode(''); setBusy(false); }
   }
+  const canEnter = demo || sent;
   return (
     <div className="mx-auto flex max-w-md flex-col gap-4 py-10">
       <LumaLogo className="h-10 w-auto self-center" />
       <Card>
-        <form onSubmit={(e) => { e.preventDefault(); if (code.length === 6) submit(); }} className="flex flex-col gap-4">
+        <form onSubmit={(e) => { e.preventDefault(); if (code.length >= 4) submit(); }} className="flex flex-col gap-4">
           <div className="flex items-center gap-2"><KeyRound className="size-5 text-luma-700" aria-hidden /><h1 className="text-lg font-semibold">{t('platform.mfa.prompt_title')}</h1></div>
-          <p className="text-sm text-ink-muted">{t('platform.mfa.prompt_body')}</p>
+          <p className="text-sm text-ink-muted">{demo ? t('platform.mfa.demo_body') : t('platform.mfa.prompt_body')}</p>
           <FormErrorSummary message={err ? msg(err) : null} />
-          <CodeInput label={t('platform.mfa.code')} value={code} onChange={setCode} />
-          <Button type="submit" loading={busy} disabled={code.length !== 6}>{t('platform.mfa.verify')}</Button>
-          <p className="text-xs text-ink-muted">{t('platform.mfa.lost_device')}</p>
+          {sent?.destination ? <p role="status" className="text-sm">{t('platform.mfa.sent_to', { destination: sent.destination })}</p> : null}
+          <DeliveryNotice delivery={sent?.delivery} />
+          {canEnter ? (
+            <>
+              <CodeInput label={t('platform.mfa.code')} value={code} onChange={setCode} />
+              <Button type="submit" loading={busy} disabled={code.length < 4}>{t('platform.mfa.verify')}</Button>
+            </>
+          ) : null}
+          {!demo ? (
+            <Button type="button" variant={sent ? 'ghost' : 'primary'} className="self-start" loading={busy && !sent} onClick={send}>
+              {sent ? t('platform.mfa.resend') : t('platform.mfa.send')}
+            </Button>
+          ) : null}
+          {!demo ? <p className="text-xs text-ink-muted">{t('platform.mfa.lost_device')}</p> : null}
         </form>
       </Card>
     </div>

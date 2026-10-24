@@ -32,9 +32,15 @@ test('specialist portal shows her own day without money fields', async ({ page }
   done();
 });
 
-test('platform staff must set up MFA before using the admin area', async ({ page }) => {
+test('platform staff pass a WhatsApp code before using the admin area', async ({ page }) => {
   await signIn(page, 'admin@luma.demo', '/platform');
   await page.waitForURL(/\/platform\/mfa/);
+  await page.getByRole('button', { name: 'Send code on WhatsApp' }).click();
+  // No WhatsApp provider is connected: this build shows the code on screen instead of sending it.
+  const code = (await page.locator('[role=status] p.font-mono').textContent())!.trim();
+  await page.getByLabel('Verification code').fill(code);
+  await page.getByRole('button', { name: 'Verify' }).click();
+  await page.waitForURL(/\/platform$/);
   await expect(page.getByRole('main').first()).toBeVisible();
 });
 

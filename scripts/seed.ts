@@ -76,9 +76,9 @@ async function main() {
   }
 
   // ── People ────────────────────────────────────────────────────────────────
-  const platformOwner = await demoUser('admin@luma.demo', 'مالكة منصة لوما');
+  const platformOwner = await demoUser('admin@luma.demo', 'مالكة منصة لوما', { phone: '+966500000010' });
   await withSystem('seed platform role', (trx) => trx.insertInto('platform_roles').values({ user_id: platformOwner, role: 'platform_owner' }).onConflict((oc) => oc.doNothing()).execute());
-  const policyReviewer = await demoUser('reviewer@luma.demo', 'مراجِعة السياسات');
+  const policyReviewer = await demoUser('reviewer@luma.demo', 'مراجِعة السياسات', { phone: '+966500000011' });
   await withSystem('seed platform role', (trx) => trx.insertInto('platform_roles').values({ user_id: policyReviewer, role: 'policy_reviewer' }).onConflict((oc) => oc.doNothing()).execute());
 
   const ownerId = await demoUser('owner@noura.demo', 'نورة (مالكة الصالون)');

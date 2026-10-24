@@ -21,6 +21,7 @@ import * as mfaReset from '@/app/api/v1/platform/users/[id]/mfa-reset/route';
 import * as mfaEnroll from '@/app/api/v1/platform/mfa/enroll/route';
 import * as mfaActivate from '@/app/api/v1/platform/mfa/activate/route';
 import * as mfaVerify from '@/app/api/v1/platform/mfa/verify/route';
+import * as mfaSend from '@/app/api/v1/platform/mfa/send/route';
 import * as overview from '@/app/api/v1/platform/overview/route';
 import * as integrations from '@/app/api/v1/platform/integrations/route';
 import * as audit from '@/app/api/v1/platform/audit/route';
@@ -145,21 +146,60 @@ describe('least privilege between platform roles', () => {
   });
 });
 
-describe('admin MFA (TOTP)', () => {
-  it('when MFA is required (always in production), staff without MFA can only enrol', async () => {
+describe('admin MFA (WhatsApp code; optional authenticator app)', () => {
+  it('when MFA is required (always in production), staff verify each session with a one-time code on WhatsApp', async () => {
     process.env.PLATFORM_MFA_REQUIRED = 'true';
     resetEnvCache();
     try {
-      const admin = await platformUser('platform_owner', 'Must enrol');
+      const admin = await platformUser('platform_owner', 'WhatsApp admin');
       const blocked = await admin.call(overview.GET);
       expect(blocked.status).toBe(403);
-      expect(blocked.body.error.code).toBe('mfa_enrollment_required');
-      const en = await admin.call(mfaEnroll.POST, { body: {} });
-      expect(en.status).toBe(200);
-      expect((await admin.call(mfaActivate.POST, { body: { code: totpCode(en.body.data.secret) } })).status).toBe(200);
+      expect(blocked.body.error.code).toBe('mfa_required');
+
+      // No mobile number on the account: nothing can be sent.
+      const noPhone = await admin.call(mfaSend.POST, { body: {} });
+      expect(noPhone.status).toBe(422);
+      expect(noPhone.body.error.code).toBe('mfa_no_phone');
+
+      const id = await userIdOf(admin.identifier);
+      const phone = `+9665${String(Date.now()).slice(-8)}`;
+      await db().updateTable('users').set({ phone }).where('id', '=', id).execute();
+      const sent = await admin.call(mfaSend.POST, { body: {} });
+      expect(sent.status).toBe(200);
+      expect(sent.body.data.channel).toBe('whatsapp');
+      // Tests run with on-screen codes (no WhatsApp provider is connected): the delivery says so honestly.
+      expect(sent.body.data.delivery.status).toBe('simulated');
+      expect(sent.body.data.destination).not.toContain(phone.slice(4, 9));
+      const code: string = sent.body.data.delivery.dev_code;
+
+      expect((await admin.call(mfaVerify.POST, { body: { code: code === '000000' ? '111111' : '000000' } })).body.error.code).toBe('mfa_code_invalid');
+      expect((await admin.call(mfaVerify.POST, { body: { code } })).status).toBe(200);
       expect((await admin.call(overview.GET)).status).toBe(200);
+
+      // The code is single-use: a new session needs a new message.
+      const second = await newSession(admin.identifier);
+      expect((await second.call(mfaVerify.POST, { body: { code } })).status).toBe(422);
+      const fresh = (await second.call(mfaSend.POST, { body: {} })).body.data.delivery.dev_code;
+      expect((await second.call(mfaVerify.POST, { body: { code: fresh } })).status).toBe(200);
     } finally {
       delete process.env.PLATFORM_MFA_REQUIRED;
+      resetEnvCache();
+    }
+  });
+
+  it('without a WhatsApp provider and without on-screen codes, sending fails honestly', async () => {
+    const admin = await platformUser('platform_owner', 'No provider');
+    await db().updateTable('users').set({ phone: `+9665${String(Date.now() + 1).slice(-8)}` }).where('id', '=', await userIdOf(admin.identifier)).execute();
+    process.env.PLATFORM_MFA_REQUIRED = 'true';
+    process.env.DEV_OTP_ECHO = 'false';
+    resetEnvCache();
+    try {
+      const r = await admin.call(mfaSend.POST, { body: {} });
+      expect(r.status).toBe(503);
+      expect(r.body.error.code).toBe('whatsapp_unavailable');
+    } finally {
+      delete process.env.PLATFORM_MFA_REQUIRED;
+      process.env.DEV_OTP_ECHO = 'true';
       resetEnvCache();
     }
   });

@@ -101,7 +101,7 @@ export function PlatformShell({ platform, user, gate, children }: { platform: Pl
               <UserMenu name={user.displayName} />
             </header>
             {user.isDemo ? <div className="bg-luma-700 px-4 py-1 text-center text-xs text-white">{t('demo.banner')}</div> : null}
-            {!gate && !platform.mfa.enabled ? (
+            {!gate && !platform.mfa.verified ? (
               <Alert tone="warn" className="m-3" title={t('platform.mfa_banner.title')}>
                 <Link href="/platform/security" className="underline">{t('platform.mfa_banner.action')}</Link>
               </Alert>

@@ -3,7 +3,9 @@ import { Errors } from '../../http/errors';
 import { audit, type AuditActor } from '../../infra/audit';
 import { enforce } from '../../infra/rate-limit';
 import { notifyUsers } from '../../infra/notify';
-import type { SessionUser } from '../../auth/service';
+import { consumeCode, issueCode, type SessionUser } from '../../auth/service';
+import { maskDestination } from '../../auth/crypto';
+import { env } from '../../env';
 import { decryptSecret, encryptSecret, newTotpSecret, otpauthUri, totpStep, verifyTotp } from './totp';
 
 async function loadUser(userId: string) {
@@ -45,12 +47,51 @@ export async function activateEnrollment(user: SessionUser, code: string, actor:
   return { enabled: true };
 }
 
-/** Second-factor check for the current session. */
+// ── WhatsApp one-time code (the default second factor) ─────────────────────
+/** Embedded demo database only: the second factor is this fixed code; nothing is sent. */
+export const DEMO_MFA_CODE = '2002';
+export const demoMfa = () => env().DB_DRIVER === 'pglite' && !env().isProduction;
+
+/**
+ * Sends a one-time code to the administrator's WhatsApp number. Reports exactly
+ * what happened (sent, simulated in development, or unavailable) and never
+ * claims a message left the server when no provider is connected.
+ */
+export async function sendWhatsappCode(user: SessionUser, actor: AuditActor) {
+  if (demoMfa()) return { channel: 'whatsapp' as const, demo: true };
+  const u = await loadUser(user.userId);
+  if (!u.phone) throw Errors.invalid('mfa_no_phone', 'Add a mobile number to your account to receive the code on WhatsApp');
+  const delivery = await issueCode({ userId: user.userId, purpose: 'step_up', channel: 'whatsapp', destination: u.phone, locale: user.locale });
+  if (delivery.status === 'unavailable') throw Errors.unavailable('whatsapp_unavailable', 'WhatsApp messages cannot be sent right now');
+  await withCentral((trx) => audit(trx, actor, 'platform.mfa.code_sent', { targetType: 'user', targetId: user.userId, data: { channel: 'whatsapp' } }));
+  return { channel: 'whatsapp' as const, destination: maskDestination(u.phone), delivery };
+}
+
+/**
+ * Second-factor check for the current session: the WhatsApp code (or the
+ * demo's fixed code), or a code from an authenticator app if one is set up.
+ */
 export async function verifySession(user: SessionUser, code: string, actor: AuditActor) {
   try {
-    const { step } = await checkCode(user.userId, code, 'active');
+    if (demoMfa()) {
+      if (code !== DEMO_MFA_CODE) throw Errors.invalid('mfa_code_invalid', 'The verification code is incorrect');
+    } else {
+      const u = await loadUser(user.userId);
+      let step: number | null = null;
+      if (u.mfa_totp_secret_enc && /^\d{6}$/.test(code)) {
+        await enforce(`mfa:${user.userId}`, 10, 900);
+        step = verifyTotp(decryptSecret(u.mfa_totp_secret_enc), code, { afterStep: u.mfa_last_step });
+      }
+      if (step !== null) {
+        await db().updateTable('users').set({ mfa_last_step: step }).where('id', '=', user.userId).execute();
+      } else {
+        if (!u.phone) throw Errors.invalid('mfa_code_invalid', 'The verification code is incorrect');
+        await consumeCode(u.phone, 'step_up', code).catch((e: { code?: string }) => {
+          throw e.code === 'code_invalid' ? Errors.invalid('mfa_code_invalid', 'The verification code is incorrect') : e;
+        });
+      }
+    }
     await withCentral(async (trx) => {
-      await trx.updateTable('users').set({ mfa_last_step: step }).where('id', '=', user.userId).execute();
       await trx.updateTable('sessions').set({ mfa_verified_at: new Date() }).where('id', '=', user.sessionId).execute();
       await audit(trx, actor, 'platform.mfa.verified', { targetType: 'session', targetId: user.sessionId });
     });
