@@ -96,6 +96,8 @@ export const inventoryListQuery = z.object({
   q: z.string().trim().max(100).optional(),
   kind: z.enum(['retail', 'material', 'both', 'all']).optional(),
   low: z.enum(['0', '1']).optional(),
+  /** Items holding stock that nothing has drawn from recently (see commerce/idle.ts). */
+  idle: z.enum(['0', '1']).optional(),
   include_inactive: z.enum(['0', '1']).optional(),
   sort: z.enum(['name', 'available', 'on_hand', 'updated']).optional(),
   dir: z.enum(['asc', 'desc']).optional(),
@@ -131,6 +133,27 @@ export const recipeInput = z.object({
 }).strict();
 
 export const consumeInput = z.object({ booking_item_id: z.string().uuid() }).strict();
+
+// ── Physical stock counts ────────────────────────────────────────────────────
+export const stockCountInput = z.object({
+  branch_id: z.string().uuid().optional(),
+  kind: z.enum(['retail', 'material', 'all']).default('all'),
+  note: z.string().trim().max(500).optional(),
+  /** Differences above this % of the system quantity are flagged; 0 flags any difference. */
+  tolerance_pct: z.number().min(0).max(100).default(0),
+}).strict();
+
+export const stockCountLinesInput = z.object({
+  version: z.number().int().positive(),
+  note: z.string().trim().max(500).nullable().optional(),
+  lines: z.array(z.object({
+    inventory_item_id: z.string().uuid(),
+    /** null clears a line that was entered by mistake. */
+    counted_quantity: qty3.pipe(z.number().min(0).max(10_000_000)).nullable(),
+  }).strict()).max(500),
+}).strict();
+
+export const stockCountApplyInput = z.object({ version: z.number().int().positive() }).strict();
 
 // ── Coupons ─────────────────────────────────────────────────────────────────
 export const couponInput = z.object({

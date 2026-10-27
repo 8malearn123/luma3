@@ -169,6 +169,9 @@ async function main() {
   const catalog = [{ id: cut, price: 15000, dur: 60, staff: sara, name: 'قص وتصفيف' }, { id: color, price: 45000, dur: 120, staff: sara, name: 'صبغة كاملة' }, { id: mani, price: 9000, dur: 45, staff: huda, name: 'مانيكير' }, { id: pedi, price: 11000, dur: 60, staff: huda, name: 'باديكير' }, { id: evening, price: 35000, dur: 75, staff: maha, name: 'مكياج سهرة' }];
   const tz = 'Asia/Riyadh';
   let n = 0;
+  // The first two no-shows go to customers[1]: her policy decision and incident
+  // below cite them. Assigning by formula alone left her none on some dates.
+  let noShows = 0;
   for (let daysAgo = 42; daysAgo >= 1; daysAgo--) {
     const day = DateTime.now().setZone(tz).minus({ days: daysAgo }).startOf('day');
     if (day.weekday === 5) continue; // Friday off
@@ -179,7 +182,7 @@ async function main() {
       const start = day.plus({ hours: hour }).toJSDate();
       const end = new Date(start.getTime() + c.dur * 60_000);
       const outcome = (daysAgo + k) % 11 === 0 ? 'no_show' : (daysAgo + k) % 7 === 0 ? 'cancelled' : 'completed';
-      const customer = customers[(daysAgo * 3 + k) % customers.length]!;
+      const customer = outcome === 'no_show' && noShows++ < 2 ? customers[1]! : customers[(daysAgo * 3 + k) % customers.length]!;
       await withTenant(noura.tenantId, async (trx) => {
         const number = await nextReadableNumber(trx, noura.tenantId, 'booking');
         const tax = Math.round((c.price * 1500) / 11500);
@@ -228,8 +231,8 @@ async function main() {
   }).returning('id').executeTakeFirstOrThrow()).then(async (decision) => {
     // An appeal from that customer, and an incident still under review.
     await withSystem('seed appeal', (trx) => seedAppeal(trx, { customerUserId: customerFull, decisionId: decision.id, message: 'كان لدي ظرف طارئ في أحد المواعيد، أرجو مراجعة القرار.' }));
-    const noShow = await withTenant(noura.tenantId, (trx) => trx.selectFrom('bookings').select('id').where('status', '=', 'no_show').where('tenant_customer_id', '=', customers[1]!).executeTakeFirst());
-    await withTenant(noura.tenantId, (trx) => seedIncident(trx, { tenantId: noura.tenantId, tenantCustomerId: customers[1]!, bookingId: noShow?.id ?? null, type: 'no_show', status: 'under_review', submittedBy: receptionId, reviewerId: ownerId, description: 'بيانات تجريبية: لم تحضر العميلة للموعد ولم تعتذر.' }));
+    const noShow = await withTenant(noura.tenantId, (trx) => trx.selectFrom('bookings').select('id').where('status', '=', 'no_show').where('tenant_customer_id', '=', customers[1]!).executeTakeFirstOrThrow());
+    await withTenant(noura.tenantId, (trx) => seedIncident(trx, { tenantId: noura.tenantId, tenantCustomerId: customers[1]!, bookingId: noShow.id, type: 'no_show', status: 'under_review', submittedBy: receptionId, reviewerId: ownerId, description: 'بيانات تجريبية: لم تحضر العميلة للموعد ولم تعتذر.' }));
   });
 
   // Reviews from verified completed visits (the DB trigger rejects anything else).
