@@ -52,7 +52,7 @@ describe('stock balance alerts', () => {
     const { tenantId } = shop.biz;
     const product = await createProduct(shop.owner, shop.biz.slug);
     const buyer = await customer();
-    await addToCart(buyer, shop.biz.slug, product.variants[0].id, 2);
+    await addToCart(buyer, shop.biz.slug, product.variants[0]!.id, 2);
     expect((await checkout(buyer, shop.biz.slug)).status).toBe(201); // active reservation of 2
     const dye = await shop.owner.call(items.POST, { params: shop.p, body: { name: 'صبغة', unit: 'ml', initial_quantity: 500 } });
     await shop.owner.call(itemMoves.POST, { params: { ...shop.p, id: dye.body.data.id }, body: { kind: 'adjustment', quantity: -40, reason: 'count' } });
@@ -65,6 +65,6 @@ describe('stock balance alerts', () => {
     expect(found).toMatchObject([{ item_id: dye.body.data.id, on_hand: 470, ledger_on_hand: 460 }]);
     const n = await notes(tenantId, 'inventory.balance_mismatch');
     expect(n).toHaveLength(1);
-    expect(n[0].target_path).toBe(`/app/${shop.biz.slug}/inventory?item=${dye.body.data.id}`);
+    expect(n[0]!.target_path).toBe(`/app/${shop.biz.slug}/inventory?item=${dye.body.data.id}`);
   });
 });

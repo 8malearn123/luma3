@@ -6,6 +6,7 @@ import { audit, type AuditActor } from '../../infra/audit';
 import { notifyCapability } from '../../infra/notify';
 import { featureEnabled, hasCapability, type TenantAccess } from '../../tenancy/access';
 import { moveStock, primaryBranchId, tenantSlug } from './stock';
+import { idleReasonSql } from './idle';
 import { convertUnits, milli, round3, unitsCompatible, type Unit } from '@/shared/units';
 import type { inventoryItemInput, inventoryItemPatch, inventoryListQuery, MovementInput, recipeInput } from '@/shared/schemas/commerce';
 
@@ -50,13 +51,14 @@ export async function listItems(access: TenantAccess, query: z.infer<typeof inve
     if (query.kind && query.kind !== 'all') q = q.where('ii.kind', '=', query.kind);
     if (query.include_inactive !== '1') q = q.where('ii.is_active', '=', true);
     if (query.low === '1') q = q.where('ii.low_stock_threshold', 'is not', null).where(sql<boolean>`ii.on_hand - ii.reserved <= ii.low_stock_threshold`);
+    if (query.idle === '1') q = q.where(sql<boolean>`(${idleReasonSql()}) is not null`);
     if (query.q) {
       const like = `%${query.q.replace(/[%_\\]/g, (m) => `\\${m}`)}%`;
       q = q.where((eb) => eb.or([eb('ii.name', 'ilike', like), eb('v.sku', 'ilike', like), eb('v.barcode', 'ilike', like)]));
     }
     const dir = query.dir ?? (query.sort === 'updated' ? 'desc' : 'asc');
     const order = query.sort === 'available' ? sql`ii.on_hand - ii.reserved` : query.sort === 'on_hand' ? sql`ii.on_hand` : query.sort === 'updated' ? sql`ii.updated_at` : sql`ii.name`;
-    const rows = await q.select([...itemSelect, sql<number>`count(*) over ()`.as('total')]).orderBy(order, dir).orderBy('ii.id')
+    const rows = await q.select([...itemSelect, idleReasonSql().as('idle_reason'), sql<number>`count(*) over ()`.as('total')]).orderBy(order, dir).orderBy('ii.id')
       .limit(query.limit).offset(query.offset).execute();
     const lowCount = await trx.selectFrom('inventory_items').select(sql<number>`count(*)::int`.as('n')).where('is_active', '=', true)
       .where('low_stock_threshold', 'is not', null).where(sql<boolean>`on_hand - reserved <= low_stock_threshold`).executeTakeFirstOrThrow();

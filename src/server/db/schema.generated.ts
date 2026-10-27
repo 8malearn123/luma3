@@ -1183,6 +1183,11 @@ export interface PerformanceSettings {
   weights: Generated<Json>;
 }
 
+export interface PeriodicRuns {
+  last_started_at: Timestamp;
+  name: string;
+}
+
 export interface PlanComments {
   author_id: string;
   body: string;
@@ -1790,6 +1795,37 @@ export interface StaffProfiles {
   updated_at: Generated<Timestamp>;
 }
 
+export interface StockCountLines {
+  count_id: string;
+  counted_at: Timestamp | null;
+  counted_by: string | null;
+  counted_quantity: Numeric | null;
+  created_at: Generated<Timestamp>;
+  id: Generated<string>;
+  inventory_item_id: string;
+  system_quantity: Numeric | null;
+  tenant_id: string;
+  updated_at: Generated<Timestamp>;
+  variance: Numeric | null;
+  variance_cost_minor: number | null;
+}
+
+export interface StockCounts {
+  applied_at: Timestamp | null;
+  applied_by: string | null;
+  branch_id: string;
+  created_at: Generated<Timestamp>;
+  created_by: string | null;
+  id: Generated<string>;
+  note: string | null;
+  number: string;
+  status: Generated<string>;
+  tenant_id: string;
+  tolerance_pct: Generated<Numeric>;
+  updated_at: Generated<Timestamp>;
+  version: Generated<number>;
+}
+
 export interface StockMovements {
   actor_user_id: string | null;
   created_at: Generated<Timestamp>;
@@ -1816,6 +1852,14 @@ export interface StockReservations {
   status: Generated<string>;
   tenant_id: string;
   updated_at: Generated<Timestamp>;
+}
+
+export interface StoredFiles {
+  bytes: number;
+  content: Buffer;
+  content_type: string;
+  created_at: Generated<Timestamp>;
+  key: string;
 }
 
 export interface StorePages {
@@ -2233,6 +2277,7 @@ export interface DB {
   payments: Payments;
   payouts: Payouts;
   performance_settings: PerformanceSettings;
+  periodic_runs: PeriodicRuns;
   plan_comments: PlanComments;
   plan_features: PlanFeatures;
   plan_versions: PlanVersions;
@@ -2276,9 +2321,12 @@ export interface DB {
   staff_branch_assignments: StaffBranchAssignments;
   staff_breaks: StaffBreaks;
   staff_profiles: StaffProfiles;
+  stock_count_lines: StockCountLines;
+  stock_counts: StockCounts;
   stock_movements: StockMovements;
   stock_reservations: StockReservations;
   store_pages: StorePages;
+  stored_files: StoredFiles;
   subscription_events: SubscriptionEvents;
   subscriptions: Subscriptions;
   support_access_grants: SupportAccessGrants;
