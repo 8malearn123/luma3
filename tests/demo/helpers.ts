@@ -24,7 +24,7 @@ export async function english(page: Page, baseURL: string) {
 /** One-click demo sign-in from the login page; waits for the account's landing page. */
 export async function demoSignIn(page: Page, account: (typeof ACCOUNTS)[keyof typeof ACCOUNTS]) {
   await page.goto('/auth/login');
-  await page.getByRole('button', { name: account.label, exact: true }).click();
+  await demoButton(page, account.label).click();
   await page.waitForURL(account.lands);
 }
 
@@ -46,4 +46,9 @@ export async function expectPageRenders(page: Page, path: string) {
   await expect(page.getByRole('alert').filter({ hasText: /went wrong|unexpected|not found/i }), path).toHaveCount(0);
   if (!path.startsWith('/auth/')) expect(page.url(), `${path} redirected to sign-in`).not.toMatch(/\/auth\/login/);
   done();
+}
+
+/** The switcher button whose account name is exactly `label` (the button also shows the role). */
+export function demoButton(page: Page, label: string) {
+  return page.getByRole('button').filter({ has: page.getByText(label, { exact: true }) });
 }

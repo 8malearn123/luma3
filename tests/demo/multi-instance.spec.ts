@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { ACCOUNTS, demoSignIn, english, expectPageRenders } from './helpers';
+import { ACCOUNTS, demoButton, demoSignIn, english, expectPageRenders } from './helpers';
 
 /**
  * Every request alternates between two server instances that each hold their
@@ -19,7 +19,7 @@ test('public pages render without signing in', async ({ page }) => {
 
 test('the login page lists every demo account', async ({ page }) => {
   await page.goto('/auth/login');
-  for (const a of Object.values(ACCOUNTS)) await expect(page.getByRole('button', { name: a.label, exact: true })).toBeVisible();
+  for (const a of Object.values(ACCOUNTS)) await expect(demoButton(page, a.label)).toBeVisible();
 });
 
 for (const [key, account] of Object.entries(ACCOUNTS)) {
@@ -100,5 +100,7 @@ test('the two-step page shows the fixed demo code 2002 and accepts it in one tap
   await expect(page.getByText('The verification code is incorrect.')).toBeVisible();
   await page.getByRole('button', { name: 'Use this code and continue' }).click();
   await page.waitForURL(/\/platform$/);
+  await expect(page.getByRole('main').first()).toBeVisible();
+  await page.waitForLoadState('networkidle', { timeout: 15_000 }).catch(() => {});
   for (const path of ['', '/policies']) await expectPageRenders(page, `/platform${path}`);
 });
