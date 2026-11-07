@@ -24,8 +24,15 @@ describe('Vercel + Neon zero-config defaults', () => {
     expect(appRoleUrl(owner)).toBe(e.DATABASE_URL); // deterministic across build and runtime
   });
 
-  it('never enables on-screen codes in production', () => {
-    expect(applyVercelDefaults({ VERCEL: '1', DATABASE_URL: owner, APP_ENV: 'production' }).DEV_OTP_ECHO).toBeUndefined();
+  it('never enables on-screen codes or the demo switcher in production', () => {
+    const prod = applyVercelDefaults({ VERCEL: '1', DATABASE_URL: owner, APP_ENV: 'production' });
+    expect(prod.DEV_OTP_ECHO).toBeUndefined();
+    expect(prod.DEMO_MODE).toBeUndefined();
+  });
+
+  it('turns the demo switcher on in review builds unless set explicitly', () => {
+    expect(applyVercelDefaults({ VERCEL: '1', DATABASE_URL: owner }).DEMO_MODE).toBe('true');
+    expect(applyVercelDefaults({ VERCEL: '1', DATABASE_URL: owner, DEMO_MODE: 'false' }).DEMO_MODE).toBe('false');
   });
 
   it('with no database attached, runs the embedded demo database', () => {

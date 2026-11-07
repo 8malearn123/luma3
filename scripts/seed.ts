@@ -69,17 +69,31 @@ async function sessionFor(userId: string) {
 }
 
 async function main() {
+  // ── LUMA platform staff: one demo account per platform role ──────────────
+  // Created (if missing) on every run, so a database seeded before a role was
+  // added still gets a demo account for it.
+  const platformStaff = [
+    ['admin@luma.demo', 'مالكة منصة لوما', '+966500000010', 'platform_owner'],
+    ['reviewer@luma.demo', 'مراجِعة السياسات', '+966500000011', 'policy_reviewer'],
+    ['support@luma.demo', 'مسؤولة دعم لوما', '+966500000012', 'support_admin'],
+    ['tech@luma.demo', 'مسؤولة تقنية لوما', '+966500000013', 'technical_admin'],
+  ] as const;
+  const platformIds: string[] = [];
+  for (const [email, name, phone, role] of platformStaff) {
+    const id = await demoUser(email, name, { phone });
+    await withSystem('seed platform role', (trx) => trx.insertInto('platform_roles').values({ user_id: id, role }).onConflict((oc) => oc.doNothing()).execute());
+    platformIds.push(id);
+  }
+  const platformOwner = platformIds[0]!;
+
   const already = await db().selectFrom('users').select('id').where('email', '=', 'owner@noura.demo').executeTakeFirst();
   if (already && !process.argv.includes('--again')) {
     console.log('Demo data already present (owner@noura.demo). Use `pnpm db:reset-dev` for a clean dev database, or pass --again.');
+    writeCredentials();
     return;
   }
 
   // ── People ────────────────────────────────────────────────────────────────
-  const platformOwner = await demoUser('admin@luma.demo', 'مالكة منصة لوما', { phone: '+966500000010' });
-  await withSystem('seed platform role', (trx) => trx.insertInto('platform_roles').values({ user_id: platformOwner, role: 'platform_owner' }).onConflict((oc) => oc.doNothing()).execute());
-  const policyReviewer = await demoUser('reviewer@luma.demo', 'مراجِعة السياسات', { phone: '+966500000011' });
-  await withSystem('seed platform role', (trx) => trx.insertInto('platform_roles').values({ user_id: policyReviewer, role: 'policy_reviewer' }).onConflict((oc) => oc.doNothing()).execute());
 
   const ownerId = await demoUser('owner@noura.demo', 'نورة (مالكة الصالون)');
   const managerId = await demoUser('manager@noura.demo', 'ريم (مديرة)');
@@ -285,12 +299,18 @@ async function main() {
   });
 
   void actorSystem; void customerNew; void bridal; void platformOwner;
+  writeCredentials();
+  console.log(`Seeded: ${n} historical bookings, businesses noura-salon & lamar-makeup.`);
+}
+
+/** Writes the passwords of the accounts created in this run (none are printed). */
+function writeCredentials() {
+  if (!Object.keys(credentialMap).length) return;
   const dbName = new URL(process.env.DATABASE_URL!).pathname.slice(1);
   // E2E runs read credentials from a JSON file outside the repo root text file.
   const credFile = process.env.SEED_CREDENTIALS_JSON;
   if (credFile) writeFileSync(credFile, JSON.stringify(credentialMap), { mode: 0o600 });
   else writeFileSync('.demo-credentials.txt', [`# Demo accounts for database "${dbName}" (seeded ${new Date().toISOString()}). Development only.`, ...credentials].join('\n') + '\n', { mode: 0o600 });
-  console.log(`Seeded: ${n} historical bookings, businesses noura-salon & lamar-makeup.`);
   console.log(`Demo credentials written to ${credFile ?? '.demo-credentials.txt'} (gitignored).`);
 }
 
