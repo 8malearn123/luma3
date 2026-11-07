@@ -32,8 +32,9 @@ const { createStaff } = await import('../src/server/domains/team/service');
 const { setWeeklyHours } = await import('../src/server/domains/schedule/service');
 const { saveStep, generateDraft } = await import('../src/server/domains/onboarding/service');
 const { connectSandbox } = await import('../src/server/domains/payments/service');
-const { recordExpense, createCommissionRule } = await import('../src/server/domains/finance/service');
-const { recognizeBookingRevenue, recognizeRetainedOnClose, earnCommissions } = await import('../src/server/domains/finance/postings');
+const { recordExpense } = await import('../src/server/domains/finance/service');
+const { updateCommissionPolicy } = await import('../src/server/domains/payroll/service');
+const { recognizeBookingRevenue, recognizeRetainedOnClose } = await import('../src/server/domains/finance/postings');
 const { post } = await import('../src/server/domains/finance/journal');
 const { ensureTenantCustomerForUser } = await import('../src/server/domains/customers/relationship');
 const { nextReadableNumber } = await import('../src/server/infra/counters');
@@ -132,7 +133,8 @@ async function main() {
   const evening = await svc({ name_ar: 'مكياج سهرة', name_en: 'Evening makeup', category_id: makeup, price_minor: 35000, duration_min: 75, staff: [{ staff_id: maha }, { staff_id: sara, price_override_minor: 30000 }], price_display: 'fixed', is_active: true, is_visible: true, bookable_internally_when_hidden: true, booking_mode: 'individual', requires_manual_approval: false, buffer_before_min: 0, buffer_after_min: 0 });
 
   await connectSandbox(access, actor);
-  await createCommissionRule(access, actor, { kind: 'percent', rate_bp: 1000 }); // TEST VALUE: 10% default
+  // TEST VALUES: 10% on services; product commission stays off until the business switches it on.
+  await updateCommissionPolicy(access, actor, { services: { enabled: true, rate_bp: 1000, tiers: [] } });
   await withSystem('seed settings', async (trx) => {
     await trx.updateTable('tenant_settings').set({
       deposit_mode: 'percent', deposit_percent_bp: 2000, allow_pay_on_site: true, free_cancellation_hours: 24, late_cancellation_fee_bp: 5000,
@@ -197,12 +199,11 @@ async function main() {
           actual_ended_at: outcome === 'completed' ? new Date(end.getTime() + ((daysAgo % 5) - 2) * 60_000) : null,
         }).returning('id').executeTakeFirstOrThrow();
         await trx.insertInto('booking_allocations').values({ tenant_id: noura.tenantId, booking_id: b.id, booking_item_id: item.id, staff_id: c.staff, during: `[${start.toISOString()},${end.toISOString()})`, state: outcome === 'completed' ? 'confirmed' : 'released' }).execute();
-        await trx.insertInto('booking_events').values({ tenant_id: noura.tenantId, booking_id: b.id, to_status: outcome, source: 'seed', reason: 'historical demo data' }).execute();
+        await trx.insertInto('booking_events').values({ tenant_id: noura.tenantId, booking_id: b.id, to_status: outcome, source: 'seed', reason: 'historical demo data', created_at: end }).execute();
         if (outcome === 'completed') {
           const p = await trx.insertInto('payments').values({ tenant_id: noura.tenantId, purpose: 'booking', booking_id: b.id, kind: 'on_site', method: (n % 2 ? 'cash' : 'pos_terminal'), amount_minor: c.price, currency: 'SAR', status: 'captured', provider: 'on_site', idempotency_key: `seed:${b.id}`, collected_by: receptionId, cash_reference: `SEED-${number}`, captured_at: end }).returning(['id', 'method']).executeTakeFirstOrThrow();
           await post(trx, noura.tenantId, { type: 'payment', id: p.id }, [{ account: p.method === 'cash' ? 'cash_on_hand' : 'provider_clearing', debit: c.price }, { account: 'customer_deposits', credit: c.price }], { occurredAt: end });
           await recognizeBookingRevenue(trx, noura.tenantId, b.id, null);
-          await earnCommissions(trx, noura.tenantId, b.id, null);
         } else {
           await recognizeRetainedOnClose(trx, noura.tenantId, b.id);
         }

@@ -7,11 +7,10 @@ import { useAccess } from '../shell/access-context';
 import { StepUpProvider } from '../policy/StepUp';
 import { OverviewTab } from './OverviewTab';
 import { ExpensesTab } from './ExpensesTab';
-import { CommissionsTab } from './CommissionsTab';
 import { DocumentsTab, RefundsTab } from './DocumentsTab';
 import { ExportsTab } from './ExportsTab';
 
-const TABS = ['overview', 'expenses', 'commissions', 'documents', 'refunds', 'exports'] as const;
+const TABS = ['overview', 'expenses', 'documents', 'refunds', 'exports'] as const;
 type Tab = (typeof TABS)[number];
 
 export function FinancePage({ demo }: { demo: boolean }) {
@@ -36,7 +35,6 @@ export function FinancePage({ demo }: { demo: boolean }) {
         <Tabs value={tab} onChange={setTab} items={visible.map((k) => ({ value: k, label: label(k) }))} />
         {tab === 'overview' ? <OverviewTab /> : null}
         {tab === 'expenses' ? <ExpensesTab /> : null}
-        {tab === 'commissions' ? <CommissionsTab demo={demo} /> : null}
         {tab === 'documents' ? <DocumentsTab /> : null}
         {tab === 'refunds' ? <RefundsTab /> : null}
         {tab === 'exports' ? <ExportsTab /> : null}

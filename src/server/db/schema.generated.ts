@@ -410,6 +410,17 @@ export interface CommissionEntries {
   tenant_id: string;
 }
 
+export interface CommissionPolicies {
+  category: string;
+  created_at: Generated<Timestamp>;
+  enabled: Generated<boolean>;
+  rate_bp: Generated<number>;
+  tenant_id: string;
+  tiers: Generated<Json>;
+  updated_at: Generated<Timestamp>;
+  updated_by: string | null;
+}
+
 export interface CommissionRules {
   amount_minor: number | null;
   created_at: Generated<Timestamp>;
@@ -1066,6 +1077,7 @@ export interface Orders {
   payment_terms: Generated<Json>;
   refund_status: Generated<string>;
   refunded_minor: Generated<number>;
+  sold_by_staff_id: string | null;
   status: string;
   stock_released_at: Timestamp | null;
   subtotal_minor: number;
@@ -1180,6 +1192,7 @@ export interface PayrollEntries {
   currency: Generated<string>;
   effective_on: string;
   id: Generated<string>;
+  installments: Generated<number>;
   kind: string;
   method: string | null;
   note: string | null;
@@ -1209,6 +1222,8 @@ export interface PayrollRuns {
 }
 
 export interface PayrollSettledItems {
+  amount_minor: Generated<number>;
+  part: Generated<number>;
   run_id: string;
   source_id: string;
   source_type: string;
@@ -1218,6 +1233,7 @@ export interface PayrollSettledItems {
 export interface PayrollSlipPayments {
   amount_minor: number;
   id: Generated<string>;
+  method: string;
   paid_at: Generated<Timestamp>;
   paid_by: string | null;
   reference: string | null;
@@ -1227,17 +1243,27 @@ export interface PayrollSlipPayments {
 
 export interface PayrollSlips {
   advance_minor: number;
+  base_full_minor: number;
   base_minor: number;
   bonus_minor: number;
-  commission_count: number;
   commission_minor: number;
   created_at: Generated<Timestamp>;
+  days_employed: number;
+  days_in_month: number;
   deduction_minor: number;
   id: Generated<string>;
   lines: Generated<Json>;
   net_minor: number;
   number: string;
+  product_commission_minor: number;
+  product_count: number;
+  product_rate_bp: number;
+  product_sales_minor: number;
   run_id: string;
+  service_commission_minor: number;
+  service_count: number;
+  service_rate_bp: number;
+  service_sales_minor: number;
   staff_id: string;
   staff_name: string;
   tenant_id: string;
@@ -1674,15 +1700,6 @@ export interface ServiceAddons {
   updated_at: Generated<Timestamp>;
 }
 
-export interface ServiceCommissionSettings {
-  commission_enabled: Generated<boolean>;
-  created_at: Generated<Timestamp>;
-  service_id: string;
-  tenant_id: string;
-  updated_at: Generated<Timestamp>;
-  updated_by: string | null;
-}
-
 export interface ServiceMaterialRecipes {
   approved_at: Timestamp | null;
   approved_by: string | null;
@@ -1861,6 +1878,8 @@ export interface StaffBreaks {
 export interface StaffPayProfiles {
   base_salary_minor: Generated<number>;
   created_at: Generated<Timestamp>;
+  employment_end: string | null;
+  employment_start: string | null;
   staff_id: string;
   tenant_id: string;
   updated_at: Generated<Timestamp>;
@@ -2095,7 +2114,6 @@ export interface TenantSettings {
   notify_channels: Generated<string[]>;
   powered_by_visible: Generated<boolean>;
   prices_include_tax: Generated<boolean>;
-  service_commission_enabled: Generated<boolean>;
   slot_increment_min: Generated<number>;
   social_links: Generated<Json>;
   tax_label: string | null;
@@ -2287,6 +2305,7 @@ export interface DB {
   carts: Carts;
   categories: Categories;
   commission_entries: CommissionEntries;
+  commission_policies: CommissionPolicies;
   commission_rules: CommissionRules;
   coupon_redemptions: CouponRedemptions;
   coupons: Coupons;
@@ -2372,7 +2391,6 @@ export interface DB {
   sandbox_provider_payments: SandboxProviderPayments;
   sandbox_provider_refunds: SandboxProviderRefunds;
   service_addons: ServiceAddons;
-  service_commission_settings: ServiceCommissionSettings;
   service_material_recipes: ServiceMaterialRecipes;
   service_package_items: ServicePackageItems;
   service_packages: ServicePackages;

@@ -7,7 +7,7 @@ import { useI18n } from '@/i18n/client';
 import { api } from '../api';
 import { useApiQuery, useErrorMessage } from '../hooks';
 import { Button } from '../components/button';
-import { Checkbox, Field, FormErrorSummary, Input } from '../components/form';
+import { Checkbox, Field, FormErrorSummary, Input, Select } from '../components/form';
 import { Alert, Badge, ErrorState, LoadingState } from '../components/feedback';
 import { ConfirmDialog, Dialog, Drawer } from '../components/overlay';
 import { useToast } from '../components/toast';
@@ -19,6 +19,7 @@ type Order = {
   subtotal_minor: number; discount_minor: number; tax_minor: number; total_minor: number; paid_minor: number; refunded_minor: number; currency: string;
   customer_name: string; customer_phone: string | null; customer_email: string | null; customer_note: string | null; expires_at: string | null; created_at: string;
   coupon: { code: string } | null;
+  sold_by_staff_id: string | null;
   items: Array<{ id: string; name_ar: string | null; name_en: string | null; variant_name_ar: string | null; variant_name_en: string | null; sku: string | null; unit_price_minor: number; quantity: number; line_total_minor: number; returnable: boolean; unit_cost_minor?: number | null }>;
   payments: Array<{ id: string; kind: string; method: string; amount_minor: number; status: string; created_at: string }>;
   events: Array<{ id: string; kind: string; from_status: string | null; to_status: string | null; reason: string | null; created_at: string; actor_name: string | null }>;
@@ -88,6 +89,8 @@ export function OrderDrawer({ orderId, onClose }: { orderId: string; onClose: ()
             {o.booking_number ? <p className="text-sm">{t('commerce.orders.booking', { number: o.booking_number })}</p> : null}
             {o.customer_note ? <p className="mt-1 rounded-lg bg-luma-50 p-2 text-sm"><span className="font-medium">{t('commerce.orders.note')}: </span>{o.customer_note}</p> : null}
           </section>
+
+          <SellerSection order={o} onSaved={() => q.refetch()} />
 
           <section>
             <h3 className="mb-2 text-sm font-semibold">{t('commerce.orders.lines')}</h3>
@@ -207,5 +210,40 @@ function ReturnDialog({ order, onClose, onDone }: { order: Order; onClose: () =>
         <Checkbox label={t('commerce.orders.restock')} checked={restock} onChange={setRestock} />
       </div>
     </Dialog>
+  );
+}
+
+/** Who sold the order. Product commission goes to her when the business has product commission switched on. */
+function SellerSection({ order, onSaved }: { order: Order; onSaved: () => void }) {
+  const { t } = useI18n();
+  const access = useAccess();
+  const msg = useErrorMessage();
+  const toast = useToast();
+  const canSet = access.can('orders.manage', 'payroll.manage') && !access.readOnly && order.status !== 'cancelled';
+  const staff = useApiQuery<Array<{ id: string; display_name: string }>>(['staff', access.slug, 'seller'],
+    access.can('staff.edit', 'schedule.manage', 'bookings.view_all', 'bookings.manage', 'catalog.edit') ? access.api('/staff') : null);
+  const [err, setErr] = useState<unknown>(null);
+  const [busy, setBusy] = useState(false);
+  if (!staff.data) return null;
+  const name = staff.data.find((s) => s.id === order.sold_by_staff_id)?.display_name;
+  const change = async (id: string) => {
+    setBusy(true); setErr(null);
+    try {
+      await api(access.api(`/orders/${order.id}/seller`), { method: 'PUT', body: { staff_id: id || null } });
+      toast({ tone: 'ok', text: t('payroll.seller.saved') }); onSaved();
+    } catch (e) { setErr(e); } finally { setBusy(false); }
+  };
+  return (
+    <section>
+      <h3 className="mb-1 text-sm font-semibold">{t('payroll.seller.title')}</h3>
+      {canSet ? (
+        <Select aria-label={t('payroll.seller.title')} value={order.sold_by_staff_id ?? ''} disabled={busy} onChange={(e) => change(e.target.value)}>
+          <option value="">{t('payroll.seller.none')}</option>
+          {staff.data.map((s) => <option key={s.id} value={s.id}>{s.display_name}</option>)}
+        </Select>
+      ) : <p className="text-sm">{name ?? t('payroll.seller.none')}</p>}
+      <p className="mt-1 text-xs text-ink-muted">{t('payroll.seller.hint')}</p>
+      {err ? <p className="mt-1 text-sm text-danger">{msg(err)}</p> : null}
+    </section>
   );
 }

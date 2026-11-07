@@ -1,7 +1,6 @@
 import { sql } from 'kysely';
 import type { Tx } from '../../db/client';
 import { alreadyPosted, post, splitTax } from './journal';
-import { commissionGate } from '../payroll/service';
 
 /**
  * Revenue recognition at service completion (exactly once per booking):
@@ -39,45 +38,11 @@ export async function recognizeRetainedOnClose(trx: Tx, tenantId: string, bookin
   ], { memo: `retained per booking policy ${b.number}` });
 }
 
-/**
- * Commissions earned at completion, from configurable rules with explicit
- * precedence: staff+service > staff > service > business default. The rule is
- * snapshotted on the entry; refunds create explicit reversal entries.
- *
- * Commission applies to services only (booking items); products never earn it.
- * The business decides: when service commission is switched off nothing is
- * earned, and a service switched off earns nothing whatever the other rules say.
+/*
+ * Commission is no longer earned per booking. It is computed monthly in
+ * payroll (domains/payroll/service.ts) from service and product sales, with the
+ * business's per-category rate and tiers, and posted when the month closes.
  */
-export async function earnCommissions(trx: Tx, tenantId: string, bookingId: string, actorUserId: string | null) {
-  const gate = await commissionGate(trx, tenantId);
-  if (!gate.enabled) return;
-  const b = await trx.selectFrom('bookings').select(['total_minor', 'subtotal_minor', 'tax_minor', 'discount_minor', 'starts_at']).where('id', '=', bookingId).executeTakeFirstOrThrow();
-  const items = await trx.selectFrom('booking_items').selectAll().where('booking_id', '=', bookingId).where('superseded_at', 'is', null).execute();
-  const day = b.starts_at.toISOString().slice(0, 10);
-  const rules = await trx.selectFrom('commission_rules').selectAll().where('is_active', '=', true).where('effective_from', '<=', day)
-    .where((eb) => eb.or([eb('effective_to', 'is', null), eb('effective_to', '>=', day)])).execute();
-  for (const it of items) {
-    if (gate.excluded.has(it.service_id)) continue;
-    const score = (r: (typeof rules)[number]) =>
-      (r.staff_id === it.staff_id && r.service_id === it.service_id ? 4 : 0) || (r.staff_id === it.staff_id && !r.service_id ? 3 : 0)
-      || (!r.staff_id && r.service_id === it.service_id ? 2 : 0) || (!r.staff_id && !r.service_id ? 1 : 0);
-    const rule = rules.filter((r) => score(r) > 0).sort((x, y) => score(y) - score(x))[0];
-    if (!rule) continue;
-    // Commission base: the line's share of the net (after discount, excluding tax).
-    const share = b.subtotal_minor > 0 ? it.line_total_minor / b.subtotal_minor : 0;
-    const base = Math.round((b.total_minor - b.tax_minor) * share);
-    const amount = rule.kind === 'percent' ? Math.round((base * (rule.rate_bp ?? 0)) / 10000) : (rule.amount_minor ?? 0);
-    if (amount <= 0) continue;
-    const ins = await trx.insertInto('commission_entries').values({
-      tenant_id: tenantId, staff_id: it.staff_id, booking_item_id: it.id, kind: 'earned', base_minor: base, amount_minor: amount,
-      rule_snapshot: JSON.stringify({ id: rule.id, kind: rule.kind, rate_bp: rule.rate_bp, amount_minor: rule.amount_minor, staff_id: rule.staff_id, service_id: rule.service_id }),
-      created_by: actorUserId,
-    }).onConflict((oc) => oc.column('booking_item_id').where('kind', '=', 'earned').doNothing()).returning('id').executeTakeFirst();
-    if (ins) {
-      await post(trx, tenantId, { type: 'commission', id: ins.id }, [{ account: 'commissions_expense', debit: amount }, { account: 'commissions_payable', credit: amount }], { createdBy: actorUserId });
-    }
-  }
-}
 
 export async function touchCustomerVisit(trx: Tx, bookingId: string) {
   const b = await trx.selectFrom('bookings').select(['tenant_customer_id', 'starts_at']).where('id', '=', bookingId).executeTakeFirstOrThrow();

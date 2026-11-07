@@ -5,9 +5,6 @@ import * as hold from '@/app/api/v1/s/[slug]/bookings/route';
 import * as checkout from '@/app/api/v1/s/[slug]/bookings/[id]/checkout/route';
 import * as onSite from '@/app/api/v1/t/[tenantSlug]/payments/on-site/route';
 import * as report from '@/app/api/v1/t/[tenantSlug]/finance/report/route';
-import * as rules from '@/app/api/v1/t/[tenantSlug]/finance/commission-rules/route';
-import * as commissions from '@/app/api/v1/t/[tenantSlug]/finance/commissions/route';
-import * as reverse from '@/app/api/v1/t/[tenantSlug]/finance/commissions/[id]/reverse/route';
 import * as exportsRoute from '@/app/api/v1/t/[tenantSlug]/finance/exports/route';
 import * as receipts from '@/app/api/v1/t/[tenantSlug]/finance/receipts/route';
 import * as join from '@/app/api/v1/s/[slug]/waitlist/route';
@@ -47,14 +44,9 @@ async function complete(s: Salon, id: string) {
 }
 
 describe('finance UI read models', () => {
-  it('lists commission entries with names, reversals, export history, a daily series and the configured tax', async () => {
+  it('reports a daily series, export history and the configured tax', async () => {
     const s = await makeSalon();
     const p = { tenantSlug: s.slug };
-    const rule = await s.owner.call(rules.POST, { params: p, body: { kind: 'percent', rate_bp: 1000, staff_id: s.staff.sara } });
-    expect(rule.status).toBe(201);
-    const listed = await s.owner.call(rules.GET, { params: p });
-    expect(listed.body.data[0].staff_name).toBe('Sara');
-
     const d = futureDate(2);
     const { id } = await bookOnSite(s, at(d, '10:00'));
     const pay = await s.owner.call(onSite.POST, { params: p, body: { booking_id: id, amount_minor: 10000, method: 'cash', reference: 'C-1' }, idempotencyKey: true });
@@ -62,17 +54,6 @@ describe('finance UI read models', () => {
     await complete(s, id);
     const today = futureDate(0);
     const range = { from: today, to: futureDate(3) };
-    const entries = await s.owner.call(commissions.GET, { params: p, query: range });
-    expect(entries.status).toBe(200);
-    expect(entries.body.data).toHaveLength(1);
-    const e = entries.body.data[0];
-    expect(e).toMatchObject({ kind: 'earned', staff_name: 'Sara', reversed: false, booking_id: id });
-    expect(e.amount_minor).toBeGreaterThan(0);
-    expect((await s.owner.call(reverse.POST, { params: { ...p, id: e.id }, body: { reason: 'refund correction' } })).status).toBe(200);
-    const after = await s.owner.call(commissions.GET, { params: p, query: range });
-    expect(after.body.data.map((x: any) => x.kind).sort()).toEqual(['earned', 'reversal']);
-    expect(after.body.data.find((x: any) => x.kind === 'earned').reversed).toBe(true);
-
     const r = await s.owner.call(report.GET, { params: p, query: range });
     expect(r.body.data.daily).toHaveLength(4);
     expect(r.body.data.daily.reduce((a: number, x: any) => a + x.collections_minor, 0)).toBe(r.body.data.collections.total_minor);
@@ -87,7 +68,7 @@ describe('finance UI read models', () => {
     expect(hist.body.data[0]).not.toHaveProperty('asset_id');
     // Customers never reach the finance read models.
     const c = await customer();
-    expect((await c.call(commissions.GET, { params: p, query: range })).status).toBe(404);
+    expect((await c.call(report.GET, { params: p, query: range })).status).toBe(404);
   });
 });
 

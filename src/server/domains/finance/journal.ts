@@ -25,7 +25,7 @@ import type { Tx } from '../../db/client';
  * Corrections are new offsetting groups (reverses_group_id), never edits.
  */
 export type Account =
-  | 'cash_on_hand' | 'provider_clearing' | 'customer_deposits' | 'accounts_receivable' | 'service_revenue' | 'product_revenue'
+  | 'cash_on_hand' | 'bank' | 'provider_clearing' | 'customer_deposits' | 'accounts_receivable' | 'service_revenue' | 'product_revenue'
   | 'gift_card_liability' | 'membership_liability' | 'discounts' | 'refunds' | 'provider_fees' | 'tax_payable' | 'cogs' | 'inventory'
   | 'material_costs' | 'commissions_expense' | 'commissions_payable' | 'operating_expenses' | 'owner_equity'
   | 'salaries_expense' | 'payroll_payable' | 'staff_advances' | 'tips_payable';

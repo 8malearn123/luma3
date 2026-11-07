@@ -19,7 +19,8 @@ import { KIND_TONE, MonthPicker, NEGATIVE, useMonth, useMonthLabel, type EntryKi
 
 type Entry = {
   id: string; staff_id: string; staff_name: string; kind: EntryKind; amount_minor: number; effective_on: string; note: string | null;
-  method: 'cash' | 'pos_terminal' | null; booking_number: string | null; voided_at: string | null; void_reason: string | null; settled_in: string | null;
+  method: 'cash' | 'pos_terminal' | 'bank_transfer' | null; booking_number: string | null; voided_at: string | null; void_reason: string | null; settled_in: string | null;
+  installments: number; settled_parts: number;
 };
 type Staff = { staff_id: string; display_name: string };
 const KINDS: EntryKind[] = ['bonus', 'deduction', 'advance', 'tip'];
@@ -45,6 +46,12 @@ export function EntriesTab() {
           <Badge tone={KIND_TONE[e.kind]}>{t(`payroll.kinds.${e.kind}`)}</Badge>
           {e.note ? <p className="mt-0.5 max-w-56 truncate text-xs text-ink-muted">{e.note}</p> : null}
           {e.booking_number ? <p dir="ltr" className="text-[11px] text-ink-muted">{e.booking_number}</p> : null}
+          {e.kind === 'advance' ? (
+            <p className="text-[11px] text-ink-muted">
+              {t('payroll.entries.installments_progress', { done: e.settled_parts, n: e.installments, per: money(Math.floor(e.amount_minor / e.installments)) })}
+              {e.method ? ` · ${t(`payroll.methods.${e.method}`)}` : ''}
+            </p>
+          ) : null}
         </div>
       ),
     },
@@ -59,6 +66,8 @@ export function EntriesTab() {
       key: 'status', header: t('fields.status'), cell: (e) => e.voided_at
         ? <span className="flex flex-col gap-0.5"><Badge tone="neutral">{t('finance.voided')}</Badge>{e.void_reason ? <span className="max-w-40 truncate text-[11px] text-ink-muted">{e.void_reason}</span> : null}</span>
         : e.settled_in ? <Badge tone="ok">{t('payroll.entries.settled_in', { month: monthLabel(e.settled_in) })}</Badge>
+          : e.kind === 'advance' && e.settled_parts >= e.installments ? <Badge tone="ok">{t('payroll.entries.repaid')}</Badge>
+          : e.kind === 'advance' && e.settled_parts > 0 ? <Badge tone="warn">{t('payroll.entries.repaying')}</Badge>
           : canManage ? <Button size="sm" variant="ghost" className="text-danger" onClick={() => setVoiding(e)}>{t('finance.void')}</Button>
             : <Badge tone="info">{t('payroll.entries.pending')}</Badge>,
     },
@@ -95,14 +104,20 @@ function EntryDrawer({ onClose, onSaved }: { onClose: () => void; onSaved: () =>
   const msg = useErrorMessage();
   const staff = useApiQuery<Staff[]>(['payroll-salaries', access.slug], access.api('/payroll/salaries'));
   const today = DateTime.now().setZone(access.timezone).toISODate()!;
-  const [f, setF] = useState({ staff_id: '', kind: 'bonus' as EntryKind, amount: null as number | null, date: today, note: '', method: 'cash' as 'cash' | 'pos_terminal' });
+  const [f, setF] = useState({ staff_id: '', kind: 'bonus' as EntryKind, amount: null as number | null, date: today, note: '', method: 'cash' as 'cash' | 'pos_terminal', payout: 'cash' as 'cash' | 'bank_transfer', months: '1' });
+  const { money } = useFmt();
+  const months = Number(f.months);
+  const monthsOk = Number.isInteger(months) && months >= 1 && months <= 36;
   const set = (p: Partial<typeof f>) => setF((x) => ({ ...x, ...p }));
   useUnsavedChangesWarning(f.amount != null || !!f.note);
   const save = useApiMutation(() => api(access.api('/payroll/entries'), {
-    body: { staff_id: f.staff_id, kind: f.kind, amount_minor: f.amount, effective_on: f.date, note: f.note.trim() || undefined, ...(f.kind === 'tip' ? { method: f.method } : {}) },
+    body: {
+      staff_id: f.staff_id, kind: f.kind, amount_minor: f.amount, effective_on: f.date, note: f.note.trim() || undefined,
+      ...(f.kind === 'tip' ? { method: f.method } : {}), ...(f.kind === 'advance' ? { method: f.payout, installments: months } : {}),
+    },
   }), { onSuccess: () => onSaved() });
   const issues = save.error instanceof ApiError && save.error.code === 'validation_failed' ? (save.error.details?.issues as Array<{ path: string; message: string }>) : undefined;
-  const ok = !!f.staff_id && (f.amount ?? 0) > 0 && /^\d{4}-\d{2}-\d{2}$/.test(f.date);
+  const ok = !!f.staff_id && (f.amount ?? 0) > 0 && /^\d{4}-\d{2}-\d{2}$/.test(f.date) && (f.kind !== 'advance' || monthsOk);
   return (
     <Drawer open onClose={onClose} title={t('payroll.entries.add')} footer={<>
       <Button variant="ghost" onClick={onClose}>{t('actions.cancel')}</Button>
@@ -129,6 +144,20 @@ function EntryDrawer({ onClose, onSaved }: { onClose: () => void; onSaved: () =>
               <option value="pos_terminal">{t('booking.dashboard.pos')}</option>
             </Select>
           )}</Field>
+        ) : null}
+        {f.kind === 'advance' ? (
+          <>
+            <Field label={t('payroll.entries.months')} required hint={monthsOk && f.amount ? t('payroll.entries.months_hint', { n: months, per: money(Math.floor(f.amount / months)) }) : t('payroll.entries.months_range')}
+              error={monthsOk ? null : t('payroll.entries.months_range')}>{(p) => (
+              <Input {...p} type="number" min={1} max={36} dir="ltr" value={f.months} onChange={(e) => set({ months: e.target.value })} />
+            )}</Field>
+            <Field label={t('payroll.entries.payout')} required>{(p) => (
+              <Select {...p} value={f.payout} onChange={(e) => set({ payout: e.target.value as 'cash' | 'bank_transfer' })}>
+                <option value="cash">{t('payroll.methods.cash')}</option>
+                <option value="bank_transfer">{t('payroll.methods.bank_transfer')}</option>
+              </Select>
+            )}</Field>
+          </>
         ) : null}
         <Field label={t('fields.date')} required hint={t('payroll.entries.date_hint')}>{(p) => <Input {...p} type="date" value={f.date} onChange={(e) => set({ date: e.target.value })} />}</Field>
         <Field label={t('fields.notes')} hint={t('fields.optional')}>{(p) => <Input {...p} maxLength={500} value={f.note} onChange={(e) => set({ note: e.target.value })} />}</Field>

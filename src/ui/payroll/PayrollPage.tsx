@@ -7,14 +7,14 @@ import { useI18n } from '@/i18n/client';
 import { api } from '../api';
 import { useApiMutation, useApiQuery, useErrorMessage } from '../hooks';
 import { Button } from '../components/button';
-import { Field, FormErrorSummary, Input } from '../components/form';
+import { Field, FormErrorSummary, Input, Select } from '../components/form';
 import { Alert, Badge, EmptyState, ErrorState, LoadingState } from '../components/feedback';
 import { Card, DataTable, PageHeader, Stat, Tabs, type Column } from '../components/layout';
 import { ConfirmDialog, Dialog } from '../components/overlay';
 import { useToast } from '../components/toast';
 import { useAccess } from '../shell/access-context';
 import { useFmt } from '../commerce/common';
-import { MonthPicker, useMonth, useMonthLabel, type Sheet, type SheetRow } from './common';
+import { MonthPicker, percent, useMonth, useMonthLabel, type Sheet, type SheetRow } from './common';
 import { EntriesTab } from './EntriesTab';
 import { SalariesTab } from './SalariesTab';
 import { CommissionTab } from './CommissionTab';
@@ -63,12 +63,29 @@ function SheetTab() {
   });
   const s = q.data;
   const closed = s?.status === 'closed';
+  const showProducts = !!s && s.rows.some((r) => r.product_sales_minor > 0 || r.product_commission_minor > 0);
   const minus = (v: number) => (v ? <span dir="ltr" className="text-danger">{money(-v)}</span> : <span dir="ltr" className="text-ink-muted">{money(0)}</span>);
 
   const columns: Column<SheetRow>[] = [
     { key: 'staff', header: t('payroll.fields.staff'), cell: (r) => <div><p className="font-medium">{r.staff_name}</p>{r.number ? <p dir="ltr" className="text-xs text-ink-muted">{r.number}</p> : null}</div> },
-    { key: 'base', header: t('payroll.fields.base'), className: 'hidden md:table-cell', cell: (r) => <span dir="ltr">{money(r.base_minor)}</span> },
-    { key: 'commission', header: t('payroll.fields.commission'), cell: (r) => <div><span dir="ltr">{money(r.commission_minor)}</span><p className="text-[11px] text-ink-muted">{t('payroll.sheet.n_services', { n: r.commission_count })}</p></div> },
+    {
+      key: 'base', header: t('payroll.fields.base'), className: 'hidden md:table-cell', cell: (r) => (
+        <div><span dir="ltr">{money(r.base_minor)}</span>
+          {r.days_employed && r.days_employed < r.days_in_month ? <p className="text-[11px] text-ink-muted">{t('payroll.sheet.prorated', { d: r.days_employed, n: r.days_in_month })}</p> : null}</div>
+      ),
+    },
+    {
+      key: 'services', header: t('payroll.fields.service_commission'), cell: (r) => (
+        <div><span dir="ltr">{money(r.service_commission_minor)}</span>
+          <p className="text-[11px] text-ink-muted">{t('payroll.sheet.sales_at', { sales: money(r.service_sales_minor), pct: percent(r.service_rate_bp) })}</p></div>
+      ),
+    },
+    ...(showProducts ? [{
+      key: 'products', header: t('payroll.fields.product_commission'), className: 'hidden md:table-cell', cell: (r: SheetRow) => (
+        <div><span dir="ltr">{money(r.product_commission_minor)}</span>
+          <p className="text-[11px] text-ink-muted">{t('payroll.sheet.sales_at', { sales: money(r.product_sales_minor), pct: percent(r.product_rate_bp) })}</p></div>
+      ),
+    }] : []),
     { key: 'tips', header: t('payroll.fields.tips'), className: 'hidden md:table-cell', cell: (r) => <span dir="ltr">{money(r.tips_minor)}</span> },
     { key: 'bonus', header: t('payroll.fields.bonus'), className: 'hidden lg:table-cell', cell: (r) => <span dir="ltr">{money(r.bonus_minor)}</span> },
     { key: 'deduction', header: t('payroll.fields.deduction'), className: 'hidden lg:table-cell', cell: (r) => minus(r.deduction_minor) },
@@ -77,7 +94,7 @@ function SheetTab() {
     ...(closed ? [{
       key: 'paid', header: t('fields.status'), cell: (r: SheetRow) => (
         <span className="flex flex-wrap items-center gap-2">
-          {r.paid_at ? <Badge tone="ok">{t('payroll.sheet.paid')}</Badge> : r.net_minor > 0 && canManage
+          {r.paid_at ? <Badge tone="ok">{t('payroll.sheet.paid')}{r.paid_method ? ` · ${t(`payroll.methods.${r.paid_method}`)}` : ''}</Badge> : r.net_minor > 0 && canManage
             ? <Button size="sm" onClick={() => setPaying(r)}>{t('payroll.sheet.pay')}</Button>
             : <Badge tone="neutral">{r.net_minor > 0 ? t('payroll.sheet.unpaid') : t('payroll.sheet.nothing_due')}</Badge>}
           {r.id ? <a href={access.api(`/payroll/slips/${r.id}`)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-luma-700 hover:underline"><FileText className="size-3.5" aria-hidden />{t('payroll.sheet.slip')}</a> : null}
@@ -138,7 +155,8 @@ function PayDialog({ row, onClose, onDone }: { row: SheetRow; onClose: () => voi
   const msg = useErrorMessage();
   const { money } = useFmt();
   const [reference, setReference] = useState('');
-  const m = useApiMutation(() => api(access.api(`/payroll/slips/${row.id}/pay`), { body: { reference: reference.trim() || undefined } }), { onSuccess: () => onDone() });
+  const [method, setMethod] = useState<'bank_transfer' | 'cash'>('bank_transfer');
+  const m = useApiMutation(() => api(access.api(`/payroll/slips/${row.id}/pay`), { body: { method, reference: reference.trim() || undefined } }), { onSuccess: () => onDone() });
   return (
     <Dialog open onClose={onClose} title={t('payroll.sheet.pay_title', { name: row.staff_name })} footer={<>
       <Button variant="ghost" onClick={onClose}>{t('actions.cancel')}</Button>
@@ -147,6 +165,12 @@ function PayDialog({ row, onClose, onDone }: { row: SheetRow; onClose: () => voi
       <div className="flex flex-col gap-3">
         <FormErrorSummary message={m.error ? msg(m.error) : null} />
         <p>{t('payroll.sheet.pay_body', { amount: money(row.net_minor) })}</p>
+        <Field label={t('payroll.entries.payout')} required>{(p) => (
+          <Select {...p} value={method} onChange={(e) => setMethod(e.target.value as 'bank_transfer' | 'cash')}>
+            <option value="bank_transfer">{t('payroll.methods.bank_transfer')}</option>
+            <option value="cash">{t('payroll.methods.cash')}</option>
+          </Select>
+        )}</Field>
         <Field label={t('payroll.fields.reference')} hint={t('fields.optional')}>{(p) => <Input {...p} dir="ltr" maxLength={80} value={reference} onChange={(e) => setReference(e.target.value)} />}</Field>
       </div>
     </Dialog>

@@ -3,7 +3,7 @@
  * route wrapper and the worker so every entry point has the same behaviour.
  */
 import { registerBookingHook } from './domains/booking/hooks';
-import { earnCommissions, recognizeBookingRevenue, recognizeRetainedOnClose, touchCustomerVisit } from './domains/finance/postings';
+import { recognizeBookingRevenue, recognizeRetainedOnClose, touchCustomerVisit } from './domains/finance/postings';
 import { onRefundSucceeded, refundBookingDue } from './domains/payments/service';
 import { earnForBooking, reverseForRefund } from './domains/loyalty/service';
 import { restoreOnRefund } from './domains/giftcards/service';
@@ -19,7 +19,6 @@ if (!g.__lumaBooted) {
   g.__lumaBooted = true;
   registerBookingHook.completed(async (trx, tenantId, bookingId, actor) => {
     await recognizeBookingRevenue(trx, tenantId, bookingId, actor);
-    await earnCommissions(trx, tenantId, bookingId, actor);
     await touchCustomerVisit(trx, bookingId);
     await consumeForBooking(trx, tenantId, bookingId);
     await earnForBooking(trx, tenantId, bookingId);

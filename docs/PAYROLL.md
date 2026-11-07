@@ -1,53 +1,57 @@
 # Payroll
 
-Source: `src/server/domains/payroll/service.ts`, `documents.ts`, migration `db/migrations/0600_payroll.sql`, UI in `src/ui/payroll/*`.
+Source: `src/server/domains/payroll/service.ts`, `documents.ts`, migration `db/migrations/0600_payroll.sql`, UI in `src/ui/payroll/*` (plus the seller field in `src/ui/commerce/OrderDrawer.tsx` and the tip button in `src/ui/bookings/BookingDrawer.tsx`).
 
 ## Formula
 
 ```
-net pay = base salary + service commission + tips + bonuses − deductions − advances
+net pay = base salary (pro-rated) + service commission + product commission
+        + tips + bonuses − deductions − advance instalments
 ```
 
-| Part | Where it comes from |
+| Part | Rule |
 |---|---|
-| Base salary | `staff_pay_profiles.base_salary_minor`, monthly; 0 = commission and tips only. Only active, non-archived staff get it. |
-| Service commission | `commission_entries` (earned minus reversals) from completed bookings. **Services only; products never earn commission.** |
-| Tips | `payroll_entries` of kind `tip`, recorded from a booking (staff who served it) or from the entries tab. 100% to the staff member. |
+| Base salary | `staff_pay_profiles.base_salary_minor` × days employed in the month ÷ days in the month. Days employed come from `employment_start` / `employment_end` (both optional, inclusive). |
+| Service commission | Monthly service sales of the staff member × the services rate (see tiers). Sales = each completed booking item's share of the booking's total minus tax, after refunds. A booking counts in the month it was completed. |
+| Product commission | Monthly product sales × the products rate. Sales are lines of paid orders whose **seller** (`orders.sold_by_staff_id`) is the staff member; an order counts in the month it was paid. Orders without a seller earn nobody commission. |
+| Tips | `payroll_entries` of kind `tip`, from a booking (only staff who served it) or the entries tab; 100% to the staff member. |
 | Bonuses / deductions | `payroll_entries` of kind `bonus` / `deduction`. |
-| Advances | `payroll_entries` of kind `advance`: paid out when recorded and recovered in full from the payroll of the month they are dated in. |
+| Advances | `payroll_entries` of kind `advance` with `installments` (1–36). Paid out when recorded (cash or bank), then recovered one instalment per month starting in the month of the advance's date. Instalments are `floor(amount / n)`; the last takes the remainder. |
 
-## Service commission is the business's decision
+## Commission is decided by the business, per category
 
-- **Business switch** `tenant_settings.service_commission_enabled`: when off, no booking earns commission.
-- **Default rate**: a business-wide percentage rule (`commission_rules` with no staff and no service).
-- **Per service**: a switch (`service_commission_settings.commission_enabled`) and a percentage (a service-level `commission_rules` row). A service switched off earns no commission for anybody, whatever other rules say.
-- Staff-specific exceptions remain available in Finance → Commissions (precedence staff+service > staff > service > default).
-- Changing a rate deactivates the old rule and creates a new one, so each commission entry keeps the rule it was earned under.
-- **Tips switch** `tenant_settings.tips_enabled`.
+`commission_policies` has one row per category, `services` and `products`, each with:
+
+- `enabled` — both start **off**; product sales earn nothing until the business switches product commission on;
+- `rate_bp` — the base rate;
+- `tiers` — optional, up to 10, thresholds strictly increasing: `[{threshold_minor, rate_bp}]`. The highest tier whose threshold the staff member's **monthly** sales in that category reached sets the rate for **all** her sales of that category that month.
+
+There are no per-service rates and no per-staff overrides. The earlier per-booking rule engine (`commission_rules`, `commission_entries`) is retired; its rows stay as history and earlier postings remain in the journal.
+
+Tips can be switched off with `tenant_settings.tips_enabled`.
 
 ## Month close
 
-- A month is a live draft until closed. Closing (`POST /payroll/close`) needs `payroll.manage`, happens once per month, and months close in order (the first close can be any month that has started).
-- Closing freezes one `payroll_slips` row per staff member (`PAY-000001`…), records every settled commission entry and payroll entry in `payroll_settled_items` (primary key = can never be paid twice), and posts the journal.
-- Anything recorded after the close (late completion, a reversal, a tip on the last day) is unsettled and carries into the next month automatically.
-- Entries cannot be dated before the start of the latest closed month, and an entry settled in a closed month cannot be voided (application check plus a database trigger). Payslips, runs, payments and settled items are append-only.
-- A payslip is paid once (`POST /payroll/slips/{id}/pay`).
+- A month is a live draft until closed. `POST /payroll/close` (needs `payroll.manage`) closes it once; months close in order; a month that has not started cannot be closed.
+- Closing freezes one `payroll_slips` row per staff member (`PAY-000001`…) with the amounts **and** the rates and day counts used, records every settled booking item, order item, entry and advance instalment in `payroll_settled_items` (primary key = nothing is paid twice), and posts the journal.
+- Anything recorded after a close carries into the next month automatically. Entries cannot be dated before the start of the latest closed month. A settled entry (even one instalment of an advance) cannot be voided, and the seller of an order already settled cannot change. Runs, payslips, payments and settled items are append-only.
+- A payslip is paid once, from cash or by bank transfer.
 
 ## Journal
 
 | Event | Entry |
 |---|---|
-| Tip recorded | Dr cash_on_hand (cash) or provider_clearing (POS) · Cr tips_payable |
-| Advance paid | Dr staff_advances · Cr cash_on_hand |
-| Month closed | Dr salaries_expense (base + bonus − deduction) · Dr commissions_payable · Dr tips_payable · Cr staff_advances · Cr payroll_payable (net) |
-| Payslip paid | Dr payroll_payable · Cr cash_on_hand |
+| Tip recorded | Dr `cash_on_hand` (cash) or `provider_clearing` (card terminal) · Cr `tips_payable` |
+| Advance paid out | Dr `staff_advances` · Cr `cash_on_hand` or `bank` |
+| Month closed | Dr `salaries_expense` (base + bonus − deduction) · Dr `commissions_expense` · Dr `tips_payable` · Cr `staff_advances` (instalments) · Cr `payroll_payable` (net) |
+| Payslip paid | Dr `payroll_payable` · Cr `cash_on_hand` or `bank` |
 
-The finance report shows **salaries** (from closed months) and subtracts them from profit. Do not also record salaries as an expense of category "salaries" for months closed in payroll.
+The finance report takes **commissions** and **salaries** from the journal and subtracts both from profit. Do not also record salaries as an expense of category "salaries" for months closed in payroll.
 
 ## Permissions
 
-`payroll.view` and `payroll.manage`: owner and finance by default, delegable to managers. `payroll.view_own` (self-scoped): every role; staff see only their own draft and payslips (`GET /me/earnings`, `GET /payroll/slips/{id}`). Recording a tip needs `payments.collect` or `payroll.manage`. LUMA support grants do not include payroll.
+`payroll.view` and `payroll.manage`: owner and finance by default, delegable to managers. `payroll.view_own` (self-scoped): every role; staff see only their own draft and payslips (`GET /me/earnings`, `GET /payroll/slips/{id}`). Recording a tip needs `payments.collect` or `payroll.manage`; setting an order's seller needs `orders.manage` or `payroll.manage`. LUMA support grants do not include payroll.
 
-## Not covered yet
+## Not covered
 
-No pro-rating for partial months, no advance instalments, no tiered commission, payouts from cash only.
+A refund made after a month is closed does not reduce commission already paid (record a deduction).

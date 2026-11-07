@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { CalendarClock, KeyRound, Percent, Power, UserPlus } from 'lucide-react';
+import { CalendarClock, KeyRound, Power, UserPlus } from 'lucide-react';
 import { useI18n } from '@/i18n/client';
 import { api } from '../api';
 import { useApiQuery, useUnsavedChangesWarning } from '../hooks';
@@ -13,12 +13,10 @@ import { ConfirmDialog, Drawer } from '../components/overlay';
 import { useToast } from '../components/toast';
 import { useAccess } from '../shell/access-context';
 import { ImageUpload } from '../workspace/ImageUpload';
-import { useFmt } from '../commerce/common';
 import { ApiErrorBox } from '../catalog/common';
 import type { StaffRow } from './TeamPage';
 
 type L = { ar?: string; en?: string };
-type Rule = { id: string; staff_id: string | null; service_id: string | null; kind: 'percent' | 'fixed'; rate_bp: number | null; amount_minor: number | null; effective_from: string; effective_to: string | null; is_active: boolean };
 type Member = { id: string; role: string; status: string; staff_profile_id: string | null; user: { display_name: string | null; email: string | null; phone: string | null } | null };
 
 export function StaffDrawer({ staffId, row, loading, onClose, onOpenSchedule, onInvite }: {
@@ -41,12 +39,10 @@ function StaffForm({ row, onClose, onOpenSchedule, onInvite }: { row: StaffRow |
   const access = useAccess();
   const qc = useQueryClient();
   const toast = useToast();
-  const { money } = useFmt();
   const isNew = !row;
   const canEdit = access.can('staff.edit') && !access.readOnly;
   const services = useApiQuery<Array<{ id: string; name_ar: string | null; name_en: string | null; archived_at: string | null }>>(['services', access.slug, ''], access.can('catalog.edit', 'bookings.view_all', 'bookings.manage') ? access.api('/services') : null);
   const branches = useApiQuery<{ items: Array<{ id: string; name: string; status: string }> }>(['branches', access.slug], access.can('business.manage', 'schedule.manage', 'bookings.view_all', 'bookings.manage') ? access.api('/branches') : null);
-  const rules = useApiQuery<Rule[]>(['commission-rules', access.slug], !isNew && access.can('finance.view', 'staff.edit') ? access.api('/finance/commission-rules') : null);
   const members = useApiQuery<{ members: Member[] }>(['members', access.slug], !isNew && access.can('team.manage') ? access.api('/members') : null);
 
   const [name, setName] = useState<L>({ ar: row?.display_name ?? '', en: row?.display_name_en ?? '' });
@@ -66,9 +62,7 @@ function StaffForm({ row, onClose, onOpenSchedule, onInvite }: { row: StaffRow |
   const toggle = (list: string[], id: string, on: boolean) => (on ? [...new Set([...list, id])] : list.filter((x) => x !== id));
   const readOnly = !canEdit;
   const activeBranches = (branches.data?.items ?? []).filter((b) => b.status !== 'archived');
-  const myRules = (rules.data ?? []).filter((r) => r.is_active && (r.staff_id === row?.id || r.staff_id === null));
   const member = (members.data?.members ?? []).find((m) => m.staff_profile_id === row?.id && m.status !== 'removed');
-  const svcName = (id: string | null) => { if (!id) return t('catalog_team.team.all_services'); const s = services.data?.find((x) => x.id === id); return s ? pick(s.name_ar, s.name_en) : '—'; };
 
   async function save() {
     setBusy(true); setErr(null);
@@ -152,25 +146,6 @@ function StaffForm({ row, onClose, onOpenSchedule, onInvite }: { row: StaffRow |
             </div>
           )}
         </fieldset>
-
-        {!isNew && rules.data ? (
-          <section className="flex flex-col gap-2">
-            <h3 className="inline-flex items-center gap-2 font-semibold"><Percent className="size-4 text-luma-500" aria-hidden />{t('catalog_team.team.commission')}</h3>
-            {myRules.length ? (
-              <ul className="flex flex-col gap-1 text-sm">
-                {myRules.map((r) => (
-                  <li key={r.id} className="flex flex-wrap items-center gap-2 rounded-lg border border-line px-3 py-2">
-                    <span className="font-medium" dir="ltr">{r.kind === 'percent' ? `${(r.rate_bp ?? 0) / 100}%` : money(r.amount_minor)}</span>
-                    <span className="text-ink-muted">{svcName(r.service_id)}</span>
-                    {r.staff_id === null ? <Badge>{t('catalog_team.team.rule_everyone')}</Badge> : null}
-                    <span className="text-xs text-ink-muted" dir="ltr">{r.effective_from}{r.effective_to ? ` → ${r.effective_to}` : ''}</span>
-                  </li>
-                ))}
-              </ul>
-            ) : <p className="text-sm text-ink-muted">{t('catalog_team.team.no_commission')}</p>}
-            <p className="text-xs text-ink-muted">{t('catalog_team.team.commission_note')}</p>
-          </section>
-        ) : null}
 
         {!isNew ? (
           <section className="flex flex-col gap-2">

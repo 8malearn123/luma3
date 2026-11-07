@@ -8,9 +8,8 @@ import { Badge, ErrorState, LoadingState } from '../components/feedback';
 import { Card } from '../components/layout';
 import { useAccess } from '../shell/access-context';
 import { useFmt } from '../commerce/common';
-import { useMonthLabel } from './common';
+import { percent, useMonthLabel, type Amounts } from './common';
 
-type Amounts = { base_minor: number; commission_minor: number; commission_count: number; tips_minor: number; bonus_minor: number; deduction_minor: number; advance_minor: number; net_minor: number };
 type Earnings = {
   month: string; status: 'open' | 'closed'; currency: string;
   current: (Amounts & { id?: string; paid_at?: string | null }) | null;
@@ -41,8 +40,9 @@ export function EarningsCard() {
             <>
               <p className="text-2xl font-semibold" dir="ltr">{money(c.net_minor)}</p>
               <dl className="flex flex-col">
-                {line(t('payroll.fields.base'), c.base_minor)}
-                {line(`${t('payroll.fields.commission')} (${t('payroll.sheet.n_services', { n: c.commission_count })})`, c.commission_minor)}
+                {line(c.days_employed && c.days_employed < c.days_in_month ? `${t('payroll.fields.base')} (${t('payroll.sheet.prorated', { d: c.days_employed, n: c.days_in_month })})` : t('payroll.fields.base'), c.base_minor)}
+                {line(`${t('payroll.fields.service_commission')} (${percent(c.service_rate_bp)}%)`, c.service_commission_minor)}
+                {c.product_sales_minor || c.product_commission_minor ? line(`${t('payroll.fields.product_commission')} (${percent(c.product_rate_bp)}%)`, c.product_commission_minor) : null}
                 {line(t('payroll.fields.tips'), c.tips_minor)}
                 {line(t('payroll.fields.bonus'), c.bonus_minor)}
                 {line(t('payroll.fields.deduction'), c.deduction_minor, true)}

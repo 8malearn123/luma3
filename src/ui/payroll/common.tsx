@@ -9,17 +9,23 @@ import { Input } from '../components/form';
 import { useAccess } from '../shell/access-context';
 
 export type EntryKind = 'bonus' | 'deduction' | 'advance' | 'tip';
-export type SheetRow = {
-  id?: string; number?: string; staff_id: string; staff_name: string;
-  base_minor: number; commission_minor: number; commission_count: number; tips_minor: number; bonus_minor: number; deduction_minor: number; advance_minor: number; net_minor: number;
-  entries: Array<{ id?: string; kind: EntryKind; amount_minor: number; effective_on: string; note: string | null }>;
-  paid_at?: string | null; paid_reference?: string | null;
+export type Amounts = {
+  base_full_minor: number; days_employed: number; days_in_month: number; base_minor: number;
+  service_sales_minor: number; service_count: number; service_rate_bp: number; service_commission_minor: number;
+  product_sales_minor: number; product_count: number; product_rate_bp: number; product_commission_minor: number;
+  commission_minor: number; tips_minor: number; bonus_minor: number; deduction_minor: number; advance_minor: number; net_minor: number;
+};
+export type EntryLine = { id?: string; kind: EntryKind; amount_minor: number; effective_on: string; note: string | null; installment?: { index: number; of: number } };
+export type SheetRow = Amounts & {
+  id?: string; number?: string; staff_id: string; staff_name: string; entries: EntryLine[];
+  paid_at?: string | null; paid_method?: 'cash' | 'bank_transfer' | null; paid_reference?: string | null;
 };
 export type Sheet = {
   month: string; status: 'open' | 'closed'; timezone: string; currency: string;
   run: { id: string; closed_at: string; staff_count: number } | null;
   rows: SheetRow[];
-  totals: { base_minor: number; commission_minor: number; tips_minor: number; bonus_minor: number; deduction_minor: number; advance_minor: number; net_minor: number; paid_minor: number };
+  totals: { base_minor: number; service_commission_minor: number; product_commission_minor: number; commission_minor: number; tips_minor: number;
+    bonus_minor: number; deduction_minor: number; advance_minor: number; net_minor: number; paid_minor: number };
   carried_from?: string | null;
   close: { allowed: boolean; blocker: string | null; expected_month: string | null };
   latest_closed_month: string | null;

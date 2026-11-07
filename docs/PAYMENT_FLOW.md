@@ -194,13 +194,14 @@ A failed payment does not cancel the order; the customer may retry until the ord
 | Order payment | cash/clearing | `product_revenue` (net) + `tax_payable` | `applyCaptured` |
 | Gift card sold / complimentary / void / expired | see section 8 | | `giftcards/service.ts` |
 | Membership sold / session delivered | cash/clearing → `membership_liability`; `membership_liability` → `service_revenue` | | `memberships/service.ts` |
-| Commission earned | `commissions_expense` | `commissions_payable` | `earnCommissions` |
+| Payroll month closed (commission, salaries, tips, advance instalments) | `commissions_expense`, `salaries_expense`, `tips_payable` | `staff_advances`, `payroll_payable` | `payroll/service.ts` `closeMonth` |
+| Payslip paid / advance paid out | `payroll_payable` / `staff_advances` | `cash_on_hand` or `bank` | `payroll/service.ts` |
 | Expense recorded / voided | `operating_expenses` / offset | cash | `finance/service.ts` |
 
 - **Deposits are a liability**: a collected deposit is not service revenue until the service is completed. The finance report shows `deposits_outstanding` with that explanation.
 - **Revenue recognition at completion** happens exactly once per booking (`alreadyPosted('booking_completion')`).
 - **Retained fees**: whatever is paid minus refunded minus pending refunds when a booking is cancelled or marked no-show. Because the refund hook runs first, this equals the policy fee.
-- **Commission precedence**: staff+service (4) > staff only (3) > service only (2) > business default (1). Only active rules effective on the booking date count. The base is the item's share of `total − tax` (after discount, excluding tax). Percent rules use `rate_bp`; fixed rules use `amount_minor`. One `earned` entry per booking item (partial unique index); the rule is snapshotted on the entry. Reversals are explicit `reversal` entries created by staff (`POST finance/commissions/{id}/reverse`, `finance.manage`). They are **not** created automatically when a refund succeeds, although the comment in `postings.ts` says "refunds create explicit reversal entries".
+- **Commission** is computed monthly in payroll from service and product sales, with the business's per-category rate and tiers, and posted when the month closes (see [PAYROLL.md](PAYROLL.md)). The per-booking rule engine (`commission_rules`, `commission_entries`) is retired; its rows stay as history.
 - **Tax split**: `splitTax(gross, tax, total)` = `tax = round(gross × tax / total)`, `net = gross − tax`, using the booking or order totals computed with the snapshot rule.
 - **Not implemented**: the journal comment lists a COGS posting (Dr `cogs`, Cr `inventory`), but no code posts to `cogs`, `inventory` or `material_costs`. Material consumption moves stock only, and the finance report computes consumption cost from stock movements. `provider_fees` and `owner_equity` are also never posted. The `payouts` table is unused.
 

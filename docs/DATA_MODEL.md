@@ -164,7 +164,8 @@ It also has CHECK exactly one of `staff_id` / `resource_id`, CHECK `state <> 'he
 | `payouts` | Provider payouts | **defined but not used by application code** |
 | `financial_entries` | Double-entry journal | **append-only**; CHECK each line is debit xor credit; account CHECK (19 accounts); **deferred constraint trigger `financial_entries_balanced`**: at commit, every `entry_group_id` must sum debit − credit = 0 |
 | `expenses` | Expenses | CHECK voided expenses need a `void_reason` |
-| `commission_rules`, `commission_entries` | Commissions | partial unique **one `earned` entry per booking item**; entries **append-only** (reversals are new rows) |
+| `commission_rules`, `commission_entries` | Retired per-booking commission engine (history only; see 0600) | entries **append-only** |
+| `commission_policies`, `staff_pay_profiles`, `payroll_entries`, `payroll_runs`, `payroll_slips`, `payroll_slip_payments`, `payroll_settled_items` | Payroll (0600, [PAYROLL.md](PAYROLL.md)) | one run per month; runs, slips, payments and settled items **append-only**; settled-item primary key = nothing is paid twice |
 | `invoices`, `invoice_items` | Receipts, invoices, credit notes | **append-only**; `unique (tenant_id, number)`; partial uniques: one receipt per payment, one invoice per booking, one invoice per order |
 | `finance_exports` | CSV export jobs | status CHECK |
 
