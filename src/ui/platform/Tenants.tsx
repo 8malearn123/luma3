@@ -17,6 +17,7 @@ import { PLAN_FEATURES } from '@/shared/plans';
 import { KV, PageNav, SearchBox, SubStatus, TenantStatus, Toolbar, When, qs } from './common';
 import { usePlatform } from './PlatformShell';
 import { useStepUp } from './stepup';
+import { TenantMarketplaceCard } from './TenantMarketplace';
 
 type Row = { id: string; slug: string; name: string; status: string; business_type: string; city: string | null; created_at: string; is_demo: boolean; sub_status: string | null; trial_ends_at: string | null; plan_code: string | null; plan_name_ar: string | null; plan_name_en: string | null; owner_name: string | null; owner_email: string | null; overage_state: unknown };
 type List = { items: Row[]; total: number; page: number; limit: number };
@@ -145,6 +146,7 @@ function TenantDrawer({ id, onClose, canManage, canSupport }: { id: string; onCl
               <li className="rounded-lg border border-line p-2"><p className="text-xs text-ink-muted">{t('platform.tenants.customers')}</p><p className="font-semibold">{d.data!.counts.customers}</p></li>
             </ul>
           </Card>
+          <TenantMarketplaceCard tenantId={id} />
           <Card title={t('platform.tenants.support_history')}>
             {d.data!.support_grants.length ? (
               <ul className="divide-y divide-line text-sm">{d.data!.support_grants.map((g) => (

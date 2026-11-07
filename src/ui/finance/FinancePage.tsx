@@ -9,8 +9,9 @@ import { OverviewTab } from './OverviewTab';
 import { ExpensesTab } from './ExpensesTab';
 import { DocumentsTab, RefundsTab } from './DocumentsTab';
 import { ExportsTab } from './ExportsTab';
+import { MarketplaceFeesTab } from './MarketplaceFeesTab';
 
-const TABS = ['overview', 'expenses', 'documents', 'refunds', 'exports'] as const;
+const TABS = ['overview', 'expenses', 'documents', 'refunds', 'exports', 'marketplace'] as const;
 type Tab = (typeof TABS)[number];
 
 export function FinancePage({ demo }: { demo: boolean }) {
@@ -19,7 +20,7 @@ export function FinancePage({ demo }: { demo: boolean }) {
   const router = useRouter();
   const pathname = usePathname();
   const sp = useSearchParams();
-  const visible = TABS.filter((k) => k !== 'refunds' || access.can('refunds.request', 'refunds.approve', 'finance.view'));
+  const visible = TABS.filter((k) => (k !== 'refunds' || access.can('refunds.request', 'refunds.approve', 'finance.view')) && (k !== 'marketplace' || access.can('finance.view')));
   const raw = sp.get('tab') as Tab | null;
   const tab: Tab = raw && visible.includes(raw) ? raw : 'overview';
   const setTab = (v: Tab) => {
@@ -38,6 +39,7 @@ export function FinancePage({ demo }: { demo: boolean }) {
         {tab === 'documents' ? <DocumentsTab /> : null}
         {tab === 'refunds' ? <RefundsTab /> : null}
         {tab === 'exports' ? <ExportsTab /> : null}
+        {tab === 'marketplace' ? <MarketplaceFeesTab /> : null}
       </div>
     </StepUpProvider>
   );

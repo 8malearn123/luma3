@@ -211,12 +211,15 @@ export const PLATFORM_CAPABILITIES = [
   'platform.ai_usage.view',
   'platform.revenue.view',
   'platform.support.access',
+  // سوق لوما: review join requests and verification documents / set commission rates and marketplace settings.
+  'platform.marketplace.review',
+  'platform.marketplace.manage',
 ] as const;
 export type PlatformCapability = (typeof PLATFORM_CAPABILITIES)[number];
 
 const PLATFORM_ROLE_CAPS: Record<PlatformRole, readonly PlatformCapability[]> = {
   platform_owner: PLATFORM_CAPABILITIES,
-  support_admin: ['platform.tenants.view', 'platform.support.access', 'platform.audit.view', 'platform.integrations.view'],
+  support_admin: ['platform.tenants.view', 'platform.support.access', 'platform.audit.view', 'platform.integrations.view', 'platform.marketplace.review'],
   policy_reviewer: ['platform.tenants.view', 'platform.policy.review'],
   technical_admin: ['platform.tenants.view', 'platform.integrations.view', 'platform.ai_usage.view', 'platform.audit.view'],
 };

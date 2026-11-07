@@ -16,6 +16,7 @@ export async function SiteHeader() {
           <Link href="/discover" className="hover:text-luma-700">{t('site.nav_discover')}</Link>
         </nav>
         <div className="ms-auto flex items-center gap-2">
+          <Link href="/discover" className="px-1 text-sm hover:text-luma-700 sm:hidden">{t('site.nav_discover')}</Link>
           <LocaleToggle />
           {user ? <Link href="/app" className="rounded-lg bg-luma-700 px-3 py-1.5 text-sm text-white">{t('site.nav_dashboard')}</Link> : <>
             <Link href="/auth/login" className="px-2 text-sm">{t('site.nav_login')}</Link>

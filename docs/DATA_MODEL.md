@@ -38,6 +38,7 @@ Source of truth: `db/migrations/*.sql`. Generated TypeScript types: `src/server/
 | 0008_policy | incidents, evidence, incident reviews, policy rules/decisions, appeals |
 | 0009_marketing_ai_analytics | analytics events, metrics, Loom plans/versions/recommendations, segments, campaigns, suppression, trends, AI jobs/runs |
 | 0010–0024 | hardening, null-tenant inserts, reference plans, settings confirmation, asset lookup, notification reads, booking revisions, sandbox provider, group/waitlist columns, loyalty/gift columns, finance documents, platform notifications, conversion sessions, conventions fix, platform evidence access |
+| 0620_marketplace | سوق لوما: listings, verification + private documents, favourites, marketplace visits, `bookings.channel`, payment platform fee, commission ledger, `app.marketplace_directory()` (see `docs/MARKETPLACE.md`) |
 | 0100–0500 | builder publishing + starter templates, commerce operations, policy/customer lifecycle, marketing/analytics extensions, platform admin (MFA, versions, test invoices) |
 
 ## Tables by domain
