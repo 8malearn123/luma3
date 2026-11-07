@@ -79,30 +79,26 @@ test('signed-out visitors are sent to sign in', async ({ page }) => {
   }
 });
 
-test('platform staff: the demo two-step code is the fixed 2002; then the whole admin area opens on every instance', async ({ page }) => {
+test('platform staff: one click opens the admin area on every instance, with no two-step prompt', async ({ page }) => {
   await demoSignIn(page, ACCOUNTS.platformOwner);
-  await expect(page.getByRole('heading', { name: 'Two-step verification' })).toBeVisible();
-  // Nothing is sent on the demo: no WhatsApp button, just the code.
-  await expect(page.getByRole('button', { name: 'Send code on WhatsApp' })).toHaveCount(0);
-  await page.getByLabel('Verification code').fill('1234');
-  await page.getByRole('button', { name: 'Verify' }).click();
-  await expect(page.getByText('The verification code is incorrect.')).toBeVisible();
-  await expect(page).toHaveURL(/\/platform\/mfa/);
-
-  await page.getByLabel('Verification code').fill('2002');
-  await page.getByRole('button', { name: 'Verify' }).click();
-  await page.waitForURL(/\/platform$/);
-  // Every following request alternates instance: none asks for the code again.
+  // Every following request alternates instance: none asks for the code.
   for (const path of PLATFORM_PAGES) {
     await expectPageRenders(page, `/platform${path}`);
     expect(page.url(), path).not.toMatch(/\/platform\/mfa/);
   }
 });
 
-test('policy reviewer: verifies with 2002, then her admin pages open', async ({ page }) => {
+test('the two-step page shows the fixed demo code 2002 and accepts it in one tap', async ({ page }) => {
   await demoSignIn(page, ACCOUNTS.policyReviewer);
-  await page.getByLabel('Verification code').fill('2002');
+  await page.goto('/platform/mfa?next=/platform');
+  await expect(page.getByRole('heading', { name: 'Two-step verification' })).toBeVisible();
+  // Nothing is sent on the demo: no WhatsApp button, the code is on screen.
+  await expect(page.getByRole('button', { name: 'Send code on WhatsApp' })).toHaveCount(0);
+  await expect(page.getByTestId('demo-mfa-code')).toHaveText('2002');
+  await page.getByLabel('Verification code').fill('1234');
   await page.getByRole('button', { name: 'Verify' }).click();
+  await expect(page.getByText('The verification code is incorrect.')).toBeVisible();
+  await page.getByRole('button', { name: 'Use this code and continue' }).click();
   await page.waitForURL(/\/platform$/);
   for (const path of ['', '/policies']) await expectPageRenders(page, `/platform${path}`);
 });

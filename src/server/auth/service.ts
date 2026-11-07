@@ -175,11 +175,16 @@ export async function login(input: { identifier: string; password: string; ip: s
   return { ...session, userId: user.id };
 }
 
-export async function createSession(userId: string, ip: string | null, userAgent: string | null, trx?: Tx) {
+/**
+ * `mfaVerified` starts the session with the second factor already passed. Only
+ * the private demo's one-click sign-in uses it (demo accounts, never production).
+ */
+export async function createSession(userId: string, ip: string | null, userAgent: string | null, trx?: Tx, opts: { mfaVerified?: boolean } = {}) {
   const now = Date.now();
   const expiresAt = new Date(now + SESSION_ABSOLUTE_DAYS * 86_400_000);
   const id = randomUUID();
-  const token = embeddedDb() ? signedSessionToken({ sessionId: id, userId, expiresAt: expiresAt.getTime(), signedInAt: now, mfaAt: 0 }) : newToken();
+  const mfaAt = opts.mfaVerified ? now : 0;
+  const token = embeddedDb() ? signedSessionToken({ sessionId: id, userId, expiresAt: expiresAt.getTime(), signedInAt: now, mfaAt }) : newToken();
   const row = await (trx ?? db()).insertInto('sessions').values({
     id,
     user_id: userId,
@@ -187,6 +192,7 @@ export async function createSession(userId: string, ip: string | null, userAgent
     expires_at: expiresAt,
     idle_expires_at: new Date(now + SESSION_IDLE_DAYS * 86_400_000),
     reauthenticated_at: new Date(now),
+    mfa_verified_at: mfaAt ? new Date(mfaAt) : null,
     ip,
     user_agent: userAgent?.slice(0, 300) ?? null,
   }).returning(['id', 'expires_at']).executeTakeFirstOrThrow();

@@ -2,8 +2,10 @@ import { expect, type Page } from '@playwright/test';
 
 /** Demo accounts as listed by the login page's role switcher, with where each one lands. */
 export const ACCOUNTS = {
-  platformOwner: { label: 'مالكة منصة لوما', lands: /\/platform\/mfa/ },
-  policyReviewer: { label: 'مراجِعة السياسات', lands: /\/platform\/mfa/ },
+  platformOwner: { label: 'مالكة منصة لوما', lands: /\/platform$/ },
+  policyReviewer: { label: 'مراجِعة السياسات', lands: /\/platform$/ },
+  supportAdmin: { label: 'مسؤولة دعم لوما', lands: /\/platform$/ },
+  technicalAdmin: { label: 'مسؤولة تقنية لوما', lands: /\/platform$/ },
   owner: { label: 'نورة (مالكة الصالون)', lands: /\/app\/noura-salon$/ },
   manager: { label: 'ريم (مديرة)', lands: /\/app\/noura-salon$/ },
   reception: { label: 'جود (استقبال)', lands: /\/app\/noura-salon$/ },

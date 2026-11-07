@@ -1,6 +1,6 @@
 import { MfaPrompt } from '@/ui/platform/Security';
 import { safeInternalPath } from '@/shared/safe-path';
-import { demoMfa } from '@/server/domains/platform/mfa';
+import { DEMO_MFA_CODE, demoMfa } from '@/server/domains/platform/mfa';
 
 export const metadata = { title: 'Verify' };
 
@@ -9,5 +9,5 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
   const sp = await searchParams;
   const next = safeInternalPath(sp.next, '/platform', '/platform');
   // The embedded demo database uses a fixed code instead of a WhatsApp message.
-  return <MfaPrompt next={next} demo={demoMfa()} />;
+  return <MfaPrompt next={next} demo={demoMfa()} demoCode={demoMfa() ? DEMO_MFA_CODE : undefined} />;
 }

@@ -19,10 +19,11 @@ export const POST = route({
     if (!env().demoEnabled) throw Errors.notFound();
     const u = await db().selectFrom('users').select(['id', 'is_demo']).where('id', '=', input.key).where('is_demo', '=', true).where('status', '=', 'active').executeTakeFirst();
     if (!u) throw Errors.notFound();
-    const s = await createSession(u.id, ip, userAgent);
+    const pr = await db().selectFrom('platform_roles').select('role').where('user_id', '=', u.id).where('revoked_at', 'is', null).executeTakeFirst();
+    // Demo platform staff skip the second-factor prompt: one click opens the admin area.
+    const s = await createSession(u.id, ip, userAgent, undefined, { mfaVerified: !!pr });
     responseInit.cookies.push(sessionCookie(s.token, s.expiresAt));
     await withCentral((trx) => audit(trx, { userId: u.id, kind: 'user', ip }, 'auth.demo_sign_in', { targetType: 'user', targetId: u.id }));
-    const pr = await db().selectFrom('platform_roles').select('role').where('user_id', '=', u.id).where('revoked_at', 'is', null).executeTakeFirst();
     const m = (await sql<{ tenant_slug: string; role: string }>`select tenant_slug, role from app.memberships_for_user(${u.id}) limit 1`.execute(db())).rows[0];
     const redirect = pr ? '/platform' : m ? (m.role === 'specialist' ? '/staff' : `/app/${m.tenant_slug}`) : '/account';
     return { data: { redirect } };

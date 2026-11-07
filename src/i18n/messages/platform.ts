@@ -31,7 +31,7 @@ const ar = {
       prompt_title: 'التحقق بخطوتين', prompt_body: 'نرسل رمزاً لمرة واحدة إلى رقم واتساب المسجّل في حسابك للمتابعة إلى إدارة لوما.',
       code: 'رمز التحقق', verify: 'تحقق', lost_device: 'لا يصلك الرمز؟ تأكدي من رقم جوالك أو اطلبي من مالكة المنصة المساعدة.',
       send: 'إرسال الرمز عبر واتساب', resend: 'إعادة الإرسال', sent_to: 'أرسلنا الرمز إلى واتساب {destination}.',
-      demo_body: 'النسخة التجريبية: أدخلي رمز التحقق الثابت للمتابعة.',
+      demo_body: 'النسخة التجريبية: أدخلي رمز التحقق الثابت للمتابعة.', demo_code_label: 'رمز التحقق في النسخة التجريبية', demo_code_use: 'استخدمي هذا الرمز وتابعي',
     },
     security: {
       title: 'أمان الحساب الإداري', subtitle: 'التحقق بخطوتين (TOTP) لحماية صلاحيات إدارة لوما.', mfa: 'التحقق بخطوتين',
@@ -283,7 +283,7 @@ const en: Shape<typeof ar> = {
       prompt_title: 'Two-step verification', prompt_body: 'We send a one-time code to the WhatsApp number on your account to continue to LUMA admin.',
       code: 'Verification code', verify: 'Verify', lost_device: 'Not receiving the code? Check your mobile number or ask a platform owner for help.',
       send: 'Send code on WhatsApp', resend: 'Send again', sent_to: 'We sent the code to WhatsApp {destination}.',
-      demo_body: 'Demo version: enter the fixed verification code to continue.',
+      demo_body: 'Demo version: enter the fixed verification code to continue.', demo_code_label: 'Demo verification code', demo_code_use: 'Use this code and continue',
     },
     security: {
       title: 'Admin account security', subtitle: 'Two-step verification (TOTP) protects LUMA administration.', mfa: 'Two-step verification',

@@ -56,7 +56,7 @@ function EnrolForm({ enroll, busy, onActivate, onCancel }: { enroll: { secret: s
 }
 
 /** Session second-factor prompt (gate page: no navigation until verified). */
-export function MfaPrompt({ next, demo = false }: { next: string; demo?: boolean }) {
+export function MfaPrompt({ next, demo = false, demoCode }: { next: string; demo?: boolean; demoCode?: string }) {
   const { t } = useI18n();
   const msg = useErrorMessage();
   const [code, setCode] = useState('');
@@ -67,10 +67,10 @@ export function MfaPrompt({ next, demo = false }: { next: string; demo?: boolean
     setBusy(true); setErr(null);
     try { setSent(await api('/api/v1/platform/mfa/send', { body: {} })); } catch (e) { setErr(e); } finally { setBusy(false); }
   }
-  async function submit() {
+  async function submit(value = code) {
     setBusy(true); setErr(null);
     try {
-      await api('/api/v1/platform/mfa/verify', { body: { code } });
+      await api('/api/v1/platform/mfa/verify', { body: { code: value } });
       window.location.href = safeInternalPath(next, '/platform', '/platform');
     } catch (e) { setErr(e); setCode(''); setBusy(false); }
   }
@@ -82,6 +82,13 @@ export function MfaPrompt({ next, demo = false }: { next: string; demo?: boolean
         <form onSubmit={(e) => { e.preventDefault(); if (code.length >= 4) submit(); }} className="flex flex-col gap-4">
           <div className="flex items-center gap-2"><KeyRound className="size-5 text-luma-700" aria-hidden /><h1 className="text-lg font-semibold">{t('platform.mfa.prompt_title')}</h1></div>
           <p className="text-sm text-ink-muted">{demo ? t('platform.mfa.demo_body') : t('platform.mfa.prompt_body')}</p>
+          {demoCode ? (
+            <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-luma-300 bg-luma-50 p-4 text-center">
+              <p className="text-sm font-semibold text-luma-800">{t('platform.mfa.demo_code_label')}</p>
+              <p dir="ltr" className="font-mono text-4xl font-bold tracking-[0.4em] text-luma-800" data-testid="demo-mfa-code">{demoCode}</p>
+              <Button type="button" variant="ghost" size="sm" loading={busy} onClick={() => { setCode(demoCode); void submit(demoCode); }}>{t('platform.mfa.demo_code_use')}</Button>
+            </div>
+          ) : null}
           <FormErrorSummary message={err ? msg(err) : null} />
           {sent?.destination ? <p role="status" className="text-sm">{t('platform.mfa.sent_to', { destination: sent.destination })}</p> : null}
           <DeliveryNotice delivery={sent?.delivery} />
