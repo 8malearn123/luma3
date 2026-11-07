@@ -10,6 +10,7 @@ import { normalizeSnapshot } from '../storefront/service';
 import { readBrand, writeBrand } from './brand';
 import { readDraftPages, readDraftSnapshot, readLayout } from './drafts';
 import { validateDraft } from './service';
+import { requireApprovedForPublish } from '../platform/settings';
 import { validateBlocks } from '@/shared/builder/blocks';
 import type { SiteSnapshot } from '@/shared/builder/storefront';
 
@@ -41,6 +42,7 @@ export async function publish(access: TenantAccess, actor: AuditActor, idempoten
     // One publication at a time per business.
     await sql`select pg_advisory_xact_lock(hashtext(${`publish:${access.tenantId}`}))`.execute(trx);
     const r = await idempotent<PublishResult>(trx, { scope: `tenant:${access.tenantId}`, operation: 'builder.publish', key: idempotencyKey, hash: requestHash(input) }, async () => {
+      await requireApprovedForPublish(trx, access.tenantId);
       const ready = await readiness(access);
       if (!ready.ready) throw new AppError(422, 'not_ready', 'Complete the readiness checklist before publishing', { items: ready.items.filter((i) => !i.ok) });
       const { issues, warnings } = await validateDraft(trx, access);

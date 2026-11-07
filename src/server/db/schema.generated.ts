@@ -1303,6 +1303,26 @@ export interface PlanFeatures {
   plan_id: string;
 }
 
+export interface PlanPromotions {
+  billing_cycles: Generated<string[]>;
+  code: string | null;
+  created_at: Generated<Timestamp>;
+  created_by: string | null;
+  discount_bp: number;
+  duration_cycles: number | null;
+  ends_at: Timestamp;
+  id: Generated<string>;
+  max_redemptions: number | null;
+  name_ar: string;
+  name_en: string;
+  plan_codes: Generated<string[]>;
+  redemptions: Generated<number>;
+  starts_at: Timestamp;
+  status: Generated<string>;
+  updated_at: Generated<Timestamp>;
+  version: Generated<number>;
+}
+
 export interface Plans {
   code: string;
   created_at: Generated<Timestamp>;
@@ -1343,9 +1363,12 @@ export interface PlatformInvoices {
   amount_minor: number;
   created_at: Generated<Timestamp>;
   currency: Generated<string>;
+  discount_detail: Json | null;
+  discount_minor: Generated<number>;
   id: Generated<string>;
   is_test: Generated<boolean>;
   issued_at: Timestamp | null;
+  list_amount_minor: number | null;
   marked_paid_by: string | null;
   note: string | null;
   number: string;
@@ -1367,6 +1390,13 @@ export interface PlatformRoles {
   revoked_by: string | null;
   role: string;
   user_id: string;
+}
+
+export interface PlatformSettings {
+  key: string;
+  updated_at: Generated<Timestamp>;
+  updated_by: string | null;
+  value: Json;
 }
 
 export interface PointsEntries {
@@ -1567,6 +1597,70 @@ export interface ReconciliationRuns {
   status: string;
   summary: Generated<Json>;
   tenant_id: string;
+}
+
+export interface ReferralLedger {
+  amount_minor: number;
+  created_at: Generated<Timestamp>;
+  created_by: string | null;
+  currency: Generated<string>;
+  id: Generated<string>;
+  kind: string;
+  note: string | null;
+  referral_id: string | null;
+  referrer_id: string;
+  withdrawal_id: string | null;
+}
+
+export interface Referrals {
+  channel: Generated<string>;
+  created_at: Generated<Timestamp>;
+  id: Generated<string>;
+  invoice_id: string | null;
+  rate_bp: number | null;
+  referred_name: string;
+  referred_tenant_id: string;
+  referrer_id: string;
+  reward_minor: number | null;
+  rewarded_at: Timestamp | null;
+  status: Generated<string>;
+}
+
+export interface ReferralWithdrawals {
+  account_name: string;
+  amount_minor: number;
+  created_at: Generated<Timestamp>;
+  currency: Generated<string>;
+  decided_at: Timestamp | null;
+  decided_by: string | null;
+  iban: string;
+  id: Generated<string>;
+  paid_at: Timestamp | null;
+  paid_reference: string | null;
+  referrer_id: string;
+  reject_reason: string | null;
+  requested_by: string | null;
+  status: Generated<string>;
+  updated_at: Generated<Timestamp>;
+  version: Generated<number>;
+}
+
+export interface Referrers {
+  code: string;
+  contact_email: string | null;
+  contact_phone: string | null;
+  created_at: Generated<Timestamp>;
+  created_by: string | null;
+  display_name: string;
+  iban: string | null;
+  id: Generated<string>;
+  kind: string;
+  rate_bp: number | null;
+  status: Generated<string>;
+  tenant_id: string | null;
+  updated_at: Generated<Timestamp>;
+  user_id: string | null;
+  version: Generated<number>;
 }
 
 export interface Refunds {
@@ -1822,6 +1916,27 @@ export interface Sessions {
   user_id: string;
 }
 
+export interface SettlementStatements {
+  created_at: Generated<Timestamp>;
+  currency: Generated<string>;
+  fee_minor: Generated<number>;
+  fee_source: string;
+  generated_by: string | null;
+  gross_minor: number;
+  id: Generated<string>;
+  net_minor: number;
+  payments_count: Generated<number>;
+  period_end: string;
+  period_start: string;
+  refunds_minor: Generated<number>;
+  settled_at: Timestamp | null;
+  settled_by: string | null;
+  settlement_reference: string | null;
+  status: Generated<string>;
+  tenant_id: string;
+  updated_at: Generated<Timestamp>;
+}
+
 export interface ShiftOverrides {
   branch_id: string;
   created_at: Generated<Timestamp>;
@@ -1974,11 +2089,17 @@ export interface Subscriptions {
   created_at: Generated<Timestamp>;
   current_period_end: Timestamp | null;
   current_period_start: Timestamp | null;
+  founding_discount_bp: number | null;
+  founding_lost_at: Timestamp | null;
+  founding_number: number | null;
   grace_until: Timestamp | null;
   id: Generated<string>;
   overage_state: Json | null;
   paused_at: Timestamp | null;
   plan_id: string;
+  promotion_cycles_remaining: number | null;
+  promotion_discount_bp: number | null;
+  promotion_id: string | null;
   provider: Generated<string>;
   provider_ref: string | null;
   status: string;
@@ -2029,6 +2150,16 @@ export interface Templates {
   updated_at: Generated<Timestamp>;
   updated_by: string | null;
   version: Generated<number>;
+}
+
+export interface TenantApprovals {
+  created_at: Generated<Timestamp>;
+  decided_at: Timestamp | null;
+  decided_by: string | null;
+  reason: string | null;
+  status: Generated<string>;
+  tenant_id: string;
+  updated_at: Generated<Timestamp>;
 }
 
 export interface TenantCounters {
@@ -2365,10 +2496,12 @@ export interface DB {
   periodic_runs: PeriodicRuns;
   plan_comments: PlanComments;
   plan_features: PlanFeatures;
+  plan_promotions: PlanPromotions;
   plan_versions: PlanVersions;
   plans: Plans;
   platform_invoices: PlatformInvoices;
   platform_roles: PlatformRoles;
+  platform_settings: PlatformSettings;
   points_entries: PointsEntries;
   policy_decisions: PolicyDecisions;
   policy_rules: PolicyRules;
@@ -2381,6 +2514,10 @@ export interface DB {
   rate_limit_buckets: RateLimitBuckets;
   recommendations: Recommendations;
   reconciliation_runs: ReconciliationRuns;
+  referral_ledger: ReferralLedger;
+  referral_withdrawals: ReferralWithdrawals;
+  referrals: Referrals;
+  referrers: Referrers;
   refunds: Refunds;
   resource_types: ResourceTypes;
   resources: Resources;
@@ -2400,6 +2537,7 @@ export interface DB {
   service_variants: ServiceVariants;
   services: Services;
   sessions: Sessions;
+  settlement_statements: SettlementStatements;
   shift_overrides: ShiftOverrides;
   site_drafts: SiteDrafts;
   site_versions: SiteVersions;
@@ -2416,6 +2554,7 @@ export interface DB {
   support_access_grants: SupportAccessGrants;
   suppression_list: SuppressionList;
   templates: Templates;
+  tenant_approvals: TenantApprovals;
   tenant_counters: TenantCounters;
   tenant_customers: TenantCustomers;
   tenant_memberships: TenantMemberships;

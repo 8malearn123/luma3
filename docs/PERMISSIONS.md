@@ -121,6 +121,14 @@ Changing a member (`PATCH /api/v1/t/{slug}/members/{id}`) requires `team.manage`
 | `platform.ai_usage.view` | ✓ |  |  | ✓ |
 | `platform.revenue.view` | ✓ |  |  |  |
 | `platform.support.access` | ✓ | ✓ |  |  |
+| `platform.analytics.view` (analytics + reports) | ✓ |  |  |  |
+| `platform.activity.view` (platform-wide bookings/payments, read-only, no customer data) | ✓ | ✓ |  |  |
+| `platform.feed.view` (live activity feed + bell) | ✓ | ✓ |  | ✓ |
+| `platform.settlements.manage` | ✓ |  |  |  |
+| `platform.referrals.manage` (marketers, rewards, withdrawals) | ✓ |  |  |  |
+| `platform.settings.manage` (maintenance, sign-ups, approvals switch, founding, referral defaults) | ✓ |  |  |  |
+
+Phase-2 endpoints and rules: [PLATFORM_ADMIN.md](PLATFORM_ADMIN.md). Promotions use `platform.plans.manage`; approving new businesses uses `platform.tenants.manage` (the queue is readable with `platform.tenants.view`). The business «الإحالة» screen (`/app/{slug}/referrals`) needs the owner-only `business.manage`; a withdrawal request also needs step-up.
 
 Every `/api/v1/platform/**` handler is built with `platformRoute()`. A caller with **no** platform role gets **404**, not 403, so the platform API does not reveal that it exists. A missing specific capability also returns 404. `GET /api/v1/platform/overview` and the MFA/me endpoints need only some platform role. Platform roles grant no tenant capabilities.
 
@@ -135,6 +143,7 @@ Every `/api/v1/platform/**` handler is built with `platformRoute()`. A caller wi
 5. Rate limit.
 6. Tenant routes (`/api/v1/t/{tenantSlug}/…`): `resolveTenantAccess()` uses only the caller's **own** membership or an active support grant. Unknown slugs and slugs the caller is not a member of both return the same 404. Then the `capability` check (any-of), the plan `feature` check, and the read-only workspace check for mutations (unless `allowReadOnly`).
 7. Platform routes: platform capability, then MFA (`requirePlatformMfa`), then step-up.
+   Tenant routes additionally return 503 `maintenance` while platform maintenance mode is on (support grants excepted); see [PLATFORM_ADMIN.md](PLATFORM_ADMIN.md#7-platform-settings-platformsettings-platformsettingsmanage).
 8. `Idempotency-Key` presence where `idempotency: 'required'`.
 9. Zod input validation.
 
@@ -163,8 +172,8 @@ Endpoints declared with `stepUp: true`:
 
 | Scope | Endpoints |
 |---|---|
-| Tenant | `POST finance/exports`; `POST gift-cards/{id}/void`; `PATCH members/{id}`; `POST payment-accounts`, `DELETE payment-accounts/{id}`; `POST policies/decisions`, `POST policies/decisions/{id}/end`; `POST policies/appeals/{id}/resolve`; `POST policies/incidents/{id}/escalate` |
-| Platform | `POST mfa/enroll`, `POST mfa/disable`; `PUT plans/{id}`; `POST invoices/{id}`; `POST subscriptions/{id}/actions`, `POST subscriptions/{id}/invoices`; `POST support-grants`; `POST tenants/{id}/status`; `POST users/{id}/status`, `POST users/{id}/roles`, `POST users/{id}/mfa-reset`; `POST policies/decisions`, `POST policies/decisions/{id}/end`, `POST policies/appeals/{id}/resolve`, `POST policies/escalations/{id}/dismiss`, `POST policies/rules`, `PATCH policies/rules/{id}` |
+| Tenant | `POST referrals/withdrawals`; `POST finance/exports`; `POST gift-cards/{id}/void`; `PATCH members/{id}`; `POST payment-accounts`, `DELETE payment-accounts/{id}`; `POST policies/decisions`, `POST policies/decisions/{id}/end`; `POST policies/appeals/{id}/resolve`; `POST policies/incidents/{id}/escalate` |
+| Platform | `PUT settings`; `POST promotions`, `PATCH promotions/{id}`; `POST approvals/{id}`; `POST settlements/{id}/settle`; `PATCH referrals/{id}`, `POST referrals/{id}/adjust`, `POST withdrawals/{id}`; `POST mfa/enroll`, `POST mfa/disable`; `PUT plans/{id}`; `POST invoices/{id}`; `POST subscriptions/{id}/actions`, `POST subscriptions/{id}/invoices`; `POST support-grants`; `POST tenants/{id}/status`; `POST users/{id}/status`, `POST users/{id}/roles`, `POST users/{id}/mfa-reset`; `POST policies/decisions`, `POST policies/decisions/{id}/end`, `POST policies/appeals/{id}/resolve`, `POST policies/escalations/{id}/dismiss`, `POST policies/rules`, `PATCH policies/rules/{id}` |
 
 ## Admin MFA (TOTP)
 
@@ -178,7 +187,7 @@ Implementation: `src/server/domains/platform/mfa.ts`, `totp.ts`, `mfa-state.ts` 
 
 ## Plan feature and limit gating
 
-Plan data lives in `plans` and `plan_features` (seeded by `0012`, editable by the platform owner in `/platform/plans`). The keys the server enforces are in `src/shared/plans.ts`. **Prices are `NULL` ("pricing not configured") and every plan has `price_is_test = true`. The limits below are test values, not approved final values.**
+Plan data lives in `plans` and `plan_features` (seeded by `0012`, editable by the platform owner in `/platform/plans`). The keys the server enforces are in `src/shared/plans.ts`. **Prices (since 0630, approved): Sanaa 199, Wahaj 399, Fareed 799 SAR/month VAT-inclusive; yearly = two months free; founding-customer and promotion discounts are described in [PLATFORM_ADMIN.md](PLATFORM_ADMIN.md). There is no monthly booking limit. The feature limits below are still test values.**
 
 Entitlements come from the tenant's current subscription (`loadEntitlements`). A workspace is **read-only** when there is no subscription, or when it is `expired`, `cancelled` or `paused`, or `past_due` past `grace_until`, or when the tenant is suspended. Data stays readable; mutations return 403 `read_only`. Subscription endpoints use `allowReadOnly` so the owner can still change plan.
 

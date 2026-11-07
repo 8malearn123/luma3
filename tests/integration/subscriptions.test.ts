@@ -177,7 +177,9 @@ describe('subscription lifecycle', () => {
     expect(after.status).toBe('past_due');
     const detail = await admin.call(subDetail.GET, { params: { id: sub.id } });
     const inv = detail.body.data.invoices[0];
-    expect(inv).toMatchObject({ is_test: true, status: 'open', amount_minor: 19900 });
+    // List price 199.00; a founding seat (first 100 paying subscribers) takes 30% off.
+    expect(inv).toMatchObject({ is_test: true, status: 'open', list_amount_minor: 19900 });
+    expect(inv.amount_minor).toBe(inv.discount_detail?.founding_bp ? 13930 : 19900);
     expect(inv.number).toMatch(/^LUMA-TEST-/);
     const paid = await admin.call(invoiceOne.POST, { params: { id: inv.id }, body: { action: 'mark_paid', note: 'manual test settlement' } });
     expect(paid.status).toBe(200);
@@ -187,17 +189,19 @@ describe('subscription lifecycle', () => {
 
     const rev = await admin.call(revenue.GET);
     expect(rev.body.data.is_test).toBe(true);
-    expect(rev.body.data.monthly[0].paid_minor).toBeGreaterThanOrEqual(19900);
+    expect(rev.body.data.monthly[0].paid_minor).toBeGreaterThanOrEqual(inv.amount_minor);
 
-    // Unpriced plans never generate invoices.
-    const sanaaOwner = await signup('Unpriced');
-    const biz2 = await createBusinessFor(sanaaOwner);
+    // Unpriced plans never generate invoices (wahaj made unpriced temporarily; prices are data since 0630).
+    let fresh = (await admin.call(plans.GET)).body.data.find((p: any) => p.code === 'wahaj');
+    await admin.call(planOne.PUT, { params: { id: wahaj.id }, body: { version: fresh.version, price_monthly_minor: null } });
+    const unpricedOwner = await signup('Unpriced');
+    const biz2 = await createBusinessFor(unpricedOwner, { plan_code: 'wahaj' });
     const sub2 = await subscriptionOf(biz2.tenantId);
     const none = await admin.call(invoices.POST, { params: { id: sub2.id }, body: {} });
     expect(none.status).toBe(422);
     expect(none.body.error.code).toBe('pricing_not_configured');
-    // Restore: pricing not configured.
-    const fresh = (await admin.call(plans.GET)).body.data.find((p: any) => p.code === 'wahaj');
-    await admin.call(planOne.PUT, { params: { id: wahaj.id }, body: { version: fresh.version, price_monthly_minor: null } });
+    // Restore the approved price.
+    fresh = (await admin.call(plans.GET)).body.data.find((p: any) => p.code === 'wahaj');
+    await admin.call(planOne.PUT, { params: { id: wahaj.id }, body: { version: fresh.version, price_monthly_minor: wahaj.price_monthly_minor, price_is_test: wahaj.price_is_test } });
   });
 });

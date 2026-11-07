@@ -88,6 +88,12 @@ export const createBusinessSchema = z.object({
   plan_code: z.string().regex(/^[a-z0-9_]{2,32}$/).optional(),
   /** Expert businesses: the owner is also the bookable provider. */
   owner_is_provider: z.boolean().optional(),
+  /** LUMA billing cycle (yearly = two months free). */
+  billing_cycle: z.enum(['monthly', 'yearly']).optional(),
+  /** Plan promotion code (time-limited offer). */
+  promo_code: z.string().trim().regex(/^[A-Za-z0-9_-]{3,32}$/).optional(),
+  /** Referral code (also read from the luma_ref cookie set by /r/{code}). */
+  referral_code: z.string().trim().max(64).optional(),
 }).strict();
 
 /** Suggests a latin slug from a (possibly Arabic) business name. */

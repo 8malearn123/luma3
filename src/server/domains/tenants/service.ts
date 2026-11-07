@@ -9,6 +9,9 @@ import { NEUTRAL_BRAND } from '@/shared/builder/theme';
 import { DEFAULT_PAGES } from '../builder/generator';
 import type { createBusinessSchema } from '@/shared/onboarding';
 import type { z } from 'zod';
+import { recordApprovalIfRequired, requireSignupsOpen } from '../platform/settings';
+import { attachPromotion, resolvePromotion } from '../platform/pricing';
+import { cleanReferralCode, recordReferral, resolveReferralCode } from '../referrals/service';
 
 const RESERVED_SLUGS = new Set([
   'app', 'api', 'platform', 'admin', 's', 'preview', 'auth', 'account', 'discover', 'pricing', 'onboarding', 'staff',
@@ -23,8 +26,12 @@ export type CreateBusinessInput = z.infer<typeof createBusinessSchema>;
  * trusted transaction. The role is set server-side; nothing about roles,
  * plans or tenant ids is accepted from the browser.
  */
-export async function createBusiness(user: SessionUser, input: CreateBusinessInput, actor: AuditActor) {
+export async function createBusiness(user: SessionUser, input: CreateBusinessInput, actor: AuditActor, opts: { referralCookie?: string | null } = {}) {
   if (RESERVED_SLUGS.has(input.slug)) throw Errors.conflict('slug_taken', 'This address is not available');
+  const settings = await requireSignupsOpen();
+  const typedCode = cleanReferralCode(input.referral_code);
+  const referrer = await resolveReferralCode(typedCode ?? opts.referralCookie);
+  const cycle = input.billing_cycle ?? 'monthly';
 
   const owned = await sql<{ n: number }>`select count(*)::int as n from app.memberships_for_user(${user.userId}) where role = 'owner'`.execute(db());
   if ((owned.rows[0]?.n ?? 0) >= MAX_OWNED_BUSINESSES) throw Errors.invalid('business_limit', 'You have reached the maximum number of businesses');
@@ -65,11 +72,17 @@ export async function createBusiness(user: SessionUser, input: CreateBusinessInp
       const sub = await trx.insertInto('subscriptions').values({
         tenant_id: tenantId, plan_id: plan.id, status: 'trialing', trial_ends_at: trialEnds,
         current_period_start: new Date(), current_period_end: trialEnds,
+        billing_cycle: cycle,
       }).returning('id').executeTakeFirstOrThrow();
+      // Plan promotion (code, or the best running automatic offer) is fixed at subscription time.
+      const promo = await resolvePromotion(trx, { code: input.promo_code, planCode: plan.code, cycle });
+      if (promo) await attachPromotion(trx, sub.id, promo);
       await trx.insertInto('subscription_events').values({
         tenant_id: tenantId, subscription_id: sub.id, kind: 'trial_started', to_status: 'trialing', actor_user_id: user.userId,
-        data: JSON.stringify({ plan: plan.code, trial_days: plan.trial_days }),
+        data: JSON.stringify({ plan: plan.code, trial_days: plan.trial_days, billing_cycle: cycle, promotion: promo ? { id: promo.id, discount_bp: promo.discount_bp } : null }),
       }).execute();
+      const referral = await recordReferral(trx, referrer, { tenantId, tenantName: input.name, userId: user.userId, channel: typedCode ? 'code' : 'link' });
+      const pendingApproval = await recordApprovalIfRequired(trx, tenantId, settings);
 
       await initStorefront(trx, tenantId, user.userId);
       await trx.insertInto('onboarding_progress').values({
@@ -80,8 +93,8 @@ export async function createBusiness(user: SessionUser, input: CreateBusinessInp
       await trx.insertInto('loyalty_programs').values({ tenant_id: tenantId }).execute();
       await trx.insertInto('marketing_preferences').values({ tenant_id: tenantId }).execute();
 
-      await audit(trx, actor, 'tenant.created', { tenantId, targetType: 'tenant', targetId: tenantId, data: { slug: input.slug, plan: plan.code } });
-      return { tenantId, slug: input.slug, branchId: branch.id, staffProfileId };
+      await audit(trx, actor, 'tenant.created', { tenantId, targetType: 'tenant', targetId: tenantId, data: { slug: input.slug, plan: plan.code, billing_cycle: cycle, referral: referral?.code ?? null, pending_approval: pendingApproval } });
+      return { tenantId, slug: input.slug, branchId: branch.id, staffProfileId, referral_applied: !!referral, pending_approval: pendingApproval };
     });
   } catch (err) {
     if (isPgCode(err, '23505')) throw Errors.conflict('slug_taken', 'This address is already taken');

@@ -211,14 +211,21 @@ export const PLATFORM_CAPABILITIES = [
   'platform.ai_usage.view',
   'platform.revenue.view',
   'platform.support.access',
+  // Phase 2 administration (docs/PLATFORM_ADMIN.md)
+  'platform.analytics.view',
+  'platform.activity.view',
+  'platform.settlements.manage',
+  'platform.referrals.manage',
+  'platform.settings.manage',
+  'platform.feed.view',
 ] as const;
 export type PlatformCapability = (typeof PLATFORM_CAPABILITIES)[number];
 
 const PLATFORM_ROLE_CAPS: Record<PlatformRole, readonly PlatformCapability[]> = {
   platform_owner: PLATFORM_CAPABILITIES,
-  support_admin: ['platform.tenants.view', 'platform.support.access', 'platform.audit.view', 'platform.integrations.view'],
+  support_admin: ['platform.tenants.view', 'platform.support.access', 'platform.audit.view', 'platform.integrations.view', 'platform.activity.view', 'platform.feed.view'],
   policy_reviewer: ['platform.tenants.view', 'platform.policy.review'],
-  technical_admin: ['platform.tenants.view', 'platform.integrations.view', 'platform.ai_usage.view', 'platform.audit.view'],
+  technical_admin: ['platform.tenants.view', 'platform.integrations.view', 'platform.ai_usage.view', 'platform.audit.view', 'platform.feed.view'],
 };
 
 export function platformCapabilities(roles: readonly string[]): Set<PlatformCapability> {

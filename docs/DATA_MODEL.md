@@ -39,6 +39,7 @@ Source of truth: `db/migrations/*.sql`. Generated TypeScript types: `src/server/
 | 0009_marketing_ai_analytics | analytics events, metrics, Loom plans/versions/recommendations, segments, campaigns, suppression, trends, AI jobs/runs |
 | 0010–0024 | hardening, null-tenant inserts, reference plans, settings confirmation, asset lookup, notification reads, booking revisions, sandbox provider, group/waitlist columns, loyalty/gift columns, finance documents, platform notifications, conversion sessions, conventions fix, platform evidence access |
 | 0100–0500 | builder publishing + starter templates, commerce operations, policy/customer lifecycle, marketing/analytics extensions, platform admin (MFA, versions, test invoices) |
+| 0630_platform_admin_ext | approved plan prices (data), founding seats and promotions on `subscriptions`, `plan_promotions`, `platform_settings`, `tenant_approvals`, `referrers` (RLS; marketers have no tenant), `referrals`, `referral_withdrawals`, `referral_ledger` (**append-only**), `settlement_statements` (RLS); see [PLATFORM_ADMIN.md](PLATFORM_ADMIN.md) |
 
 ## Tables by domain
 
