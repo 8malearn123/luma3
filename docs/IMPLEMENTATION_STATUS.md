@@ -43,6 +43,19 @@ Test results (latest integrated run): **Vitest 32 files / 212 tests pass**, `tsc
 | Seed | Done | `scripts/seed.ts`; used by E2E global setup | Credentials only in the gitignored `.demo-credentials.txt`; seeds products, reviews from verified visits, an incident under review, an appeal, an example marketing plan, and publishes both storefronts |
 | Tests | Done | Vitest: 32 files, 212 tests, all passing; Playwright: 4 specs, 28 journeys, all passing | See [TEST_PLAN.md](TEST_PLAN.md#not-covered-by-automated-tests) |
 
+## Phase 2 (November 2026)
+
+Built from the comparison with the old static LUMA and the decisions in [DECISIONS_2026-11.md](DECISIONS_2026-11.md). Merged test run: Vitest 67 files / 336 of 337 tests pass (the remaining failure is the invoice PDF test, which needs a Chromium that matches playwright-core; it fails the same way before phase 2). `tsc` and ESLint (0 errors) pass, and `next build` succeeds.
+
+| Area | Status | Docs | Known gaps |
+|---|---|---|---|
+| HR: leave balances, approval chains and request types, lateness/absence suggestions, booking reroute, owner-only staff file, per-staff commission | Done | [HR.md](HR.md) | Letter requests end at approval (no generated letter); partial-day leave counts whole days; approved leave cannot be cancelled through the chain |
+| سوق لوما: `/discover`, listing by request, verification, favourites/explore, marketplace commission per business | Done | [MARKETPLACE.md](MARKETPLACE.md) | A refund after completion does not reverse the commission line; commission is in its own ledger, not the business journal |
+| Platform admin: prices/yearly/founding/promotions, analytics, activity, settlements, referrals, reports, settings/maintenance, live feed | Done | [PLATFORM_ADMIN.md](PLATFORM_ADMIN.md) | No real billing/payout provider (manual references); marketers have no own login |
+| Customer experience: booking branch + coupon scope, rebook, loyalty in account, review requests, online gift cards/memberships, acquisition source, 404, remember me, back arrow | Done | [CUSTOMER_EXPERIENCE.md](CUSTOMER_EXPERIENCE.md) | Orders do not record acquisition yet; coupons are not applied to dashboard bookings |
+| Business dashboard: overview (salon/expert), ZATCA phase-1 QR, store QR, branch switcher, low-stock alerts, crop editor, service badges, weekly digest | Done | [BUSINESS_DASHBOARD.md](BUSINESS_DASHBOARD.md) | Branch restriction applies to lists, not single-record reads; journal figures are not split by branch |
+| Expert: expert workspace labels, event bookings with deposit, before/after portfolio, Instagram block | Done | [EXPERT.md](EXPERT.md) | Instagram connect needs Meta credentials; event messages are in-app only |
+
 ## External blockers
 
 | Blocker | Effect |

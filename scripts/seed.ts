@@ -285,6 +285,22 @@ async function main() {
     await ensureTenantCustomerForUser(trx, lamar.tenantId, { userId: user.id, displayName: user.display_name, phone: user.phone, email: user.email });
   });
 
+  // سوق لوما (demo): both businesses are verified and approved in the marketplace,
+  // with their branch locations so city filters and "nearest" work.
+  await withSystem('seed marketplace', async (trx) => {
+    const now = new Date();
+    for (const [t, city, lat, lng, tag] of [
+      [noura, 'الرياض', 24.6905, 46.6853, 'صالون متكامل في العليا: شعر، أظافر وعناية'],
+      [lamar, 'جدة', 21.5433, 39.1728, 'خبيرة مكياج عرائس ومناسبات'],
+    ] as const) {
+      await trx.updateTable('branches').set({ city, latitude: lat, longitude: lng }).where('tenant_id', '=', t.tenantId).execute();
+      await trx.insertInto('tenant_verifications').values({ tenant_id: t.tenantId, status: 'verified', submitted_at: now, reviewed_at: now, verified_at: now, reviewed_by: platformOwner })
+        .onConflict((oc) => oc.column('tenant_id').doNothing()).execute();
+      await trx.insertInto('marketplace_listings').values({ tenant_id: t.tenantId, status: 'approved', requested_at: now, approved_at: now, reviewed_at: now, reviewed_by: platformOwner, tagline_ar: tag })
+        .onConflict((oc) => oc.column('tenant_id').doNothing()).execute();
+    }
+  });
+
   void actorSystem; void customerNew; void bridal; void platformOwner;
   const dbName = new URL(process.env.DATABASE_URL!).pathname.slice(1);
   // E2E runs read credentials from a JSON file outside the repo root text file.
