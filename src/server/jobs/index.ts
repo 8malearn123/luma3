@@ -17,3 +17,4 @@ import '../domains/marketing/jobs';
 import '../domains/hr/jobs';
 import '../domains/reviews/jobs';
 import '../domains/giftcards/jobs';
+import '../domains/business/jobs';

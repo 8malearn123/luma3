@@ -13,6 +13,7 @@ import { ConfirmDialog, Drawer } from '../components/overlay';
 import { useToast } from '../components/toast';
 import { useAccess } from '../shell/access-context';
 import { ImageUpload } from '../workspace/ImageUpload';
+import { ServiceBadgeField, type BadgeValue } from '../business/ServiceBadgeField';
 import { useFmt } from '../commerce/common';
 import { ApiErrorBox, intOrNull, PlanGate } from './common';
 import type { Category } from './CategoriesPanel';
@@ -33,6 +34,7 @@ function formFrom(s: ServiceRow | undefined) {
     cost_minor: s?.cost_minor ?? null as number | null,
     duration: String(s?.duration_min ?? 60), buffer_before: String(s?.buffer_before_min ?? 0), buffer_after: String(s?.buffer_after_min ?? 0),
     image: s?.image_asset_id ?? null as string | null,
+    badge: { kind: s?.badge_kind ?? '', ar: s?.badge_text_ar ?? '', en: s?.badge_text_en ?? '' } as BadgeValue,
     is_active: s?.is_active ?? true, is_visible: s?.is_visible ?? true, bookable_internally_when_hidden: s?.bookable_internally_when_hidden ?? true,
     booking_mode: s?.booking_mode ?? 'individual', requires_manual_approval: s?.requires_manual_approval ?? false,
     min_notice: s?.min_notice_min == null ? '' : String(s.min_notice_min), max_advance: s?.max_advance_days == null ? '' : String(s.max_advance_days),
@@ -97,7 +99,9 @@ function ServiceForm({ service, categories, onClose, refetch }: { service: Servi
       category_id: form.category_id || null, branch_id: form.branch_id || null,
       price_minor: form.price_minor ?? -1, price_display: form.price_display,
       duration_min: intOrNull(form.duration) ?? 0, buffer_before_min: intOrNull(form.buffer_before) ?? 0, buffer_after_min: intOrNull(form.buffer_after) ?? 0,
-      image_asset_id: form.image, is_active: form.is_active, is_visible: form.is_visible, bookable_internally_when_hidden: form.bookable_internally_when_hidden,
+      image_asset_id: form.image,
+      badge_kind: form.badge.kind || null, badge_text_ar: form.badge.kind === 'custom' ? form.badge.ar.trim() || null : null, badge_text_en: form.badge.kind === 'custom' ? form.badge.en.trim() || null : null,
+      is_active: form.is_active, is_visible: form.is_visible, bookable_internally_when_hidden: form.bookable_internally_when_hidden,
       requires_manual_approval: form.requires_manual_approval,
       min_notice_min: intOrNull(form.min_notice), max_advance_days: intOrNull(form.max_advance),
       ...(canCost ? { cost_minor: form.cost_minor } : {}),
@@ -187,6 +191,7 @@ function ServiceForm({ service, categories, onClose, refetch }: { service: Servi
             ) : null}
           </div>
           <ImageUpload slug={access.slug} purpose="service" value={form.image} onChange={(id) => set({ image: id })} label={t('catalog_team.services.upload_image')} />
+          <ServiceBadgeField value={form.badge} onChange={(badge) => set({ badge })} />
         </fieldset>
 
         <fieldset disabled={readOnly} className="flex flex-col gap-4">

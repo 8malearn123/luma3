@@ -2,6 +2,7 @@ import { CalendarCheck, Clock, ShoppingBag, Star, UserRound } from 'lucide-react
 import { cx } from '../../components/cx';
 import type { PublicProduct, PublicService, PublicStaff } from '@/shared/builder/storefront';
 import { formatDuration } from '@/shared/format';
+import { badgeLabel, type ServiceBadge } from '@/shared/badges';
 import { SfImage } from '../SfImage';
 import { btnClass, cardClass, headingClass } from '../theme';
 import {
@@ -21,6 +22,14 @@ export function BookButton({ ctx, serviceId, staffId, size = 'sm', label }: { ct
   return <a href={href} className={btnClass(ctx.data.brand, 'primary', size)}><CalendarCheck className="size-4" aria-hidden />{text}</a>;
 }
 
+/** Owner-set manual badge (الأكثر طلباً، جديد، عرض خاص، أو نص مخصص). */
+export function ServiceBadgeChip({ badge, locale, className }: { badge: ServiceBadge | null | undefined; locale: 'ar' | 'en'; className?: string }) {
+  if (!badge) return null;
+  const text = badgeLabel(badge, locale);
+  if (!text) return null;
+  return <span data-badge={badge.kind} className={cx('inline-flex items-center rounded-full bg-sf-primary px-2 py-0.5 text-[11px] font-semibold text-sf-on-primary', className)}>{text}</span>;
+}
+
 export function ServiceCard({ ctx, s, display, showPrice = true, showDuration = true }: { ctx: RenderCtx; s: PublicService; display: 'list' | 'cards'; showPrice?: boolean; showDuration?: boolean }) {
   const name = pk(ctx, s.name_ar, s.name_en);
   const desc = pk(ctx, s.description_ar, s.description_en);
@@ -28,7 +37,7 @@ export function ServiceCard({ ctx, s, display, showPrice = true, showDuration = 
     return (
       <li className="flex items-center justify-between gap-3 border-b border-sf-border py-3 last:border-b-0">
         <div className="min-w-0">
-          <h3 className="font-semibold"><a href={hrefService(ctx, s.id)} className="hover:underline">{name}</a></h3>
+          <h3 className="flex flex-wrap items-center gap-2 font-semibold"><a href={hrefService(ctx, s.id)} className="hover:underline">{name}</a><ServiceBadgeChip badge={s.badge} locale={ctx.locale} /></h3>
           <p className="flex flex-wrap items-center gap-x-3 text-sm text-sf-muted">
             {showDuration ? <span className="inline-flex items-center gap-1"><Clock className="size-3.5" aria-hidden />{formatDuration(s.duration_min, ctx.locale)}</span> : null}
             {showPrice ? <span className="font-medium text-sf-text">{priceLabel(ctx, s)}</span> : null}
@@ -39,7 +48,8 @@ export function ServiceCard({ ctx, s, display, showPrice = true, showDuration = 
     );
   }
   return (
-    <li className={cx(cardClass(ctx.data.brand), 'flex flex-col overflow-hidden')}>
+    <li className={cx(cardClass(ctx.data.brand), 'relative flex flex-col overflow-hidden')}>
+      {s.badge ? <ServiceBadgeChip badge={s.badge} locale={ctx.locale} className="absolute start-3 top-3 z-10 shadow" /> : null}
       {s.image_asset_id && ctx.data.assets[s.image_asset_id] ? <a href={hrefService(ctx, s.id)} tabIndex={-1} aria-hidden><SfImage ctx={ctx} id={s.image_asset_id} alt="" aspect="4:3" rounded={false} /></a> : null}
       <div className="flex flex-1 flex-col gap-2 p-4">
         <h3 className={cx(headingClass, 'text-lg font-semibold')}><a href={hrefService(ctx, s.id)} className="hover:underline">{name}</a></h3>

@@ -37,6 +37,8 @@ export const periodQuery = z.object({
   from: isoDate.optional(),
   to: isoDate.optional(),
   staff_id: z.string().uuid().optional(),
+  /** Branch switcher (`all` or a branch id); resolved by branchScopeFor. */
+  branch_id: z.string().max(40).optional(),
 }).strict();
 
 export const performanceSettingsInput = z.object({

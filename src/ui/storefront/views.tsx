@@ -7,7 +7,7 @@ import { RenderBlocks } from './BlockRenderer';
 import { SfImage } from './SfImage';
 import { btnClass, cardClass, containerClass, headingClass, sectionClass } from './theme';
 import { hrefCart, hrefPage, hrefProducts, hrefService, hrefServices, hrefStaff, money, pageByKind, pk, tr, type RenderCtx } from './context';
-import { BookButton, priceLabel, ProductCard, ServiceGrid, StaffCard } from './blocks/catalog';
+import { BookButton, priceLabel, ProductCard, ServiceBadgeChip, ServiceGrid, StaffCard } from './blocks/catalog';
 import { ContactList, HoursTable, MapBlock } from './blocks/info';
 import { Section } from './blocks/common';
 
@@ -134,6 +134,7 @@ export function ServiceDetail({ ctx, id }: { ctx: RenderCtx; id: string }) {
           {s.image_asset_id && ctx.data.assets[s.image_asset_id] ? <SfImage ctx={ctx} id={s.image_asset_id} alt={name} aspect="4:3" eager /> : null}
           <div className="flex flex-col gap-4">
             {cat ? <a href={hrefServices(ctx, cat.id)} className="text-sm text-sf-primary hover:underline">{pk(ctx, cat.name_ar, cat.name_en)}</a> : null}
+            {s.badge ? <div><ServiceBadgeChip badge={s.badge} locale={ctx.locale} /></div> : null}
             <h1 className={cx(headingClass, 'text-3xl font-bold @2xl:text-4xl')}>{name}</h1>
             <p className="flex flex-wrap items-center gap-4">
               <span className="text-xl font-semibold">{priceLabel(ctx, s)}</span>

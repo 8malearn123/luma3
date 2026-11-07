@@ -18,13 +18,14 @@ import { hr } from './messages/hr';
 import { market } from './messages/market';
 import { admin } from './messages/admin';
 import { customer } from './messages/customer';
+import { business } from './messages/business';
 
 /**
  * Translation dictionary. Arabic is the primary language; English mirrors it.
  * Each domain owns one file in ./messages exporting { ar, en } with identical
  * keys (checked by tests/unit/i18n.test.ts).
  */
-export const dictionaries = [common, errors, auth, dashboard, onboarding, marketingSite, operations, commerce, policy, platform, builder, marketing, bookingsUi, catalogTeamUi, financeEngagementUi, payroll, hr, market, admin, customer] as const;
+export const dictionaries = [common, errors, auth, dashboard, onboarding, marketingSite, operations, commerce, policy, platform, builder, marketing, bookingsUi, catalogTeamUi, financeEngagementUi, payroll, hr, market, admin, customer, business] as const;
 
 export type Locale = 'ar' | 'en';
 export const LOCALES: Locale[] = ['ar', 'en'];

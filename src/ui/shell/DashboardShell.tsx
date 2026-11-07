@@ -11,6 +11,7 @@ import { NavIcon } from './icons';
 import { visibleNav } from './nav';
 import { UserMenu } from './UserMenu';
 import { NotificationsBell } from './NotificationsBell';
+import { BranchSwitcher } from '../business/BranchSwitcher';
 import { LumaMark } from '../components/brand';
 import { cx } from '../components/cx';
 import { Alert } from '../components/feedback';
@@ -81,6 +82,7 @@ export function DashboardShell({ access, user, children }: { access: ClientAcces
             <button className="lg:hidden" onClick={() => setOpen(true)} aria-label={t('a11y.open_menu')}><Menu className="size-5" /></button>
             <Link href="/app" className="text-sm text-ink-muted hover:text-ink">{t('nav.switch_business')}</Link>
             <div className="flex-1" />
+            <BranchSwitcher />
             {access.status === 'active' ? (
               <a href={`/s/${access.slug}`} target="_blank" rel="noreferrer" className="hidden items-center gap-1 text-sm text-luma-700 hover:underline sm:inline-flex">
                 {t('nav.storefront')}<ExternalLink className="size-3.5" />

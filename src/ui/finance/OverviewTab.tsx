@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { useI18n } from '@/i18n/client';
 import { useApiQuery } from '../hooks';
+import { BranchFinanceCard, type BranchFinance } from '../business/BranchFinanceCard';
 import { Alert, Badge, ErrorState, LoadingState } from '../components/feedback';
 import { Card } from '../components/layout';
 import { BarList } from '../analytics/charts';
@@ -72,6 +73,7 @@ export function OverviewTab() {
             </div>
           ) : null}
 
+          <BranchFinanceCard data={(r as { branch?: BranchFinance }).branch} />
           <section aria-label={t('fe.overview.summary')} className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
             <Tile label={t('finance.service_sales')} value={money(r.completed_service_sales.amount_minor)} hint={t('fe.basis.service_sales')} />
             <Tile label={t('finance.product_sales')} value={money(r.product_sales.amount_minor)} hint={t('fe.basis.product_sales')} />

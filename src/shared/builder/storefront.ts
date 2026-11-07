@@ -1,3 +1,4 @@
+import type { ServiceBadge } from '../badges';
 import type { PageBlock, SiteLayout } from './blocks';
 import type { Brand } from './theme';
 
@@ -34,6 +35,8 @@ export type PublicService = {
   id: string; name_ar: string | null; name_en: string | null; description_ar: string | null; description_en: string | null;
   price_minor: number; price_display: 'fixed' | 'starting_from'; duration_min: number; image_asset_id: string | null;
   category_id: string | null; staff_ids: string[]; bookable: boolean;
+  /** Manual owner-set badge (see shared/badges.ts); optional for older snapshots. */
+  badge?: ServiceBadge | null;
 };
 export type PublicStaff = {
   id: string; display_name: string; display_name_en: string | null; title_ar: string | null; title_en: string | null;

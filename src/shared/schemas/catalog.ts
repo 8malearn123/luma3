@@ -37,17 +37,24 @@ export const serviceInput = z.object({
   max_advance_days: z.number().int().min(1).max(365).nullable().optional(),
   requires_manual_approval: z.boolean().default(false),
   cost_minor: money.nullable().optional(),
+  badge_kind: z.enum(['popular', 'new', 'offer', 'custom']).nullable().optional(),
+  badge_text_ar: z.string().trim().max(24).nullable().optional(),
+  badge_text_en: z.string().trim().max(24).nullable().optional(),
   staff: z.array(z.object({
     staff_id: z.string().uuid(),
     price_override_minor: money.nullable().optional(),
     duration_override_min: z.number().int().min(5).max(720).nullable().optional(),
   })).max(100).optional(),
   resource_requirements: z.array(z.object({ resource_type_id: z.string().uuid(), quantity: z.number().int().min(1).max(5).default(1) })).max(5).optional(),
-}).refine((v) => !!(v.name_ar || v.name_en), { message: 'A name is required', path: ['name_ar'] });
+}).refine((v) => !!(v.name_ar || v.name_en), { message: 'A name is required', path: ['name_ar'] })
+  .refine((v) => v.badge_kind !== 'custom' || !!(v.badge_text_ar || v.badge_text_en), { message: 'A custom badge needs text', path: ['badge_text_ar'] });
 export type ServiceInput = z.infer<typeof serviceInput>;
 
 export const servicePatch = z.object({
   version: z.number().int().min(1),
+  badge_kind: z.enum(['popular', 'new', 'offer', 'custom']).nullable().optional(),
+  badge_text_ar: z.string().trim().max(24).nullable().optional(),
+  badge_text_en: z.string().trim().max(24).nullable().optional(),
   name_ar: name.optional().nullable(),
   name_en: name.optional().nullable(),
   description_ar: desc.optional().nullable(),

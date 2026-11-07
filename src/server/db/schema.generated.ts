@@ -104,12 +104,14 @@ export interface Assets {
   alt_en: string | null;
   bytes: number;
   created_at: Generated<Timestamp>;
+  crop: Json | null;
   height: number | null;
   id: Generated<string>;
   kind: string;
   mime: string;
   purpose: string;
   sha256: string | null;
+  source_asset_id: string | null;
   status: Generated<string>;
   storage_key: string;
   tenant_id: string | null;
@@ -870,6 +872,7 @@ export interface InventoryItems {
   id: Generated<string>;
   is_active: Generated<boolean>;
   kind: string;
+  low_stock_alerted_at: Timestamp | null;
   low_stock_threshold: Numeric | null;
   name: string;
   on_hand: Generated<Numeric>;
@@ -2057,6 +2060,9 @@ export interface ServiceResourceRequirements {
 
 export interface Services {
   archived_at: Timestamp | null;
+  badge_kind: string | null;
+  badge_text_ar: string | null;
+  badge_text_en: string | null;
   bookable_internally_when_hidden: Generated<boolean>;
   booking_mode: Generated<string>;
   branch_id: string | null;
@@ -2488,6 +2494,9 @@ export interface TenantSettings {
   deposit_fixed_minor: Generated<number>;
   deposit_mode: Generated<string>;
   deposit_percent_bp: Generated<number>;
+  digest_enabled: Generated<boolean>;
+  digest_hour: Generated<number>;
+  digest_weekday: Generated<number>;
   free_cancellation_hours: Generated<number>;
   hold_ttl_sec: Generated<number>;
   late_cancellation_fee_bp: Generated<number>;
@@ -2687,6 +2696,16 @@ export interface WaitlistOffers {
   waitlist_entry_id: string;
 }
 
+export interface WeeklyDigests {
+  created_at: Generated<Timestamp>;
+  delivered_channels: Generated<string[]>;
+  id: Generated<string>;
+  payload: Json;
+  period_end: string;
+  period_start: string;
+  tenant_id: string;
+}
+
 export interface WorkingHours {
   branch_id: string;
   created_at: Generated<Timestamp>;
@@ -2875,5 +2894,6 @@ export interface DB {
   verification_documents: VerificationDocuments;
   waitlist_entries: WaitlistEntries;
   waitlist_offers: WaitlistOffers;
+  weekly_digests: WeeklyDigests;
   working_hours: WorkingHours;
 }

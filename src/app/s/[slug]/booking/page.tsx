@@ -3,6 +3,7 @@ import { withTenant } from '@/server/db/client';
 import { publicTenant } from '@/server/domains/storefront-public';
 import { getSessionUser } from '@/server/pages';
 import { AppError } from '@/server/http/errors';
+import { badgeOf } from '@/shared/badges';
 import { BookingFlow, type FlowService } from '@/ui/booking/BookingFlow';
 import { rebookPrefill } from '@/server/domains/booking/rebook';
 
@@ -17,7 +18,7 @@ export default async function BookingPage({ params, searchParams }: { params: Pr
   try { tenant = await publicTenant(slug); } catch (e) { if (e instanceof AppError) notFound(); throw e; }
   const data = await withTenant(tenant.id, async (trx) => {
     const services = await trx.selectFrom('services as s').leftJoin('categories as c', 'c.id', 's.category_id')
-      .select(['s.id', 's.name_ar', 's.name_en', 's.description_ar', 's.description_en', 's.price_minor', 's.price_display', 's.duration_min', 's.category_id', 'c.name_ar as category_ar', 'c.name_en as category_en', 'c.sort as category_sort', 's.sort', 's.branch_id'])
+      .select(['s.id', 's.name_ar', 's.name_en', 's.description_ar', 's.description_en', 's.price_minor', 's.price_display', 's.duration_min', 's.category_id', 'c.name_ar as category_ar', 'c.name_en as category_en', 'c.sort as category_sort', 's.sort', 's.branch_id', 's.badge_kind', 's.badge_text_ar', 's.badge_text_en'])
       .where('s.is_active', '=', true).where('s.is_visible', '=', true).where('s.archived_at', 'is', null).where('s.booking_mode', '=', 'individual')
       .where((eb) => eb.or([eb('s.category_id', 'is', null), eb.and([eb('c.is_visible', '=', true), eb('c.archived_at', 'is', null)])]))
       .orderBy('c.sort').orderBy('s.sort').execute();
@@ -32,7 +33,7 @@ export default async function BookingPage({ params, searchParams }: { params: Pr
   });
   const services: FlowService[] = data.services.map((s) => ({
     id: s.id, name_ar: s.name_ar, name_en: s.name_en, description_ar: s.description_ar, description_en: s.description_en, price_minor: s.price_minor, price_display: s.price_display,
-    duration_min: s.duration_min, category: s.category_id ? { id: s.category_id, name_ar: s.category_ar, name_en: s.category_en } : null, branch_id: s.branch_id,
+    duration_min: s.duration_min, badge: badgeOf(s), category: s.category_id ? { id: s.category_id, name_ar: s.category_ar, name_en: s.category_en } : null, branch_id: s.branch_id,
     staff: data.links.filter((l) => l.service_id === s.id).map((l) => ({
       id: l.id, name: l.display_name, name_en: l.display_name_en, title_ar: l.title_ar, title_en: l.title_en, photo: l.photo_asset_id,
       branch_ids: data.assignments.filter((a) => a.staff_id === l.id).map((a) => a.branch_id),

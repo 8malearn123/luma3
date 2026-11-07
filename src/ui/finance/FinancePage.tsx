@@ -10,6 +10,7 @@ import { ExpensesTab } from './ExpensesTab';
 import { DocumentsTab, RefundsTab } from './DocumentsTab';
 import { ExportsTab } from './ExportsTab';
 import { MarketplaceFeesTab } from './MarketplaceFeesTab';
+import { ZatcaNotice } from '../business/ZatcaNotice';
 
 const TABS = ['overview', 'expenses', 'documents', 'refunds', 'exports', 'marketplace'] as const;
 type Tab = (typeof TABS)[number];
@@ -33,6 +34,7 @@ export function FinancePage({ demo }: { demo: boolean }) {
     <StepUpProvider>
       <div>
         <PageHeader title={t('finance.title')} subtitle={t('fe.finance.subtitle', { tz: access.timezone })} />
+        <ZatcaNotice className="mb-4" />
         <Tabs value={tab} onChange={setTab} items={visible.map((k) => ({ value: k, label: label(k) }))} />
         {tab === 'overview' ? <OverviewTab /> : null}
         {tab === 'expenses' ? <ExpensesTab /> : null}

@@ -44,9 +44,11 @@ const itemSelect = [
   'ii.cost_per_unit_minor', 'ii.is_active', 'ii.updated_at', 'ii.created_at', 'v.product_id', 'v.sku',
 ] as const;
 
-export async function listItems(access: TenantAccess, query: z.infer<typeof inventoryListQuery>) {
+export async function listItems(access: TenantAccess, query: z.infer<typeof inventoryListQuery>, opts: { branchIds?: string[] | null } = {}) {
+  const branchIds = opts.branchIds ?? null;
   return withTenant(access.tenantId, async (trx) => {
     let q = trx.selectFrom('inventory_items as ii').leftJoin('product_variants as v', 'v.id', 'ii.variant_id').where('ii.tenant_id', '=', access.tenantId);
+    if (branchIds) q = branchIds.length ? q.where('ii.branch_id', 'in', branchIds) : q.where(sql<boolean>`false`);
     if (query.kind && query.kind !== 'all') q = q.where('ii.kind', '=', query.kind);
     if (query.include_inactive !== '1') q = q.where('ii.is_active', '=', true);
     if (query.low === '1') q = q.where('ii.low_stock_threshold', 'is not', null).where(sql<boolean>`ii.on_hand - ii.reserved <= ii.low_stock_threshold`);
@@ -58,7 +60,9 @@ export async function listItems(access: TenantAccess, query: z.infer<typeof inve
     const order = query.sort === 'available' ? sql`ii.on_hand - ii.reserved` : query.sort === 'on_hand' ? sql`ii.on_hand` : query.sort === 'updated' ? sql`ii.updated_at` : sql`ii.name`;
     const rows = await q.select([...itemSelect, sql<number>`count(*) over ()`.as('total')]).orderBy(order, dir).orderBy('ii.id')
       .limit(query.limit).offset(query.offset).execute();
-    const lowCount = await trx.selectFrom('inventory_items').select(sql<number>`count(*)::int`.as('n')).where('is_active', '=', true)
+    let lowQ = trx.selectFrom('inventory_items').select(sql<number>`count(*)::int`.as('n')).where('is_active', '=', true);
+    if (branchIds) lowQ = branchIds.length ? lowQ.where('branch_id', 'in', branchIds) : lowQ.where(sql<boolean>`false`);
+    const lowCount = await lowQ
       .where('low_stock_threshold', 'is not', null).where(sql<boolean>`on_hand - reserved <= low_stock_threshold`).executeTakeFirstOrThrow();
     return { items: rows.map(({ total: _t, ...r }) => serializeItem(access, r)), total: Number(rows[0]?.total ?? 0), low_stock_count: lowCount.n };
   });

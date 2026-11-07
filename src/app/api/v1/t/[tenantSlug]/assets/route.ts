@@ -1,17 +1,11 @@
 import { route } from '@/server/http/route';
 import { Errors } from '@/server/http/errors';
-import { MAX_UPLOAD_BYTES, uploadImage, type UploadPurpose } from '@/server/domains/assets/service';
+import { cropSchema, MAX_UPLOAD_BYTES, PURPOSE_CAPS, uploadImage, type UploadPurpose } from '@/server/domains/assets/service';
 import { requireCapability } from '@/server/tenancy/access';
-import type { Capability } from '@/server/auth/capabilities';
 
-const PURPOSE_CAPS: Record<UploadPurpose, Capability[]> = {
-  logo: ['builder.edit', 'business.manage'], cover: ['builder.edit', 'business.manage'], gallery: ['builder.edit'], block: ['builder.edit'],
-  service: ['catalog.edit'], product: ['catalog.edit'], staff: ['staff.edit', 'staff.edit_own_profile'],
-  evidence: ['incidents.submit'], receipt: ['finance.manage'],
-};
 
 /**
- * POST multipart/form-data { file, purpose, alt_ar?, alt_en? } — the image is
+ * POST multipart/form-data { file, purpose, alt_ar?, alt_en?, crop? } (crop = JSON {x,y,width,height} from the crop editor) — the image is
  * decoded, re-encoded to WebP and stored. The client-sent type is not trusted.
  */
 export const POST = route({
@@ -28,6 +22,15 @@ export const POST = route({
     if (!(file instanceof Blob)) throw Errors.invalid('file_required');
     const data = Buffer.from(await file.arrayBuffer());
     const alt = (k: string) => { const v = form.get(k); return typeof v === 'string' ? v.slice(0, 160) : undefined; };
-    return { status: 201, data: await uploadImage(tenant, actor, { data, purpose, alt_ar: alt('alt_ar'), alt_en: alt('alt_en') }) };
+    let crop = null;
+    const rawCrop = form.get('crop');
+    if (typeof rawCrop === 'string' && rawCrop) {
+      let parsed: unknown;
+      try { parsed = JSON.parse(rawCrop); } catch { throw Errors.invalid('invalid_crop'); }
+      const c = cropSchema.safeParse(parsed);
+      if (!c.success) throw Errors.invalid('invalid_crop');
+      crop = c.data;
+    }
+    return { status: 201, data: await uploadImage(tenant, actor, { data, purpose, alt_ar: alt('alt_ar'), alt_en: alt('alt_en'), crop }) };
   },
 });
