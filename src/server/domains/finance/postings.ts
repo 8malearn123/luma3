@@ -1,6 +1,7 @@
 import { sql } from 'kysely';
 import type { Tx } from '../../db/client';
 import { alreadyPosted, post, splitTax } from './journal';
+import { commissionGate } from '../payroll/service';
 
 /**
  * Revenue recognition at service completion (exactly once per booking):
@@ -42,14 +43,21 @@ export async function recognizeRetainedOnClose(trx: Tx, tenantId: string, bookin
  * Commissions earned at completion, from configurable rules with explicit
  * precedence: staff+service > staff > service > business default. The rule is
  * snapshotted on the entry; refunds create explicit reversal entries.
+ *
+ * Commission applies to services only (booking items); products never earn it.
+ * The business decides: when service commission is switched off nothing is
+ * earned, and a service switched off earns nothing whatever the other rules say.
  */
 export async function earnCommissions(trx: Tx, tenantId: string, bookingId: string, actorUserId: string | null) {
+  const gate = await commissionGate(trx, tenantId);
+  if (!gate.enabled) return;
   const b = await trx.selectFrom('bookings').select(['total_minor', 'subtotal_minor', 'tax_minor', 'discount_minor', 'starts_at']).where('id', '=', bookingId).executeTakeFirstOrThrow();
   const items = await trx.selectFrom('booking_items').selectAll().where('booking_id', '=', bookingId).where('superseded_at', 'is', null).execute();
   const day = b.starts_at.toISOString().slice(0, 10);
   const rules = await trx.selectFrom('commission_rules').selectAll().where('is_active', '=', true).where('effective_from', '<=', day)
     .where((eb) => eb.or([eb('effective_to', 'is', null), eb('effective_to', '>=', day)])).execute();
   for (const it of items) {
+    if (gate.excluded.has(it.service_id)) continue;
     const score = (r: (typeof rules)[number]) =>
       (r.staff_id === it.staff_id && r.service_id === it.service_id ? 4 : 0) || (r.staff_id === it.staff_id && !r.service_id ? 3 : 0)
       || (!r.staff_id && r.service_id === it.service_id ? 2 : 0) || (!r.staff_id && !r.service_id ? 1 : 0);

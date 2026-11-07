@@ -1172,6 +1172,78 @@ export interface Payouts {
   tenant_id: string;
 }
 
+export interface PayrollEntries {
+  amount_minor: number;
+  booking_id: string | null;
+  created_at: Generated<Timestamp>;
+  created_by: string | null;
+  currency: Generated<string>;
+  effective_on: string;
+  id: Generated<string>;
+  kind: string;
+  method: string | null;
+  note: string | null;
+  staff_id: string;
+  tenant_id: string;
+  updated_at: Generated<Timestamp>;
+  void_reason: string | null;
+  voided_at: Timestamp | null;
+  voided_by: string | null;
+}
+
+export interface PayrollRuns {
+  advance_minor: number;
+  base_minor: number;
+  bonus_minor: number;
+  closed_at: Generated<Timestamp>;
+  closed_by: string | null;
+  commission_minor: number;
+  currency: Generated<string>;
+  deduction_minor: number;
+  id: Generated<string>;
+  net_minor: number;
+  period_month: string;
+  staff_count: number;
+  tenant_id: string;
+  tips_minor: number;
+}
+
+export interface PayrollSettledItems {
+  run_id: string;
+  source_id: string;
+  source_type: string;
+  tenant_id: string;
+}
+
+export interface PayrollSlipPayments {
+  amount_minor: number;
+  id: Generated<string>;
+  paid_at: Generated<Timestamp>;
+  paid_by: string | null;
+  reference: string | null;
+  slip_id: string;
+  tenant_id: string;
+}
+
+export interface PayrollSlips {
+  advance_minor: number;
+  base_minor: number;
+  bonus_minor: number;
+  commission_count: number;
+  commission_minor: number;
+  created_at: Generated<Timestamp>;
+  deduction_minor: number;
+  id: Generated<string>;
+  lines: Generated<Json>;
+  net_minor: number;
+  number: string;
+  run_id: string;
+  staff_id: string;
+  staff_name: string;
+  tenant_id: string;
+  tips_minor: number;
+}
+
 export interface PerformanceSettings {
   min_completed: Generated<number>;
   min_reviews: Generated<number>;
@@ -1181,6 +1253,11 @@ export interface PerformanceSettings {
   updated_at: Generated<Timestamp>;
   updated_by: string | null;
   weights: Generated<Json>;
+}
+
+export interface PeriodicRuns {
+  last_started_at: Timestamp;
+  name: string;
 }
 
 export interface PlanComments {
@@ -1597,6 +1674,15 @@ export interface ServiceAddons {
   updated_at: Generated<Timestamp>;
 }
 
+export interface ServiceCommissionSettings {
+  commission_enabled: Generated<boolean>;
+  created_at: Generated<Timestamp>;
+  service_id: string;
+  tenant_id: string;
+  updated_at: Generated<Timestamp>;
+  updated_by: string | null;
+}
+
 export interface ServiceMaterialRecipes {
   approved_at: Timestamp | null;
   approved_by: string | null;
@@ -1772,6 +1858,15 @@ export interface StaffBreaks {
   weekday: number | null;
 }
 
+export interface StaffPayProfiles {
+  base_salary_minor: Generated<number>;
+  created_at: Generated<Timestamp>;
+  staff_id: string;
+  tenant_id: string;
+  updated_at: Generated<Timestamp>;
+  updated_by: string | null;
+}
+
 export interface StaffProfiles {
   archived_at: Timestamp | null;
   bio_ar: string | null;
@@ -1816,6 +1911,14 @@ export interface StockReservations {
   status: Generated<string>;
   tenant_id: string;
   updated_at: Generated<Timestamp>;
+}
+
+export interface StoredFiles {
+  bytes: number;
+  content: Buffer;
+  content_type: string;
+  created_at: Generated<Timestamp>;
+  key: string;
 }
 
 export interface StorePages {
@@ -1992,6 +2095,7 @@ export interface TenantSettings {
   notify_channels: Generated<string[]>;
   powered_by_visible: Generated<boolean>;
   prices_include_tax: Generated<boolean>;
+  service_commission_enabled: Generated<boolean>;
   slot_increment_min: Generated<number>;
   social_links: Generated<Json>;
   tax_label: string | null;
@@ -1999,6 +2103,7 @@ export interface TenantSettings {
   tax_rate_bp: Generated<number>;
   tenant_id: string;
   time_format: Generated<string>;
+  tips_enabled: Generated<boolean>;
   updated_at: Generated<Timestamp>;
   version: Generated<number>;
   waitlist_offer_ttl_min: Generated<number>;
@@ -2232,7 +2337,13 @@ export interface DB {
   payment_attempts: PaymentAttempts;
   payments: Payments;
   payouts: Payouts;
+  payroll_entries: PayrollEntries;
+  payroll_runs: PayrollRuns;
+  payroll_settled_items: PayrollSettledItems;
+  payroll_slip_payments: PayrollSlipPayments;
+  payroll_slips: PayrollSlips;
   performance_settings: PerformanceSettings;
+  periodic_runs: PeriodicRuns;
   plan_comments: PlanComments;
   plan_features: PlanFeatures;
   plan_versions: PlanVersions;
@@ -2261,6 +2372,7 @@ export interface DB {
   sandbox_provider_payments: SandboxProviderPayments;
   sandbox_provider_refunds: SandboxProviderRefunds;
   service_addons: ServiceAddons;
+  service_commission_settings: ServiceCommissionSettings;
   service_material_recipes: ServiceMaterialRecipes;
   service_package_items: ServicePackageItems;
   service_packages: ServicePackages;
@@ -2275,10 +2387,12 @@ export interface DB {
   site_versions: SiteVersions;
   staff_branch_assignments: StaffBranchAssignments;
   staff_breaks: StaffBreaks;
+  staff_pay_profiles: StaffPayProfiles;
   staff_profiles: StaffProfiles;
   stock_movements: StockMovements;
   stock_reservations: StockReservations;
   store_pages: StorePages;
+  stored_files: StoredFiles;
   subscription_events: SubscriptionEvents;
   subscriptions: Subscriptions;
   support_access_grants: SupportAccessGrants;

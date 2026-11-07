@@ -20,6 +20,7 @@ export const NAV: NavItem[] = [
   { key: 'waitlist', href: (s) => `/app/${s}/waitlist`, icon: 'ListOrdered', caps: ['waitlist.manage'], feature: 'feature.waitlist', section: 'operate' },
   { key: 'groups', href: (s) => `/app/${s}/groups`, icon: 'UsersRound', caps: ['bookings.manage'], feature: 'feature.group_sessions', hideFor: ['expert'], section: 'operate' },
   { key: 'team', href: (s) => `/app/${s}/team`, icon: 'Users', caps: ['staff.edit', 'schedule.manage', 'team.manage', 'leave.approve'], section: 'operate' },
+  { key: 'payroll', href: (s) => `/app/${s}/payroll`, icon: 'Wallet', caps: ['payroll.view'], section: 'operate' },
   { key: 'policies', href: (s) => `/app/${s}/policies`, icon: 'ShieldAlert', caps: ['incidents.submit', 'incidents.review'], section: 'operate' },
 
   { key: 'services', href: (s) => `/app/${s}/services`, icon: 'Sparkles', caps: ['catalog.edit'], section: 'sell' },

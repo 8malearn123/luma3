@@ -19,7 +19,7 @@ const ar = {
     finance: { subtitle: 'الأرقام محسوبة من القيود المحاسبية بتوقيت النشاط ({tz}). كل رقم يوضّح أساس حسابه.' },
     overview: {
       summary: 'ملخص الفترة', incomplete_body: 'بعض بيانات التكلفة غير مسجّلة، لذلك لا نعرض ربحاً ولا صافياً. أكملي التكاليف الناقصة لحساب الربح.',
-      net: 'الصافي (الربح)', not_computed: 'غير محسوب', incomplete: 'غير مكتمل', formula: 'مبيعات الخدمات + مبيعات المنتجات − المصروفات − تكلفة المنتجات − تكلفة المواد − العمولات',
+      net: 'الصافي (الربح)', not_computed: 'غير محسوب', incomplete: 'غير مكتمل', formula: 'مبيعات الخدمات + مبيعات المنتجات − المصروفات − تكلفة المنتجات − تكلفة المواد − العمولات − الرواتب',
       tax_collected: 'الضريبة المحصّلة', refunds_pending: 'قيد التنفيذ: {amount}', missing_lines: '{n} بنداً مباعاً بلا تكلفة',
       daily_collections: 'المتحصلات اليومية', max_day: 'أعلى يوم', chart_note: 'المبالغ المحصّلة فعلياً في كل يوم ({tz})، شاملة العرابين.',
       by_method: 'المتحصلات حسب طريقة الدفع', by_category: 'المصروفات حسب التصنيف', none: 'لا شيء في هذه الفترة.',
@@ -163,7 +163,7 @@ const en: typeof ar = {
     finance: { subtitle: 'Figures come from the accounting ledger in the business timezone ({tz}). Each figure states its basis.' },
     overview: {
       summary: 'Period summary', incomplete_body: 'Some cost data is not recorded, so no profit or net figure is shown. Complete the missing costs to compute profit.',
-      net: 'Net (profit)', not_computed: 'Not computed', incomplete: 'Incomplete', formula: 'service sales + product sales − expenses − product costs − material costs − commissions',
+      net: 'Net (profit)', not_computed: 'Not computed', incomplete: 'Incomplete', formula: 'service sales + product sales − expenses − product costs − material costs − commissions − salaries',
       tax_collected: 'Tax collected', refunds_pending: 'Pending: {amount}', missing_lines: '{n} sold lines without a cost',
       daily_collections: 'Daily collections', max_day: 'Highest day', chart_note: 'Money actually captured each day ({tz}), including deposits.',
       by_method: 'Collections by payment method', by_category: 'Expenses by category', none: 'Nothing in this period.',

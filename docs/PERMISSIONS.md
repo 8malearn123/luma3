@@ -59,6 +59,9 @@ Legend: ✓ = role default, D = delegable to that role (the "if delegated" colum
 | `leave.approve` | ✓ | ✓ |  |  |  |  |  |
 | `attendance.own` | ✓ | ✓ | ✓ | ✓ | ✓ |  |  |
 | `attendance.manage` | ✓ | ✓ |  |  |  |  |  |
+| `payroll.view` | ✓ | D |  |  | ✓ |  |  |
+| `payroll.manage` | ✓ | D |  |  | ✓ |  |  |
+| `payroll.view_own` (self-scoped) | ✓ | ✓ | ✓ | ✓ | ✓ |  |  |
 | `incidents.submit` | ✓ | D | D | D | D |  |  |
 | `incidents.review` | ✓ | D |  |  |  |  |  |
 | `marketing.view` | ✓ | ✓ |  |  |  | ✓ | ✓ |
@@ -76,7 +79,7 @@ Delegable allowlists, verbatim from `ROLE_DELEGABLE`:
 | Role | Delegable capabilities |
 |---|---|
 | owner | none (already has everything) |
-| manager | `subscription.view`, `team.manage`, `staff.edit`, `catalog.edit`, `costs.view`, `builder.edit`, `builder.publish`, `finance.view`, `finance.export`, `refunds.approve`, `payments.configure`, `incidents.submit`, `incidents.review`, `marketing.manage`, `campaigns.approve`, `audit.view` |
+| manager | `subscription.view`, `team.manage`, `staff.edit`, `catalog.edit`, `costs.view`, `builder.edit`, `builder.publish`, `finance.view`, `finance.export`, `refunds.approve`, `payments.configure`, `payroll.view`, `payroll.manage`, `incidents.submit`, `incidents.review`, `marketing.manage`, `campaigns.approve`, `audit.view` |
 | receptionist | `incidents.submit`, `builder.edit`, `refunds.request`, `analytics.view`, `loyalty.manage` |
 | specialist | `incidents.submit`, `customers.view` |
 | finance | `subscription.view`, `analytics.view`, `incidents.submit` |

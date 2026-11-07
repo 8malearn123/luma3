@@ -17,6 +17,7 @@ import { useToast } from '../components/toast';
 import { useAccess } from '../shell/access-context';
 import { ImageUpload } from '../workspace/ImageUpload';
 import { BookingDrawer, type BookingDetail } from '../bookings/BookingDrawer';
+import { EarningsCard } from '../payroll/EarningsCard';
 import { BookingStatusBadge, parseRange, useBookingFmt, type BookingAction, type BookingRow } from '../bookings/common';
 
 type Schedule = {
@@ -63,6 +64,7 @@ export function StaffPortal() {
           <MySchedule staffId={access.staffProfileId} />
         </div>
         <div className="flex min-w-0 flex-col gap-4">
+          {access.can('payroll.view_own') ? <EarningsCard /> : null}
           {access.can('attendance.own') ? <ClockCard /> : null}
           {access.can('leave.request', 'schedule.manage') ? <LeaveCard staffId={access.staffProfileId} /> : null}
           <ProfileCard />

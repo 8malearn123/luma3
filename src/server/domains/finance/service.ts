@@ -179,11 +179,13 @@ export async function financeReport(access: TenantAccess, fromISO: string, toISO
     const serviceRevenue = await acct('service_revenue');
     const productRevenue = await acct('product_revenue');
     const expenseTotal = expenses.reduce((a, e) => a + e.v, 0);
+    // Closed payroll months: base salaries + bonuses − deductions (tips pass through to staff).
+    const salaries = -(await acct('salaries_expense'));
     const missing: string[] = [];
     if (cogs.missing > 0) missing.push('product_unit_costs');
     if (materials.missing > 0) missing.push('material_unit_costs');
     if (servicesWithoutCost.n > 0 && materials.v === 0) missing.push('service_costs_or_recipes');
-    const profit = missing.length ? null : serviceRevenue + productRevenue - expenseTotal - cogs.v - Math.round(materials.v) - commissions.v;
+    const profit = missing.length ? null : serviceRevenue + productRevenue - expenseTotal - cogs.v - Math.round(materials.v) - commissions.v - salaries;
     return {
       period: { from: fromISO, to: toISO, timezone: tz },
       booking_value: { amount_minor: bookingValue.v, count: bookingValue.n, basis: 'Total of confirmed/attended/completed bookings starting in the period (not revenue).' },
@@ -199,9 +201,10 @@ export async function financeReport(access: TenantAccess, fromISO: string, toISO
       product_costs: { amount_minor: cogs.v, complete: cogs.missing === 0, missing_lines: cogs.missing },
       material_costs: { amount_minor: Math.round(materials.v), complete: materials.missing === 0 },
       commissions: { amount_minor: commissions.v },
+      salaries: { amount_minor: salaries, basis: 'Base salaries and bonuses minus deductions from closed payroll months. Tips are paid through to staff and are not an expense.' },
       profit: profit === null
         ? { status: 'costs_incomplete', missing, amount_minor: null }
-        : { status: 'computed', amount_minor: profit, formula: 'service sales + product sales − expenses − product costs − material costs − commissions' },
+        : { status: 'computed', amount_minor: profit, formula: 'service sales + product sales − expenses − product costs − material costs − commissions − salaries' },
       tax: {
         collected_minor: await acct('tax_payable'), note: 'Configured tax rules only; no tax or e-invoicing compliance is claimed.',
         configured: await trx.selectFrom('tenant_settings').select(['tax_label', 'tax_rate_bp', 'prices_include_tax']).where('tenant_id', '=', access.tenantId).executeTakeFirst() ?? null,
