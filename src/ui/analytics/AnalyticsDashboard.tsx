@@ -7,6 +7,7 @@ import { useI18n } from '@/i18n/client';
 import { formatDateTime, formatMoney, WEEKDAYS } from '@/shared/format';
 import { api } from '../api';
 import { useApiQuery, useErrorMessage } from '../hooks';
+import { AcquisitionCard } from './AcquisitionCard';
 import { useAccess } from '../shell/access-context';
 import { Button } from '../components/button';
 import { Alert, Badge, DeniedState, EmptyState, ErrorState, LoadingState } from '../components/feedback';
@@ -133,6 +134,7 @@ function StoreTab({ q }: { q: string }) {
           <BarList label={t('analytics.store.devices')} empty={t('states.none')} items={d.devices.map((s: any) => ({ key: s.key, label: t(`analytics.store.device.${s.key}`), value: s.sessions }))} />
         </Card>
       </div>
+      {access.can('analytics.view', 'customers.view') ? <AcquisitionCard q={q} /> : null}
       <Card title={t('analytics.store.series')} actions={<Button size="sm" variant="ghost" icon={<RefreshCw className="size-4" />} loading={busy} onClick={refresh}>{t('analytics.store.refresh_series')}</Button>}>
         {sessionsSeries.length >= 2 ? <Sparkline points={sessionsSeries} label={t('analytics.store.series')} /> : <p className="text-sm text-ink-muted">{t('analytics.store.series_empty')}</p>}
         {d.series_computed_at ? <p className="mt-1 text-xs text-ink-muted">{t('analytics.store.series_updated', { time: formatDateTime(d.series_computed_at, { locale, tz: access.timezone }) })}</p> : null}

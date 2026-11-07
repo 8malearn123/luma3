@@ -138,6 +138,29 @@ async function createProviderPayment(trx: Tx, a: {
   return { id: row.id, checkoutUrl: co.checkoutUrl, providerPaymentId: co.providerPaymentId };
 }
 
+/**
+ * Online checkout for a stored-value product sold on the storefront (gift card
+ * or membership). Same provider abstraction and hosted checkout as bookings and
+ * orders: the amount comes from the server-side row, never from the browser.
+ * On capture, applyCaptured() calls paymentTargets.giftCard / .membership and
+ * posts Dr cash/clearing, Cr gift_card_liability / membership_liability.
+ */
+export async function createStoredValueCheckout(trx: Tx, a: {
+  tenantId: string; purpose: 'gift_card' | 'membership'; giftCardId?: string; membershipId?: string; amountMinor: number; payerUserId: string;
+  idempotencyKey: string; description: string; returnUrl: string; expiresAt: Date;
+}) {
+  if (!!a.giftCardId === !!a.membershipId) throw Errors.invalid('invalid_target');
+  if (!(a.amountMinor > 0)) throw Errors.invalid('invalid_amount');
+  const acct = await activeAccount(trx, a.tenantId);
+  const p = acct ? provider(acct.provider) : null;
+  if (!acct || !p) throw Errors.unavailable('payments_unavailable', 'Online payment is not set up for this business');
+  const payment = await createProviderPayment(trx, {
+    tenantId: a.tenantId, account: acct, purpose: a.purpose, giftCardId: a.giftCardId, membershipId: a.membershipId, kind: 'full', amountMinor: a.amountMinor, currency: 'SAR',
+    payerUserId: a.payerUserId, idempotencyKey: a.idempotencyKey, description: a.description, returnUrl: a.returnUrl, expiresAt: a.expiresAt,
+  });
+  return { id: payment.id, checkout_url: payment.checkoutUrl, amount_minor: a.amountMinor, simulation: p.isSimulation };
+}
+
 /** Payment status for the payer (never trusts a browser redirect as proof of payment). */
 export async function paymentStatusForPayer(tenantId: string, paymentId: string, userId: string) {
   return withTenant(tenantId, async (trx) => {

@@ -6,7 +6,7 @@ import { useI18n } from '@/i18n/client';
 import { api } from '../api';
 import { useErrorMessage } from '../hooks';
 import { Button } from '../components/button';
-import { Field, FormErrorSummary, Input } from '../components/form';
+import { Checkbox, Field, FormErrorSummary, Input } from '../components/form';
 import { AuthCard } from './AuthCard';
 import { DemoSwitcher } from './DemoSwitcher';
 
@@ -15,6 +15,7 @@ export function LoginForm({ next, demo }: { next: string; demo: boolean }) {
   const msg = useErrorMessage();
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
+  const [remember, setRemember] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const [busy, setBusy] = useState(false);
 
@@ -22,7 +23,7 @@ export function LoginForm({ next, demo }: { next: string; demo: boolean }) {
     e.preventDefault();
     setBusy(true); setError(null);
     try {
-      await api('/api/v1/auth/login', { body: { identifier, password } });
+      await api('/api/v1/auth/login', { body: { identifier, password, remember } });
       window.location.href = next;
     } catch (err) {
       setError(err); // inputs are preserved
@@ -41,6 +42,7 @@ export function LoginForm({ next, demo }: { next: string; demo: boolean }) {
         <Field label={t('fields.password')} required>
           {(p) => <Input {...p} type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required />}
         </Field>
+        <Checkbox label={t('customer.auth.remember_me')} description={t('customer.auth.remember_me_hint')} checked={remember} onChange={setRemember} />
         <Button type="submit" loading={busy} size="lg">{t('auth.login_cta')}</Button>
         <Link href="/auth/recover" className="text-center text-sm text-luma-700 underline">{t('auth.forgot')}</Link>
       </form>

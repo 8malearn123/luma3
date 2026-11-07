@@ -7,7 +7,7 @@ export const POST = route({
   auth: 'public',
   input: registerSchema,
   handler: async ({ input, ip }) => {
-    const r = await register({ identifier: input.identifier, password: input.password, displayName: input.display_name, locale: input.locale, ip });
+    const r = await register({ identifier: input.identifier, password: input.password, displayName: input.display_name, locale: input.locale, ip, heardFrom: input.heard_from ?? null });
     return { status: 202, data: { delivery: r.delivery, identifier_kind: r.kind } };
   },
 });

@@ -3,6 +3,7 @@ import { requireUser } from '@/server/pages';
 import { publicTenant, requirePublicFeature } from '@/server/domains/storefront-public';
 import { AppError } from '@/server/http/errors';
 import { BookingCheckout } from '@/ui/booking/BookingCheckout';
+import { AcquisitionQuestion } from '@/ui/storefront/OnlinePurchase';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { robots: { index: false } };
@@ -14,5 +15,11 @@ export default async function CheckoutPage({ params, searchParams }: { params: P
   let tenant;
   try { tenant = await publicTenant(slug); } catch (e) { if (e instanceof AppError) notFound(); throw e; }
   const has = async (f: Parameters<typeof requirePublicFeature>[1]) => requirePublicFeature(tenant.id, f).then(() => true, () => false);
-  return <BookingCheckout slug={slug} bookingId={id} timezone={tenant.timezone} returningPaymentId={payment ?? null} giftCards={await has('feature.gift_cards')} memberships={await has('feature.memberships')} />;
+  return (
+    <>
+      <BookingCheckout slug={slug} bookingId={id} timezone={tenant.timezone} returningPaymentId={payment ?? null} giftCards={await has('feature.gift_cards')} memberships={await has('feature.memberships')} />
+      {/* «كيف عرفتِ عنا؟» — only shown when the source could not be inferred. */}
+      <div className="mx-auto max-w-2xl px-4 pb-8"><AcquisitionQuestion slug={slug} /></div>
+    </>
+  );
 }

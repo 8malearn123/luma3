@@ -126,6 +126,7 @@ export async function updateCoupon(access: TenantAccess, actor: AuditActor, id: 
     }
     const row = await trx.updateTable('coupons').set({
       ...(patch.is_active !== undefined ? { is_active: patch.is_active } : {}),
+      ...(patch.applies_to !== undefined ? { applies_to: patch.applies_to } : {}),
       ...(patch.ends_at !== undefined ? { ends_at: patch.ends_at ? new Date(patch.ends_at) : null } : {}),
       ...(patch.max_redemptions !== undefined ? { max_redemptions: patch.max_redemptions } : {}),
       ...(patch.min_subtotal_minor !== undefined ? { min_subtotal_minor: patch.min_subtotal_minor } : {}),

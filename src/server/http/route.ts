@@ -237,11 +237,12 @@ export function decodeCursor<T>(c: string | undefined): T | null {
   }
 }
 
-export function sessionCookie(token: string, expires: Date): { name: string; value: string; options: CookieOptions } {
+/** `expires: null` sets a browser-session cookie (no Expires/Max-Age), used when «تذكريني» is off. */
+export function sessionCookie(token: string, expires: Date | null): { name: string; value: string; options: CookieOptions } {
   return {
     name: SESSION_COOKIE,
     value: token,
-    options: { httpOnly: true, secure: env().isDeployed, sameSite: 'lax', path: '/', expires },
+    options: { httpOnly: true, secure: env().isDeployed, sameSite: 'lax', path: '/', ...(expires ? { expires } : {}) },
   };
 }
 

@@ -104,6 +104,12 @@ export function BookingDetail({ id }: { id: string }) {
         ) : b.status !== 'cancelled' && b.status !== 'completed' && Date.parse(b.starts_at) <= mountedAt ? (
           <p className="mt-4 text-xs text-ink-muted">{t('fe.account.started_contact')}</p>
         ) : null}
+        {!b.group_session && !['held', 'pending_payment'].includes(b.status) ? (
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <a href={`/s/${b.tenant.slug}/booking?rebook=${b.id}`} className="inline-flex h-9 items-center gap-1 rounded-lg border border-luma-300 px-3 text-sm font-medium text-luma-800 hover:bg-luma-50">{t('customer.rebook.cta')}</a>
+            <span className="text-xs text-ink-muted">{t('customer.rebook.hint')}</span>
+          </div>
+        ) : null}
       </Card>
 
       {rescheduling && b.actions.can_reschedule ? <ReschedulePanel b={b} onDone={() => { setRescheduling(false); refresh(); }} /> : null}
