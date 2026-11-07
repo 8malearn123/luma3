@@ -13,6 +13,7 @@ import { releaseSeats } from './domains/groups/service';
 import { paymentTargets } from './domains/payments/targets';
 import { recordServerEvent } from './domains/analytics/events';
 import { consumeMaterialsForBookingItem, markOrderPaid } from './domains/commerce';
+import { recordMarketplaceCommission } from './domains/marketplace/attribution';
 
 const g = globalThis as unknown as { __lumaBooted?: boolean };
 if (!g.__lumaBooted) {
@@ -26,6 +27,8 @@ if (!g.__lumaBooted) {
     const items = await trx.selectFrom('booking_items').select('id').where('booking_id', '=', bookingId).where('superseded_at', 'is', null).execute();
     for (const it of items) await consumeMaterialsForBookingItem(trx, tenantId, it.id, actor);
   });
+  // سوق لوما: one LUMA commission line per completed marketplace booking (exactly once).
+  registerBookingHook.completed(async (trx, tenantId, bookingId) => { await recordMarketplaceCommission(trx, tenantId, bookingId); });
   // A captured order payment marks the order paid (stock reservation becomes a sale).
   // A capture on an already-cancelled order is flagged and refunded by the payments service.
   paymentTargets.order.onCaptured = async (trx, tenantId, orderId, payment) => {

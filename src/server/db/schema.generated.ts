@@ -230,6 +230,7 @@ export interface Bookings {
   cancel_source: string | null;
   cancelled_at: Timestamp | null;
   cancelled_by: string | null;
+  channel: Generated<string>;
   coupon_id: string | null;
   created_at: Generated<Timestamp>;
   created_by: string | null;
@@ -242,6 +243,7 @@ export interface Bookings {
   hold_expires_at: Timestamp | null;
   id: Generated<string>;
   internal_note: string | null;
+  marketplace_fee_bp: number | null;
   number: string;
   paid_minor: Generated<number>;
   payment_status: Generated<string>;
@@ -495,6 +497,12 @@ export interface CustomerConsents {
   tenant_customer_id: string | null;
   tenant_id: string | null;
   user_id: string | null;
+}
+
+export interface CustomerFavorites {
+  business_id: string;
+  created_at: Generated<Timestamp>;
+  user_id: string;
 }
 
 export interface CustomerIncidents {
@@ -1021,6 +1029,52 @@ export interface MarketingPreferences {
   weekly_weekday: Generated<number>;
 }
 
+export interface MarketplaceCommissions {
+  base_minor: number;
+  booking_id: string;
+  booking_number: string;
+  created_at: Generated<Timestamp>;
+  currency: string;
+  fee_minor: number;
+  id: Generated<string>;
+  rate_bp: number;
+  settlement: Generated<string>;
+  tenant_id: string;
+}
+
+export interface MarketplaceListings {
+  approved_at: Timestamp | null;
+  commission_bp: number | null;
+  cover_asset_id: string | null;
+  created_at: Generated<Timestamp>;
+  hidden: Generated<boolean>;
+  rejection_reason: string | null;
+  requested_at: Timestamp | null;
+  requested_by: string | null;
+  reviewed_at: Timestamp | null;
+  reviewed_by: string | null;
+  status: Generated<string>;
+  tagline_ar: string | null;
+  tagline_en: string | null;
+  tenant_id: string;
+  updated_at: Generated<Timestamp>;
+  version: Generated<number>;
+}
+
+export interface MarketplaceSettings {
+  default_commission_bp: Generated<number>;
+  id: Generated<boolean>;
+  require_verification: Generated<boolean>;
+  updated_at: Generated<Timestamp>;
+  updated_by: string | null;
+}
+
+export interface MarketplaceVisits {
+  created_at: Generated<Timestamp>;
+  session_id: string;
+  tenant_id: string;
+}
+
 export interface MembershipEntitlements {
   created_at: Generated<Timestamp>;
   id: Generated<string>;
@@ -1254,7 +1308,9 @@ export interface Payments {
   order_id: string | null;
   payer_user_id: string | null;
   payment_account_id: string | null;
+  platform_fee_minor: Generated<number>;
   provider: string;
+  provider_net_minor: Generated<number | null>;
   provider_payment_id: string | null;
   purpose: string;
   reconciliation_note: string | null;
@@ -2284,6 +2340,20 @@ export interface TenantSettings {
   waitlist_offer_ttl_min: Generated<number>;
 }
 
+export interface TenantVerifications {
+  created_at: Generated<Timestamp>;
+  rejection_reason: string | null;
+  reviewed_at: Timestamp | null;
+  reviewed_by: string | null;
+  status: Generated<string>;
+  submitted_at: Timestamp | null;
+  submitted_by: string | null;
+  tenant_id: string;
+  updated_at: Generated<Timestamp>;
+  verified_at: Timestamp | null;
+  version: Generated<number>;
+}
+
 export interface TimeBlocks {
   branch_id: string;
   created_at: Generated<Timestamp>;
@@ -2392,6 +2462,21 @@ export interface VerificationCodes {
   user_id: string | null;
 }
 
+export interface VerificationDocuments {
+  bytes: number;
+  created_at: Generated<Timestamp>;
+  file_name: string | null;
+  iban: string | null;
+  id: Generated<string>;
+  kind: string;
+  mime: string;
+  sha256: string;
+  storage_key: string;
+  superseded_at: Timestamp | null;
+  tenant_id: string;
+  uploaded_by: string | null;
+}
+
 export interface WaitlistEntries {
   branch_id: string;
   created_at: Generated<Timestamp>;
@@ -2468,6 +2553,7 @@ export interface DB {
   coupon_redemptions: CouponRedemptions;
   coupons: Coupons;
   customer_consents: CustomerConsents;
+  customer_favorites: CustomerFavorites;
   customer_incidents: CustomerIncidents;
   customer_memberships: CustomerMemberships;
   customer_profiles: CustomerProfiles;
@@ -2503,6 +2589,10 @@ export interface DB {
   marketing_calendar_events: MarketingCalendarEvents;
   marketing_plans: MarketingPlans;
   marketing_preferences: MarketingPreferences;
+  marketplace_commissions: MarketplaceCommissions;
+  marketplace_listings: MarketplaceListings;
+  marketplace_settings: MarketplaceSettings;
+  marketplace_visits: MarketplaceVisits;
   membership_entitlements: MembershipEntitlements;
   membership_plan_items: MembershipPlanItems;
   membership_plans: MembershipPlans;
@@ -2587,6 +2677,7 @@ export interface DB {
   tenant_customers: TenantCustomers;
   tenant_memberships: TenantMemberships;
   tenant_settings: TenantSettings;
+  tenant_verifications: TenantVerifications;
   tenants: Tenants;
   time_blocks: TimeBlocks;
   trend_assessments: TrendAssessments;
@@ -2595,6 +2686,7 @@ export interface DB {
   usage_counters: UsageCounters;
   users: Users;
   verification_codes: VerificationCodes;
+  verification_documents: VerificationDocuments;
   waitlist_entries: WaitlistEntries;
   waitlist_offers: WaitlistOffers;
   working_hours: WorkingHours;

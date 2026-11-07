@@ -133,6 +133,10 @@ Changing a member (`PATCH /api/v1/t/{slug}/members/{id}`) requires `team.manage`
 | `platform.ai_usage.view` | ✓ |  |  | ✓ |
 | `platform.revenue.view` | ✓ |  |  |  |
 | `platform.support.access` | ✓ | ✓ |  |  |
+| `platform.marketplace.review` | ✓ | ✓ |  |  |
+| `platform.marketplace.manage` | ✓ |  |  |  |
+
+`platform.marketplace.review` covers the سوق لوما queues (join requests, verification files and documents — every document view is audited), the commission ledger and reading marketplace settings. `platform.marketplace.manage` sets a business's commission rate and the marketplace settings (both with step-up). On the tenant side, the marketplace listing and verification documents need `business.manage` (owner only) and «عمولة سوق لوما» needs `finance.view`. See `docs/MARKETPLACE.md`.
 
 Every `/api/v1/platform/**` handler is built with `platformRoute()`. A caller with **no** platform role gets **404**, not 403, so the platform API does not reveal that it exists. A missing specific capability also returns 404. `GET /api/v1/platform/overview` and the MFA/me endpoints need only some platform role. Platform roles grant no tenant capabilities.
 
@@ -176,7 +180,7 @@ Endpoints declared with `stepUp: true`:
 | Scope | Endpoints |
 |---|---|
 | Tenant | `POST finance/exports`; `POST gift-cards/{id}/void`; `PATCH members/{id}`; `POST payment-accounts`, `DELETE payment-accounts/{id}`; `POST policies/decisions`, `POST policies/decisions/{id}/end`; `POST policies/appeals/{id}/resolve`; `POST policies/incidents/{id}/escalate` |
-| Platform | `POST mfa/enroll`, `POST mfa/disable`; `PUT plans/{id}`; `POST invoices/{id}`; `POST subscriptions/{id}/actions`, `POST subscriptions/{id}/invoices`; `POST support-grants`; `POST tenants/{id}/status`; `POST users/{id}/status`, `POST users/{id}/roles`, `POST users/{id}/mfa-reset`; `POST policies/decisions`, `POST policies/decisions/{id}/end`, `POST policies/appeals/{id}/resolve`, `POST policies/escalations/{id}/dismiss`, `POST policies/rules`, `PATCH policies/rules/{id}` |
+| Platform | `POST mfa/enroll`, `POST mfa/disable`; `PUT plans/{id}`; `POST invoices/{id}`; `POST subscriptions/{id}/actions`, `POST subscriptions/{id}/invoices`; `POST support-grants`; `POST tenants/{id}/status`; `PUT marketplace/settings`, `PUT marketplace/tenants/{id}/commission`; `POST users/{id}/status`, `POST users/{id}/roles`, `POST users/{id}/mfa-reset`; `POST policies/decisions`, `POST policies/decisions/{id}/end`, `POST policies/appeals/{id}/resolve`, `POST policies/escalations/{id}/dismiss`, `POST policies/rules`, `PATCH policies/rules/{id}` |
 
 ## Admin MFA (TOTP)
 

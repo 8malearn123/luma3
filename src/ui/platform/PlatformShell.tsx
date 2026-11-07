@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { createContext, useContext, useState, type ReactNode } from 'react';
 import {
-  Building2, ChartLine, CreditCard, KeyRound, Layers, LayoutDashboard, LayoutTemplate, LifeBuoy, Menu, Plug, ScrollText, ShieldAlert, Sparkles, Users, X,
+  Building2, ChartLine, CreditCard, KeyRound, Layers, LayoutDashboard, LayoutTemplate, LifeBuoy, Menu, Plug, ScrollText, ShieldAlert, Sparkles, Store, Users, X,
   type LucideIcon,
 } from 'lucide-react';
 import { useI18n } from '@/i18n/client';
@@ -23,6 +23,7 @@ export const PLATFORM_NAV: PlatformNavItem[] = [
   { key: 'tenants', href: '/platform/tenants', icon: Building2, cap: 'platform.tenants.view' },
   { key: 'subscriptions', href: '/platform/subscriptions', icon: CreditCard, cap: 'platform.tenants.view' },
   { key: 'plans', href: '/platform/plans', icon: Layers, cap: 'platform.tenants.view' },
+  { key: 'marketplace', href: '/platform/marketplace', icon: Store, cap: 'platform.marketplace.review' },
   { key: 'reports', href: '/platform/reports', icon: ChartLine, cap: 'platform.revenue.view' },
   { key: 'users', href: '/platform/users', icon: Users, cap: 'platform.users.manage' },
   { key: 'support', href: '/platform/support', icon: LifeBuoy, cap: 'platform.support.access' },

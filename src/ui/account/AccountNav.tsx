@@ -2,13 +2,14 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { CalendarDays, Gavel, Lock, Receipt, ShieldCheck, Star, UserRound, type LucideIcon } from 'lucide-react';
+import { CalendarDays, Compass, Gavel, Lock, Receipt, ShieldCheck, Star, UserRound, type LucideIcon } from 'lucide-react';
 import { useI18n } from '@/i18n/client';
 import { cx } from '../components/cx';
 
 const ITEMS: Array<{ key: string; href: string; Icon: LucideIcon }> = [
   { key: 'profile', href: '/account', Icon: UserRound },
   { key: 'bookings', href: '/account/bookings', Icon: CalendarDays },
+  { key: 'explore', href: '/account/explore', Icon: Compass },
   { key: 'orders', href: '/account/orders', Icon: Receipt },
   { key: 'reviews', href: '/account/reviews', Icon: Star },
   { key: 'privacy', href: '/account/privacy', Icon: ShieldCheck },

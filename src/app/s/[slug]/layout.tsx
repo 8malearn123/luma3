@@ -6,6 +6,9 @@ import { StorefrontShell } from '@/ui/storefront/StorefrontShell';
 import { fontHref } from '@/ui/storefront/theme';
 import { pk } from '@/ui/storefront/context';
 import { loadStorefront } from './_data';
+import { storefrontBadge } from '@/server/domains/marketplace';
+import { MarketAttribution } from '@/ui/storefront/MarketAttribution';
+import { VerifiedStrip } from '@/ui/storefront/VerifiedStrip';
 
 type Props = { children: React.ReactNode; params: Promise<{ slug: string }> };
 
@@ -34,10 +37,15 @@ export default async function StorefrontLayout({ children, params }: Props) {
   const seg = path.split('?')[0]!.split('/')[3] ?? '';
   const active = ['services', 'products', 'team', 'about', 'contact'].includes(seg) ? seg : seg === 'pages' ? (data.pages.find((p) => p.slug === path.split('/')[4])?.kind ?? '') : seg === '' ? 'home' : '';
   void pk;
+  const badge = await storefrontBadge(slug).catch(() => ({ verified: false }));
   return (
     <>
       <link rel="stylesheet" href={fontHref(data.brand)} precedence="default" />
-      <StorefrontShell ctx={{ data, locale }} activePath={active}>{children}</StorefrontShell>
+      <StorefrontShell ctx={{ data, locale }} activePath={active}>
+        <MarketAttribution slug={slug} />
+        {badge.verified ? <VerifiedStrip locale={locale} /> : null}
+        {children}
+      </StorefrontShell>
     </>
   );
 }
