@@ -1,5 +1,6 @@
 'use client';
 
+import { ACQUISITION_SOURCES } from '@/shared/acquisition';
 import Link from 'next/link';
 import { useState } from 'react';
 import { useSearchParams } from 'next/navigation';
@@ -20,7 +21,7 @@ import { ActionBadge } from '../policy/labels';
 import { ReviewsPanel } from './ReviewsPanel';
 import { useCursorStack } from '../policy/paging';
 
-type CustomerRow = { id: string; display_name: string; phone: string | null; email: string | null; tags: string[]; source: string; status: string; last_visit_at: string | null; has_account: boolean; version: number };
+type CustomerRow = { id: string; display_name: string; phone: string | null; email: string | null; tags: string[]; source: string; status: string; last_visit_at: string | null; has_account: boolean; version: number; acquisition_source?: string | null; acquisition_method?: string | null };
 type Paged<T> = { items: T[]; next_cursor: string | null };
 type Consent = { granted: boolean; recorded_at: string | null; source: string | null };
 type Detail = CustomerRow & {
@@ -54,7 +55,8 @@ function CustomerList() {
   const [source, setSource] = useState('');
   const [tag, setTag] = useState('');
   const [sort, setSort] = useState('recent');
-  const pager = useCursorStack([dq, status, source, tag, sort].join('|'));
+  const [acquisition, setAcquisition] = useState('');
+  const pager = useCursorStack([dq, status, source, tag, sort, acquisition].join('|'));
   const search = useSearchParams();
   const [openId, setOpenId] = useState<string | null>(() => search.get('customer'));
   const [creating, setCreating] = useState(false);
@@ -63,6 +65,7 @@ function CustomerList() {
   if (dq) params.set('q', dq);
   if (source) params.set('source', source);
   if (tag) params.set('tag', tag);
+  if (acquisition) params.set('acquisition', acquisition);
   if (pager.cursor) params.set('cursor', pager.cursor);
   const list = useApiQuery<Paged<CustomerRow>>(['customers', access.slug, params.toString()], access.api(`/customers?${params}`));
   const tags = useApiQuery<Array<{ tag: string; n: number }>>(['customer-tags', access.slug], access.api('/customers/tags'));
@@ -79,6 +82,9 @@ function CustomerList() {
     { key: 'tags', header: t('customers.cols.tags'), className: 'hidden md:table-cell', cell: (r) => <div className="flex flex-wrap gap-1">{r.tags.map((x) => <Badge key={x}>{x}</Badge>)}</div> },
     { key: 'last_visit', header: t('customers.cols.last_visit'), className: 'hidden sm:table-cell', cell: (r) => (r.last_visit_at ? formatDate(r.last_visit_at, { locale, tz: access.timezone }) : '—') },
     { key: 'source', header: t('customers.cols.source'), className: 'hidden lg:table-cell', cell: (r) => t(`customers.source.${r.source}`) },
+    { key: 'acquisition', header: t('customer.acquisition.column'), className: 'hidden lg:table-cell', cell: (r) => (r.acquisition_source
+      ? <span title={t(`customer.acquisition.method.${r.acquisition_method ?? 'inferred'}`)}>{t(`customer.acquisition.source.${r.acquisition_source}`)}</span>
+      : <span className="text-ink-muted">{t('customer.acquisition.source.unknown')}</span>) },
   ];
 
   return (
@@ -91,12 +97,13 @@ function CustomerList() {
         </div>
         <LabelledSelect label={t('fields.status')} value={status} onChange={setStatus} options={['active', 'archived', 'all'].map((v) => [v, t(`customers.status.${v}`)])} />
         <LabelledSelect label={t('customers.source.label')} value={source} onChange={setSource} options={[['', t('customers.source.any')], ...['storefront', 'dashboard', 'walk_in', 'import'].map((v) => [v, t(`customers.source.${v}`)] as [string, string])]} />
+        <LabelledSelect label={t('customer.acquisition.column')} value={acquisition} onChange={setAcquisition} options={[['', t('customers.source.any')], ...[...ACQUISITION_SOURCES, 'unknown'].map((v) => [v, t(`customer.acquisition.source.${v}`)] as [string, string])]} />
         <LabelledSelect label={t('customers.tag_filter')} value={tag} onChange={setTag} options={[['', t('customers.any_tag')], ...(tags.data ?? []).map((x) => [x.tag, `${x.tag} (${x.n})`] as [string, string])]} />
         <LabelledSelect label={t('customers.sort.label')} value={sort} onChange={setSort} options={['recent', 'name', 'last_visit', 'created'].map((v) => [v, t(`customers.sort.${v}`)])} />
         {access.can('customers.manage') && !access.readOnly ? <Button icon={<Plus className="size-4" />} onClick={() => setCreating(true)}>{t('customers.new')}</Button> : null}
       </div>
       {list.isLoading ? <LoadingState rows={5} /> : list.error ? <ErrorState error={list.error} onRetry={() => list.refetch()} /> : !list.data?.items.length ? (
-        <EmptyState icon={<Contact className="size-8" aria-hidden />} title={dq || source || tag ? t('customers.no_results') : t('customers.empty')} hint={dq ? undefined : t('customers.empty_hint')} />
+        <EmptyState icon={<Contact className="size-8" aria-hidden />} title={dq || source || tag || acquisition ? t('customers.no_results') : t('customers.empty')} hint={dq ? undefined : t('customers.empty_hint')} />
       ) : (
         <>
           <DataTable rows={list.data.items} columns={columns} rowKey={(r) => r.id} onRowClick={(r) => setOpenId(r.id)} caption={t('customers.title')} />

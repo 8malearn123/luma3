@@ -520,6 +520,8 @@ export interface CustomerMemberships {
 export interface CustomerProfiles {
   created_at: Generated<Timestamp>;
   first_name: string | null;
+  heard_from: string | null;
+  heard_from_used_at: Timestamp | null;
   last_name: string | null;
   preferred_contact: string | null;
   updated_at: Generated<Timestamp>;
@@ -646,6 +648,28 @@ export interface Fulfillments {
   status: Generated<string>;
   tenant_id: string;
   updated_at: Generated<Timestamp>;
+}
+
+export interface GiftCardDeliveries {
+  attempts: Generated<number>;
+  channels: Generated<string[]>;
+  code_ciphertext: string;
+  created_at: Generated<Timestamp>;
+  gift_card_id: string;
+  id: Generated<string>;
+  last_error: string | null;
+  message: string | null;
+  next_attempt_at: Timestamp | null;
+  purchaser_user_id: string;
+  recipient_email: string | null;
+  recipient_name: string;
+  recipient_phone: string | null;
+  send_at: Timestamp;
+  sent_at: Timestamp | null;
+  status: Generated<string>;
+  tenant_id: string;
+  updated_at: Generated<Timestamp>;
+  view_token_hash: Buffer | null;
 }
 
 export interface GiftCardEntries {
@@ -1621,6 +1645,19 @@ export interface Returns {
   updated_at: Generated<Timestamp>;
 }
 
+export interface ReviewRequests {
+  booking_id: string;
+  completed_at: Timestamp;
+  created_at: Generated<Timestamp>;
+  customer_user_id: string;
+  first_sent_at: Generated<Timestamp>;
+  id: Generated<string>;
+  reminder_sent_at: Timestamp | null;
+  status: Generated<string>;
+  tenant_id: string;
+  updated_at: Generated<Timestamp>;
+}
+
 export interface Reviews {
   booking_id: string;
   business_reply: string | null;
@@ -1814,6 +1851,7 @@ export interface Sessions {
   ip: string | null;
   last_seen_at: Generated<Timestamp>;
   mfa_verified_at: Timestamp | null;
+  persistent: Generated<boolean>;
   reauthenticated_at: Timestamp | null;
   revoke_reason: string | null;
   revoked_at: Timestamp | null;
@@ -2038,6 +2076,10 @@ export interface TenantCounters {
 }
 
 export interface TenantCustomers {
+  acquisition_at: Timestamp | null;
+  acquisition_detail: Json | null;
+  acquisition_method: string | null;
+  acquisition_source: string | null;
   archived_at: Timestamp | null;
   created_at: Generated<Timestamp>;
   display_name: string;
@@ -2114,6 +2156,9 @@ export interface TenantSettings {
   notify_channels: Generated<string[]>;
   powered_by_visible: Generated<boolean>;
   prices_include_tax: Generated<boolean>;
+  review_reminder_hours: number | null;
+  review_request_delay_hours: Generated<number>;
+  review_request_mode: Generated<string>;
   slot_increment_min: Generated<number>;
   social_links: Generated<Json>;
   tax_label: string | null;
@@ -2322,6 +2367,7 @@ export interface DB {
   finance_exports: FinanceExports;
   financial_entries: FinancialEntries;
   fulfillments: Fulfillments;
+  gift_card_deliveries: GiftCardDeliveries;
   gift_card_entries: GiftCardEntries;
   gift_cards: GiftCards;
   group_session_bookings: GroupSessionBookings;
@@ -2385,6 +2431,7 @@ export interface DB {
   resource_types: ResourceTypes;
   resources: Resources;
   returns: Returns;
+  review_requests: ReviewRequests;
   reviews: Reviews;
   reward_redemptions: RewardRedemptions;
   rewards: Rewards;

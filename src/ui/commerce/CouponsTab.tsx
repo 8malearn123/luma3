@@ -35,11 +35,23 @@ export function CouponsTab() {
     catch (e) { toast({ tone: 'danger', text: msg(e) }); } finally { setBusyId(null); }
   }
 
+  async function setScope(c: Coupon, applies_to: string) {
+    setBusyId(c.id);
+    try { await api(access.api(`/coupons/${c.id}`), { method: 'PATCH', body: { applies_to } }); await list.refetch(); toast({ tone: 'ok', text: t('states.saved') }); }
+    catch (e) { toast({ tone: 'danger', text: msg(e) }); } finally { setBusyId(null); }
+  }
+
   const value = (c: Coupon) => (c.kind === 'percent' ? `${c.value / 100}%` : money(c.value));
   const columns: Column<Coupon>[] = [
     { key: 'code', header: t('commerce.coupons.code'), cell: (c) => <span dir="ltr" className="font-mono font-semibold">{c.code}</span> },
     { key: 'value', header: t('commerce.coupons.value'), cell: (c) => <span dir="ltr">{value(c)}</span> },
-    { key: 'applies', header: t('commerce.coupons.applies_to'), className: 'hidden sm:table-cell', cell: (c) => t(`commerce.coupons.applies.${c.applies_to}`) },
+    {
+      key: 'applies', header: t('commerce.coupons.applies_to'), className: 'hidden sm:table-cell', cell: (c) => (access.readOnly || c.source === 'loyalty' ? t(`commerce.coupons.applies.${c.applies_to}`) : (
+        <Select aria-label={t('commerce.coupons.applies_to')} className="h-8 min-w-32 text-xs" value={c.applies_to} disabled={busyId === c.id} onClick={(e) => e.stopPropagation()} onChange={(e) => setScope(c, e.target.value)}>
+          {(['all', 'services', 'products'] as const).map((a) => <option key={a} value={a}>{t(`commerce.coupons.applies.${a}`)}</option>)}
+        </Select>
+      )),
+    },
     { key: 'used', header: t('commerce.coupons.used'), cell: (c) => `${c.redemptions_count} / ${c.max_redemptions ?? t('commerce.coupons.unlimited')}` },
     { key: 'window', header: t('commerce.coupons.window'), className: 'hidden md:table-cell', cell: (c) => (c.starts_at || c.ends_at ? `${c.starts_at ? when(c.starts_at) : '…'} — ${c.ends_at ? when(c.ends_at) : '…'}` : t('commerce.coupons.always')) },
     {

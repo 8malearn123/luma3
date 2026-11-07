@@ -17,6 +17,7 @@ import { cancellationRefund, computeTotals } from './pricing';
 import { computePaymentTerms } from './terms';
 import { ACTIVE_STATUSES, TRANSITIONS, type BookingAction, type BookingStatus } from './transitions';
 import { bookingHooks } from './hooks';
+import { redeemCoupon, validateCoupon } from '../commerce/coupons';
 import type { PaymentMethod } from '@/shared/payments';
 
 const MIN = 60_000;
@@ -90,6 +91,8 @@ export type HoldInput = {
   audience: Audience;
   customerNote?: string | null;
   internalNote?: string | null;
+  /** Coupon (applies_to services or all): validated under the hold's transaction, redeemed with the booking. */
+  couponCode?: string | null;
   idempotencyKey: string;
   actor: AuditActor;
   now?: Date;
@@ -152,7 +155,7 @@ type AllocationRow = { staffId: string | null; resourceId: string | null; itemKe
 export async function createHold(tenantId: string, input: HoldInput) {
   const now = input.now ?? new Date();
   const scope = `tenant:${tenantId}:actor:${input.actor.userId ?? 'anon'}`;
-  const hash = requestHash({ items: input.items, branch: input.branchId, customer: input.customer.kind === 'tenant_customer' ? input.customer.tenantCustomerId : input.customer.user.userId, source: input.source });
+  const hash = requestHash({ items: input.items, branch: input.branchId, customer: input.customer.kind === 'tenant_customer' ? input.customer.tenantCustomerId : input.customer.user.userId, source: input.source, coupon: input.couponCode ?? null });
   return withTenant(tenantId, (trx) => idempotent(trx, { scope, operation: 'booking.hold', key: input.idempotencyKey, hash }, async () => {
     const branch = input.branchId
       ? await trx.selectFrom('branches').select(['id', 'timezone']).where('id', '=', input.branchId).where('status', '=', 'active').executeTakeFirst()
@@ -179,7 +182,9 @@ export async function createHold(tenantId: string, input: HoldInput) {
 
     const policy = await policySnapshot(trx, tenantId);
     const subtotal = check.plan.reduce((a, p) => a + resolved.find((r) => r.key === p.key)!.staffTerms[p.staffId]!.priceMinor, 0);
-    const totals = computeTotals(subtotal, 0, policy.tax_rate_bp, policy.prices_include_tax);
+    // The coupon discount is applied before tax and before the deposit is computed from the total.
+    const coupon = input.couponCode ? await validateCoupon(trx, tenantId, input.couponCode, { tenantCustomerId, subtotalMinor: subtotal, appliesTo: 'services' }) : null;
+    const totals = computeTotals(subtotal, coupon?.discountMinor ?? 0, policy.tax_rate_bp, policy.prices_include_tax);
     const terms = await computePaymentTerms(trx, {
       tenantId, tenantCustomerId, customerUserId: tc.user_id, amountDueMinor: totals.total, availableMethods: await enabledMethods(trx, tenantId), context: 'booking', now,
     });
@@ -197,8 +202,10 @@ export async function createHold(tenantId: string, input: HoldInput) {
       deposit_due_minor: terms.depositMinor ?? 0, currency: 'SAR',
       policy_snapshot: JSON.stringify(policy), payment_terms: JSON.stringify({ ...terms, requiresManualApproval: requiresApproval }),
       hold_expires_at: holdExpires, customer_note: input.customerNote ?? null, internal_note: input.internalNote ?? null,
-      created_by: input.actor.userId,
+      created_by: input.actor.userId, coupon_id: coupon?.couponId ?? null,
     }).returning(['id', 'number']).executeTakeFirstOrThrow();
+    // Locks the coupon row and re-checks the global/per-customer limits (released if the hold expires or is cancelled).
+    if (coupon) await redeemCoupon(trx, tenantId, coupon.couponId, { tenantCustomerId, bookingId: booking.id, discountMinor: totals.discount });
 
     const allocations: AllocationRow[] = [];
     for (const [seq, p] of check.plan.entries()) {

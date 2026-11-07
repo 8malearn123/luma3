@@ -11,6 +11,10 @@ import { hashPassword, hashToken, newOtp, newToken, safeEqual, verifyPassword } 
 export const SESSION_COOKIE = 'luma_session';
 const SESSION_ABSOLUTE_DAYS = 30;
 const SESSION_IDLE_DAYS = 7;
+/** «تذكريني» off: the cookie ends with the browser and the server caps the session too. */
+export const EPHEMERAL_SESSION_ABSOLUTE_HOURS = 24;
+const EPHEMERAL_SESSION_IDLE_HOURS = 12;
+const idleMs = (persistent: boolean) => (persistent ? SESSION_IDLE_DAYS * 86_400_000 : EPHEMERAL_SESSION_IDLE_HOURS * 3_600_000);
 const CODE_TTL_MIN = 10;
 const LOCK_AFTER_FAILURES = 8;
 const LOCK_MINUTES = 15;
@@ -76,7 +80,7 @@ export async function consumeCode(destination: string, purpose: Purpose, code: s
 }
 
 // ── Registration ────────────────────────────────────────────────────────────
-export async function register(input: { identifier: string; password: string; displayName: string; locale: 'ar' | 'en'; ip: string | null }) {
+export async function register(input: { identifier: string; password: string; displayName: string; locale: 'ar' | 'en'; ip: string | null; heardFrom?: string | null }) {
   await enforce(`register:ip:${input.ip ?? 'unknown'}`, 10, 3600);
   const id = parseIdentifier(input.identifier);
   if (!id) throw Errors.invalid('invalid_identifier', 'Enter a valid email address or mobile number');
@@ -102,7 +106,7 @@ export async function register(input: { identifier: string; password: string; di
       display_name: input.displayName.trim(),
       locale: input.locale,
     }).returning('id').executeTakeFirstOrThrow();
-    await trx.insertInto('customer_profiles').values({ user_id: user.id }).execute();
+    await trx.insertInto('customer_profiles').values({ user_id: user.id, heard_from: input.heardFrom ?? null }).execute();
     await audit(trx, { userId: user.id, kind: 'customer', ip: input.ip }, 'auth.register', { targetType: 'user', targetId: user.id });
     return user.id;
   });
@@ -146,7 +150,7 @@ export async function verifyContact(input: { identifier: string; code: string; i
 }
 
 // ── Login / sessions ────────────────────────────────────────────────────────
-export async function login(input: { identifier: string; password: string; ip: string | null; userAgent: string | null }) {
+export async function login(input: { identifier: string; password: string; ip: string | null; userAgent: string | null; remember?: boolean }) {
   const id = parseIdentifier(input.identifier);
   await enforce(`login:ip:${input.ip ?? 'unknown'}`, 30, 900);
   if (!id) throw Errors.invalid('invalid_credentials', 'Incorrect sign-in details');
@@ -170,14 +174,20 @@ export async function login(input: { identifier: string; password: string; ip: s
     throw Errors.invalid('invalid_credentials', 'Incorrect sign-in details');
   }
   await db().updateTable('users').set({ failed_login_count: 0, locked_until: null }).where('id', '=', user.id).execute();
-  const session = await createSession(user.id, input.ip, input.userAgent);
-  await withCentral((trx) => audit(trx, { userId: user.id, kind: 'user', ip: input.ip }, 'auth.login', { targetType: 'session', targetId: session.id }));
+  const session = await createSession(user.id, input.ip, input.userAgent, undefined, { persistent: input.remember ?? false });
+  await withCentral((trx) => audit(trx, { userId: user.id, kind: 'user', ip: input.ip }, 'auth.login', { targetType: 'session', targetId: session.id, data: { remember: session.persistent } }));
   return { ...session, userId: user.id };
 }
 
-export async function createSession(userId: string, ip: string | null, userAgent: string | null, trx?: Tx) {
+/**
+ * A new session (fresh random token, so signing in always rotates the cookie).
+ * persistent (default, «تذكريني»): 30-day cookie and server lifetime.
+ * Not persistent: browser-session cookie, server lifetime capped at 24 h (12 h idle).
+ */
+export async function createSession(userId: string, ip: string | null, userAgent: string | null, trx?: Tx, opts: { persistent?: boolean } = {}) {
   const now = Date.now();
-  const expiresAt = new Date(now + SESSION_ABSOLUTE_DAYS * 86_400_000);
+  const persistent = opts.persistent ?? true;
+  const expiresAt = new Date(now + (persistent ? SESSION_ABSOLUTE_DAYS * 86_400_000 : EPHEMERAL_SESSION_ABSOLUTE_HOURS * 3_600_000));
   const id = randomUUID();
   const token = embeddedDb() ? signedSessionToken({ sessionId: id, userId, expiresAt: expiresAt.getTime(), signedInAt: now, mfaAt: 0 }) : newToken();
   const row = await (trx ?? db()).insertInto('sessions').values({
@@ -185,12 +195,14 @@ export async function createSession(userId: string, ip: string | null, userAgent
     user_id: userId,
     token_hash: hashToken(token, 'session'),
     expires_at: expiresAt,
-    idle_expires_at: new Date(now + SESSION_IDLE_DAYS * 86_400_000),
+    idle_expires_at: new Date(now + idleMs(persistent)),
     reauthenticated_at: new Date(now),
     ip,
     user_agent: userAgent?.slice(0, 300) ?? null,
+    persistent,
   }).returning(['id', 'expires_at']).executeTakeFirstOrThrow();
-  return { id: row.id, token, expiresAt: row.expires_at };
+  /** cookieExpires: null → browser-session cookie (no Expires attribute). */
+  return { id: row.id, token, expiresAt: row.expires_at, persistent, cookieExpires: persistent ? row.expires_at : null };
 }
 
 // ── Embedded demo database: sessions that survive across server instances ──
@@ -225,14 +237,17 @@ async function restoreSignedSession(token: string) {
   if (!t || !(await db().selectFrom('users').select('id').where('id', '=', t.userId).executeTakeFirst())) return;
   const tokenHash = hashToken(token, 'session');
   const mfaVerifiedAt = t.mfaAt ? new Date(t.mfaAt) : null;
+  // Signed tokens carry no explicit flag: a lifetime beyond the ephemeral cap means «تذكريني» was on.
+  const persistent = t.expiresAt - t.signedInAt > EPHEMERAL_SESSION_ABSOLUTE_HOURS * 3_600_000 + 60_000;
   await db().insertInto('sessions').values({
     id: t.sessionId,
     user_id: t.userId,
     token_hash: tokenHash,
     expires_at: new Date(t.expiresAt),
-    idle_expires_at: new Date(Math.min(t.expiresAt, Date.now() + SESSION_IDLE_DAYS * 86_400_000)),
+    idle_expires_at: new Date(Math.min(t.expiresAt, Date.now() + idleMs(persistent))),
     reauthenticated_at: new Date(t.signedInAt),
     mfa_verified_at: mfaVerifiedAt,
+    persistent,
   }).onConflict((oc) => oc.column('id').doUpdateSet({ token_hash: tokenHash, mfa_verified_at: mfaVerifiedAt })).execute();
 }
 
@@ -240,16 +255,16 @@ async function restoreSignedSession(token: string) {
  * Embedded demo database only: after the session passes the second factor,
  * returns a new cookie token that carries that fact to every server instance.
  */
-export async function refreshSignedSession(user: SessionUser): Promise<{ token: string; expiresAt: Date } | null> {
+export async function refreshSignedSession(user: SessionUser): Promise<{ token: string; expiresAt: Date | null } | null> {
   if (!embeddedDb()) return null;
-  const s = await db().selectFrom('sessions').select(['expires_at', 'created_at', 'mfa_verified_at']).where('id', '=', user.sessionId).executeTakeFirst();
+  const s = await db().selectFrom('sessions').select(['expires_at', 'created_at', 'mfa_verified_at', 'persistent']).where('id', '=', user.sessionId).executeTakeFirst();
   if (!s) return null;
   const token = signedSessionToken({
     sessionId: user.sessionId, userId: user.userId, expiresAt: s.expires_at.getTime(),
     signedInAt: (user.reauthenticatedAt ?? s.created_at).getTime(), mfaAt: s.mfa_verified_at?.getTime() ?? 0,
   });
   await db().updateTable('sessions').set({ token_hash: hashToken(token, 'session') }).where('id', '=', user.sessionId).execute();
-  return { token, expiresAt: s.expires_at };
+  return { token, expiresAt: s.persistent ? s.expires_at : null };
 }
 
 export type SessionUser = {
@@ -269,7 +284,7 @@ export type SessionUser = {
 
 function findSession(token: string) {
   return db().selectFrom('sessions as s').innerJoin('users as u', 'u.id', 's.user_id')
-    .select(['s.id as session_id', 's.user_id', 's.expires_at', 's.idle_expires_at', 's.revoked_at', 's.last_seen_at', 's.reauthenticated_at',
+    .select(['s.id as session_id', 's.user_id', 's.expires_at', 's.idle_expires_at', 's.revoked_at', 's.last_seen_at', 's.reauthenticated_at', 's.persistent',
       'u.display_name', 'u.email', 'u.phone', 'u.email_verified_at', 'u.phone_verified_at', 'u.locale', 'u.time_format', 'u.status', 'u.is_demo'])
     .where('s.token_hash', '=', hashToken(token, 'session')).executeTakeFirst();
 }
@@ -283,7 +298,7 @@ export async function resolveSession(token: string | undefined | null): Promise<
   if (now.getTime() - row.last_seen_at.getTime() > 3_600_000) {
     await db().updateTable('sessions').set({
       last_seen_at: now,
-      idle_expires_at: new Date(Math.min(row.expires_at.getTime(), now.getTime() + SESSION_IDLE_DAYS * 86_400_000)),
+      idle_expires_at: new Date(Math.min(row.expires_at.getTime(), now.getTime() + idleMs(row.persistent))),
     }).where('id', '=', row.session_id).execute();
   }
   const roles = await db().selectFrom('platform_roles').select('role').where('user_id', '=', row.user_id).where('revoked_at', 'is', null).execute();

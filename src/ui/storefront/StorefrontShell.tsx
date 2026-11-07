@@ -1,12 +1,13 @@
 import type { ReactNode } from 'react';
 import { CalendarCheck, Home, Phone, ShoppingBag, Sparkles, Users } from 'lucide-react';
 import { cx } from '../components/cx';
-import { dir } from '@/i18n';
+import { dir, translate } from '@/i18n';
 import { SfImage } from './SfImage';
 import { btnClass, containerClass, headingClass, themeStyle } from './theme';
 import { hrefBooking, hrefHome, hrefPage, hrefPolicies, pageByKind, pk, tr, type RenderCtx } from './context';
 import { HoursTable, SocialLinks } from './blocks/info';
 import { LocaleSwitch } from './LocaleSwitch';
+import { BackArrow } from './BackArrow';
 
 /** Which booking entries are shown. At least one is ALWAYS present: removing display blocks never removes booking. */
 export function bookingEntries(ctx: RenderCtx) {
@@ -54,6 +55,7 @@ export function StorefrontShell({ ctx, children, activePath }: { ctx: RenderCtx;
       {data.mode === 'preview' ? <div className="bg-amber-100 px-4 py-1.5 text-center text-xs text-amber-900" role="status">{tr(ctx, 'preview_banner')}</div> : null}
       <header className={cx('z-30 border-b border-sf-border bg-sf-bg/95 backdrop-blur', l.header.sticky && 'sticky top-0')}>
         <div className={cx(containerClass, 'flex items-center gap-3 px-4 py-3 @2xl:px-6')}>
+          {activePath !== 'home' && !ctx.canvas && data.mode !== 'preview' ? <BackArrow fallbackHref={hrefHome(ctx)} label={translate(ctx.locale, 'customer.back')} dir={dir(ctx.locale)} /> : null}
           <a href={hrefHome(ctx)} className="flex min-w-0 items-center gap-2" aria-label={tr(ctx, 'home_of', { name })}>
             {logo ? <span className="block h-10 w-auto max-w-[120px]"><SfImage ctx={ctx} id={logo} alt={name} aspect="auto" rounded={false} eager className="!h-10 !w-auto object-contain" /></span> : null}
             {l.header.show_name || !logo ? <span className={cx(headingClass, 'truncate text-lg font-semibold')}>{brandName}</span> : null}

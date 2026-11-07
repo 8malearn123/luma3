@@ -12,6 +12,7 @@ import { BranchesSection } from './Branches';
 import { SubscriptionSection } from './Subscription';
 import { DisplaySection, LegalTaxSection, NotificationsSection } from './Misc';
 import { PaymentsSection } from './Payments';
+import { ReviewRequestSection } from './ReviewRequests';
 import { settingsKey, type SettingsData } from './shared';
 
 export const SETTINGS_TABS = ['profile', 'branches', 'booking', 'payments', 'subscription', 'notifications', 'display', 'legal'] as const;
@@ -46,6 +47,7 @@ export function SettingsPage({ initialTab }: { initialTab?: string }) {
           {tab === 'payments' ? <PaymentsSection slug={access.slug} /> : null}
           {tab === 'subscription' ? <SubscriptionSection slug={access.slug} canManage={access.can('subscription.manage')} tz={access.timezone} /> : null}
           {tab === 'notifications' && q.data ? <NotificationsSection slug={access.slug} data={q.data} /> : null}
+          {tab === 'notifications' && q.data ? <div className="mt-4"><ReviewRequestSection slug={access.slug} data={q.data} /></div> : null}
           {tab === 'display' && q.data ? <DisplaySection slug={access.slug} data={q.data} /> : null}
           {tab === 'legal' && q.data ? <LegalTaxSection slug={access.slug} data={q.data} /> : null}
         </div>

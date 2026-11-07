@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { CalendarDays, Gavel, Lock, Receipt, ShieldCheck, Star, UserRound, type LucideIcon } from 'lucide-react';
+import { Award, CalendarDays, Gavel, Lock, Receipt, ShieldCheck, Star, UserRound, type LucideIcon } from 'lucide-react';
 import { useI18n } from '@/i18n/client';
 import { cx } from '../components/cx';
 
@@ -11,6 +11,7 @@ const ITEMS: Array<{ key: string; href: string; Icon: LucideIcon }> = [
   { key: 'bookings', href: '/account/bookings', Icon: CalendarDays },
   { key: 'orders', href: '/account/orders', Icon: Receipt },
   { key: 'reviews', href: '/account/reviews', Icon: Star },
+  { key: 'loyalty', href: '/account/loyalty', Icon: Award },
   { key: 'privacy', href: '/account/privacy', Icon: ShieldCheck },
   { key: 'policy', href: '/account/policy', Icon: Gavel },
   { key: 'security', href: '/account/security', Icon: Lock },
@@ -27,7 +28,7 @@ export function AccountNav() {
           <li key={key}>
             <Link href={href} aria-current={active(href) ? 'page' : undefined}
               className={cx('flex items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-sm', active(href) ? 'bg-luma-700 text-white' : 'text-ink hover:bg-luma-100')}>
-              <Icon className="size-4" aria-hidden />{t(`account.nav.${key}`)}
+              <Icon className="size-4" aria-hidden />{t(key === 'loyalty' ? 'customer.loyalty.nav' : `account.nav.${key}`)}
             </Link>
           </li>
         ))}

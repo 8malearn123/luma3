@@ -8,11 +8,13 @@ import { onRefundSucceeded, refundBookingDue } from './domains/payments/service'
 import { earnForBooking, reverseForRefund } from './domains/loyalty/service';
 import { restoreOnRefund } from './domains/giftcards/service';
 import { consumeForBooking, releaseForBooking } from './domains/memberships/service';
+import { activatePurchasedGiftCard } from './domains/giftcards/online';
+import { activatePurchasedMembership } from './domains/memberships/online';
 import { offerFreedSlot } from './domains/waitlist/service';
 import { releaseSeats } from './domains/groups/service';
 import { paymentTargets } from './domains/payments/targets';
 import { recordServerEvent } from './domains/analytics/events';
-import { consumeMaterialsForBookingItem, markOrderPaid } from './domains/commerce';
+import { consumeMaterialsForBookingItem, markOrderPaid, releaseCouponRedemption } from './domains/commerce';
 
 const g = globalThis as unknown as { __lumaBooted?: boolean };
 if (!g.__lumaBooted) {
@@ -39,6 +41,9 @@ if (!g.__lumaBooted) {
   // A failed attempt does not cancel the order: the customer may retry until it expires,
   // and the expiry sweep releases the reservation exactly once.
   paymentTargets.order.onFailed = async () => undefined;
+  // Online gift card / membership purchases (storefront): activate exactly once on a verified capture.
+  paymentTargets.giftCard.onCaptured = (trx, tenantId, cardId, payment) => activatePurchasedGiftCard(trx, tenantId, cardId, payment);
+  paymentTargets.membership.onCaptured = (trx, tenantId, membershipId, payment) => activatePurchasedMembership(trx, tenantId, membershipId, payment);
   registerBookingHook.refundDue(async (trx, tenantId, bookingId, amount, basis) => {
     await refundBookingDue(trx, tenantId, bookingId, amount, basis);
   });
@@ -46,6 +51,8 @@ if (!g.__lumaBooted) {
     if (why !== 'expired') await recognizeRetainedOnClose(trx, tenantId, bookingId);
     await releaseSeats(trx, bookingId);
     await releaseForBooking(trx, bookingId);
+    // A booking coupon is given back when the booking is cancelled or its hold expires (kept on a no-show).
+    if (why !== 'no_show') await releaseCouponRedemption(trx, tenantId, { bookingId });
   });
   onRefundSucceeded(async (trx, tenantId, refundId) => {
     await reverseForRefund(trx, tenantId, refundId);
