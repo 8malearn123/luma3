@@ -1,12 +1,12 @@
 'use client';
 
 import {
-  BadgeCheck, Boxes, CalendarDays, ChartLine, Contact, Gem, Gift, Landmark, LayoutDashboard, Lightbulb, ListOrdered, Palette,
+  BadgeCheck, Boxes, CalendarDays, ChartLine, Contact, Gem, Gift, Images, Landmark, LayoutDashboard, Lightbulb, ListOrdered, Palette, PartyPopper,
   Receipt, ScrollText, Settings, ShieldAlert, ShoppingBag, Sparkles, UserRound, Users, UsersRound, Wallet, type LucideIcon,
 } from 'lucide-react';
 
 const ICONS: Record<string, LucideIcon> = {
-  BadgeCheck, Boxes, CalendarDays, ChartLine, Contact, Gem, Gift, Landmark, LayoutDashboard, Lightbulb, ListOrdered, Palette,
+  BadgeCheck, Boxes, CalendarDays, ChartLine, Contact, Gem, Gift, Images, Landmark, LayoutDashboard, Lightbulb, ListOrdered, Palette, PartyPopper,
   Receipt, ScrollText, Settings, ShieldAlert, ShoppingBag, Sparkles, UserRound, Users, UsersRound, Wallet,
 };
 

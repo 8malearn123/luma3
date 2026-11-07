@@ -96,7 +96,7 @@ export type HoldInput = {
 };
 
 /** Releases expired holds that could block these staff/resources (same transaction, before allocating). */
-async function releaseExpiredHolds(trx: Tx, staffIds: string[], resourceIds: string[]) {
+export async function releaseExpiredHolds(trx: Tx, staffIds: string[], resourceIds: string[]) {
   const released = await trx.updateTable('booking_allocations').set({ state: 'released', released_at: new Date() })
     .where('state', '=', 'held').where('expires_at', '<=', new Date())
     .where((eb) => eb.or([

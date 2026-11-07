@@ -110,6 +110,27 @@ const P = {
   welcome: z.object({ message: zShort, style: z.enum(['banner', 'card']).default('banner'), dismissible: z.boolean().default(true) }).strict(),
   spacer: z.object({ size: z.enum(['sm', 'md', 'lg']).default('md'), divider: z.boolean().default(false) }).strict(),
   columns: z.object({ count: z.number().int().min(2).max(3).default(2), gap: z.enum(['sm', 'md', 'lg']).default('md'), stack_on_mobile: z.boolean().default(true) }).strict(),
+  // ── Expert experience (migration 0660) ──
+  /** Before/after pairs with a comparison slider; hand-picked items or the business's portfolio («أعمالي»). */
+  before_after: z.object({
+    title: zShort.optional(), source: z.enum(['items', 'portfolio']).default('items'),
+    /** Portfolio category filter (source = portfolio); null = all. */
+    category: z.string().trim().max(40).nullable().default(null),
+    items: z.array(z.object({
+      before_asset_id: zId, after_asset_id: zId, caption: zShort.optional(), category: zShort.optional(),
+    }).strict().refine((i) => i.before_asset_id !== i.after_asset_id, 'Before and after must be different images')).max(30).default([]),
+    columns: z.number().int().min(1).max(3).default(2), limit: z.number().int().min(1).max(60).default(12),
+    start: z.number().int().min(10).max(90).default(50), show_labels: z.boolean().default(true),
+  }).strict(),
+  /** Latest posts via the official Instagram API when connected; otherwise a «تابعينا على إنستقرام» card. */
+  instagram: z.object({
+    title: zShort.optional(), limit: z.number().int().min(3).max(12).default(6), columns: z.number().int().min(2).max(4).default(3),
+    show_follow: z.boolean().default(true), follow_text: zShort.optional(),
+  }).strict(),
+  /** Entry to the event booking request form («حجوزات المناسبات»). */
+  event_request: z.object({
+    title: zShort.optional(), body: zShort.optional(), label: zShort.optional(), style: z.enum(['banner', 'card']).default('card'),
+  }).strict(),
 } as const;
 
 export type BlockType = keyof typeof P;
@@ -175,6 +196,12 @@ export const BLOCKS: Record<BlockType, BlockDef> = {
     defaults: () => ({ message: { ar: 'أهلاً بكِ في صالوننا', en: 'Welcome to our salon' }, style: 'banner', dismissible: true }) }),
   spacer: def({ type: 'spacer', schemaVersion: 1, category: 'layout', label: { ar: 'مسافة / فاصل', en: 'Spacer / divider' }, icon: 'SeparatorHorizontal', props: P.spacer, placement: ['page', 'columns'], maxPerPage: 30, actions: false }),
   columns: def({ type: 'columns', schemaVersion: 1, category: 'layout', label: { ar: 'أعمدة', en: 'Columns' }, icon: 'Columns3', props: P.columns, placement: ['page'], maxPerPage: 10, actions: false }),
+  before_after: def({ type: 'before_after', schemaVersion: 1, category: 'media', label: { ar: 'قبل وبعد', en: 'Before & after' }, icon: 'SplitSquareHorizontal', props: P.before_after, placement: ['page'], maxPerPage: 4, actions: false,
+    defaults: () => ({ title: { ar: 'قبل وبعد', en: 'Before & after' }, source: 'items', category: null, items: [], columns: 2, limit: 12, start: 50, show_labels: true }) }),
+  instagram: def({ type: 'instagram', schemaVersion: 1, category: 'info', label: { ar: 'إنستقرام', en: 'Instagram' }, icon: 'Camera', props: P.instagram, placement: ['page'], maxPerPage: 1, actions: false,
+    defaults: () => ({ title: { ar: 'تابعينا على إنستقرام', en: 'Follow us on Instagram' }, limit: 6, columns: 3, show_follow: true }) }),
+  event_request: def({ type: 'event_request', schemaVersion: 1, category: 'content', label: { ar: 'حجز المناسبات', en: 'Event bookings' }, icon: 'PartyPopper', props: P.event_request, placement: ['page', 'columns'], maxPerPage: 2, actions: false,
+    defaults: () => ({ title: { ar: 'حجوزات المناسبات', en: 'Event bookings' }, body: { ar: 'زواج، تخرج، مكياج جماعي… أرسلي طلبكِ ونرسل لكِ عرض السعر.', en: 'Weddings, graduations, group makeup… send a request and get a quote.' }, label: { ar: 'اطلبي عرض سعر', en: 'Request a quote' }, style: 'card' }) }),
 };
 
 // ── Block document ───────────────────────────────────────────────────────────
@@ -272,7 +299,7 @@ export function collectReferences(blocks: PageBlock[]) {
   const visit = (b: PageBlock) => {
     const p = b.props as Record<string, any>;
     add(refs.assets, p.image_asset_id);
-    (p.items ?? []).forEach((i: any) => add(refs.assets, i?.image_asset_id));
+    (p.items ?? []).forEach((i: any) => { add(refs.assets, i?.image_asset_id); add(refs.assets, i?.before_asset_id); add(refs.assets, i?.after_asset_id); });
     (p.service_ids ?? []).forEach((v: unknown) => add(refs.services, v));
     add(refs.services, p.service_id);
     (p.product_ids ?? []).forEach((v: unknown) => add(refs.products, v));

@@ -54,6 +54,16 @@ export type PublicBranch = {
 };
 export type PublicAsset = { width: number | null; height: number | null; alt_ar: string | null; alt_en: string | null };
 
+/** Portfolio item (before/after pair, or a single "after" image). */
+export type PublicPortfolioItem = { id: string; before_asset_id: string | null; after_asset_id: string; caption_ar: string | null; caption_en: string | null; category: string | null };
+/** Instagram section: the profile link always; cached posts only while an account is connected (images via the media proxy). */
+export type PublicInstagram = {
+  handle: string | null; profile_url: string | null; connected: boolean;
+  posts: Array<{ id: string; permalink: string; caption: string | null; media_type: string; timestamp: string }>;
+};
+/** Event bookings («حجوزات المناسبات») request form availability. */
+export type PublicEvents = { enabled: boolean; max_people: number; free_cancellation_days: number; default_deposit_bp: number; intro_ar: string | null; intro_en: string | null };
+
 export type StorefrontMode = 'published' | 'preview' | 'canvas';
 
 export type StorefrontData = {
@@ -83,6 +93,10 @@ export type StorefrontData = {
     deposit_mode: 'none' | 'percent' | 'fixed'; deposit_percent_bp: number; deposit_fixed_minor: number; allow_pay_on_site: boolean;
   };
   features: { products: boolean };
+  /** Expert experience (optional so older read models stay valid). */
+  portfolio?: PublicPortfolioItem[];
+  instagram?: PublicInstagram;
+  events?: PublicEvents;
 };
 
 export const SOCIAL_KEYS = ['instagram', 'tiktok', 'snapchat', 'x', 'facebook', 'youtube', 'website'] as const;

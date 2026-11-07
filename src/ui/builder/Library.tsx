@@ -2,8 +2,8 @@
 
 import { useDraggable } from '@dnd-kit/core';
 import {
-  BadgePercent, BookOpenText, Clock, Columns3, FileText, GalleryHorizontal, Hand, CircleQuestionMark, Image, LayoutGrid, ListChecks, MapPin, Megaphone,
-  MousePointerClick, PanelTop, Phone, Plus, SeparatorHorizontal, Share2, ShieldCheck, ShoppingBag, Sparkles, Square, Star, Tags, Type, Users, type LucideIcon,
+  BadgePercent, BookOpenText, Camera, Clock, Columns3, FileText, GalleryHorizontal, Hand, CircleQuestionMark, Image, LayoutGrid, ListChecks, MapPin, Megaphone,
+  MousePointerClick, PanelTop, PartyPopper, Phone, Plus, SplitSquareHorizontal, SeparatorHorizontal, Share2, ShieldCheck, ShoppingBag, Sparkles, Square, Star, Tags, Type, Users, type LucideIcon,
 } from 'lucide-react';
 import { useI18n } from '@/i18n/client';
 import { cx } from '../components/cx';
@@ -13,8 +13,8 @@ import type { AddCheck } from './ops';
 const CATEGORIES: BlockDef['category'][] = ['media', 'content', 'catalog', 'commerce', 'people', 'trust', 'info', 'layout'];
 
 const ICONS: Record<string, LucideIcon> = {
-  BadgePercent, BookOpenText, Clock, Columns3, FileText, GalleryHorizontal, Hand, CircleHelp: CircleQuestionMark, Image, LayoutGrid, ListChecks, MapPin, Megaphone,
-  MousePointerClick, PanelTop, Phone, SeparatorHorizontal, Share2, ShieldCheck, ShoppingBag, Sparkles, Star, Tags, Type, Users,
+  BadgePercent, BookOpenText, Camera, Clock, Columns3, FileText, GalleryHorizontal, Hand, CircleHelp: CircleQuestionMark, Image, LayoutGrid, ListChecks, MapPin, Megaphone,
+  MousePointerClick, PanelTop, PartyPopper, Phone, SplitSquareHorizontal, SeparatorHorizontal, Share2, ShieldCheck, ShoppingBag, Sparkles, Star, Tags, Type, Users,
 };
 
 export function BlockIcon({ name, className }: { name: string; className?: string }) {

@@ -7,12 +7,14 @@ import { CtaBlock, FaqBlock, IntroBlock, PageLinkBlock, PoliciesBlock, SpacerBlo
 import { CategoriesBlock, OffersBlock, ProductFeatureBlock, ProductGridBlock, ReviewsBlock, ServiceFeatureBlock, ServiceListBlock, TeamBlock } from './blocks/catalog';
 import { ContactBlock, HoursBlock, MapBlock, SocialBlock } from './blocks/info';
 import { GalleryBlock, HeroBlock, ImageAdBlock, ImageBlock, type BlockProps } from './blocks/media';
+import { BeforeAfterBlock, EventRequestBlock, InstagramBlock } from './blocks/expert';
 
 const RENDERERS: Record<Exclude<BlockType, 'columns'>, ComponentType<BlockProps>> = {
   hero: HeroBlock, image_ad: ImageAdBlock, image: ImageBlock, text: TextBlock, cta: CtaBlock, service_list: ServiceListBlock,
   service_feature: ServiceFeatureBlock, categories: CategoriesBlock, product_grid: ProductGridBlock, product_feature: ProductFeatureBlock,
   team: TeamBlock, gallery: GalleryBlock, offers: OffersBlock, reviews: ReviewsBlock, intro: IntroBlock, map: MapBlock, hours: HoursBlock,
   contact: ContactBlock, social: SocialBlock, faq: FaqBlock, policies: PoliciesBlock, page_link: PageLinkBlock, welcome: WelcomeBlock, spacer: SpacerBlock,
+  before_after: BeforeAfterBlock, instagram: InstagramBlock, event_request: EventRequestBlock,
 };
 
 /** Responsive visibility flags → CSS classes publicly; evaluated directly in the canvas device preview. */

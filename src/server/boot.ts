@@ -13,6 +13,7 @@ import { releaseSeats } from './domains/groups/service';
 import { paymentTargets } from './domains/payments/targets';
 import { recordServerEvent } from './domains/analytics/events';
 import { consumeMaterialsForBookingItem, markOrderPaid } from './domains/commerce';
+import { onEventPaymentCaptured, onEventPaymentFailed, onEventRefunded } from './domains/events/service';
 
 const g = globalThis as unknown as { __lumaBooted?: boolean };
 if (!g.__lumaBooted) {
@@ -39,6 +40,11 @@ if (!g.__lumaBooted) {
   // A failed attempt does not cancel the order: the customer may retry until it expires,
   // and the expiry sweep releases the reservation exactly once.
   paymentTargets.order.onFailed = async () => undefined;
+  // Event bookings: a captured deposit confirms the event and its reserved time; a failed
+  // checkout frees the held time; refunds update the event's refunded amount.
+  paymentTargets.event.onCaptured = (trx, tenantId, id, payment) => onEventPaymentCaptured(trx, tenantId, id, payment);
+  paymentTargets.event.onFailed = (trx, tenantId, id) => onEventPaymentFailed(trx, tenantId, id);
+  paymentTargets.event.onRefunded = (trx, tenantId, id, refund) => onEventRefunded(trx, tenantId, id, refund);
   registerBookingHook.refundDue(async (trx, tenantId, bookingId, amount, basis) => {
     await refundBookingDue(trx, tenantId, bookingId, amount, basis);
   });
