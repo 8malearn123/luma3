@@ -29,11 +29,12 @@ At runtime the app derives everything else from the injected owner connection. T
 | Sandbox webhook secret | derived |
 | `STORAGE_DRIVER` | `db` |
 | On-screen codes | on |
+| Demo role switcher (`DEMO_MODE`) | on: the login page lists every demo account for one-click sign-in. Set `DEMO_MODE=false` to hide it. Always off when `APP_ENV=production`. |
 | `APP_URL` | from the Vercel URL |
 
 Any variable you set yourself wins. Set `LUMA_DATABASE_URL` to manage the database manually (the steps below), and `LUMA_SKIP_SEED=1` to skip demo data.
 
-The demo data is fake. Review builds show verification codes on screen, so enable **Deployment Protection** (step 5) if the URL could be found by others.
+The demo data is fake. Review builds show verification codes and the demo role switcher on screen, so enable **Deployment Protection** (step 5) if the URL could be found by others.
 
 Sign in through `/auth/recover` (step 6). Background jobs are optional here: expired holds are released whenever a booking or availability request touches them. Add `CRON_SECRET` plus the scheduled-jobs workflow for reminders and other sweeps.
 
@@ -105,7 +106,7 @@ Later, migrations run automatically whenever `db/migrations/**` changes on `main
 | `CRON_SECRET` | same as GitHub |
 | `STORAGE_DRIVER` | `db` |
 | `DEV_OTP_ECHO` | `true` (review builds show codes on screen; no SMS/email provider is connected) |
-| `DEMO_MODE` | `false` |
+| `DEMO_MODE` | `true` to list every demo account on the login page for one-click sign-in (fake data only; forced off in production), otherwise `false` |
 | `PLATFORM_MFA_REQUIRED` | `true` (already enforced by `APP_ENV=review`) |
 | `TRUSTED_PROXY_HOPS` | `1` |
 | `PAYMENT_SANDBOX_WEBHOOK_SECRET` | another random value |
@@ -130,7 +131,7 @@ This matters because review builds show verification codes on screen: without pr
 2. The code appears on screen (review build). Choose a new password.
 3. For the LUMA admin (`admin@luma.demo`), do the same, then enrol MFA when asked.
 
-Demo accounts: `admin@luma.demo` (platform owner), `reviewer@luma.demo`, `owner@noura.demo`, `manager@noura.demo`, `reception@noura.demo`, `sara@noura.demo` (specialist), `finance@noura.demo`, `lamar@lamar.demo` (independent expert), `customer@demo.test`, `restricted@demo.test`, `new@demo.test`.
+Demo accounts: `admin@luma.demo` (platform owner), `reviewer@luma.demo` (policy reviewer), `support@luma.demo` (support administrator), `tech@luma.demo` (technical administrator), `owner@noura.demo`, `manager@noura.demo`, `reception@noura.demo`, `sara@noura.demo` (specialist), `finance@noura.demo`, `lamar@lamar.demo` (independent expert), `customer@demo.test`, `restricted@demo.test`, `new@demo.test`.
 
 Storefronts: `/s/noura-salon`, `/s/lamar-makeup`.
 

@@ -51,7 +51,12 @@ export function applyVercelDefaults(raw: Env): Env {
   out.PAYMENT_SANDBOX_WEBHOOK_SECRET ??= derive(pooled, 'sandbox-webhook');
   out.STORAGE_DRIVER ??= 'db';
   out.DB_POOL_MAX ??= '3';
-  if (out.APP_ENV !== 'production') out.DEV_OTP_ECHO ??= 'true';
+  if (out.APP_ENV !== 'production') {
+    out.DEV_OTP_ECHO ??= 'true';
+    // Fake demo data only: one-click sign-in as every seeded demo role on the login page.
+    // Set DEMO_MODE=false to hide it; it is always off when APP_ENV=production.
+    out.DEMO_MODE ??= 'true';
+  }
   const host = out.VERCEL_PROJECT_PRODUCTION_URL || out.VERCEL_URL;
   if (host) out.APP_URL ??= `https://${host}`;
   return out;
