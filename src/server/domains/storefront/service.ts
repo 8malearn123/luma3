@@ -11,6 +11,7 @@ import {
 import { zBrand, NEUTRAL_BRAND } from '@/shared/builder/theme';
 import { DEFAULT_LAYOUT, zLayout } from '@/shared/builder/blocks';
 import { readDraftSnapshot, safeBlocks } from '../builder/drafts';
+import { loadStorefrontExtras } from '../portfolio/storefront';
 
 /**
  * Public storefront read model. Tenant scope comes from the published slug (or
@@ -90,13 +91,16 @@ async function assemble(trx: Tx, t: TenantRow, snapshot: SiteSnapshot, mode: Sto
   const visit = (list: PageBlock[]) => list.forEach((b) => {
     const p = b.props as Record<string, any>;
     addAsset(p.image_asset_id);
-    (p.items ?? []).forEach((i: any) => addAsset(i?.image_asset_id));
+    (p.items ?? []).forEach((i: any) => { addAsset(i?.image_asset_id); addAsset(i?.before_asset_id); addAsset(i?.after_asset_id); });
     if (b.children) visit(b.children);
   });
   snapshot.pages.forEach((p) => visit(p.blocks));
   live.services.forEach((s) => addAsset(s.image_asset_id));
   live.staff.forEach((s) => addAsset(s.photo_asset_id));
   live.products.forEach((p) => p.image_asset_ids.forEach(addAsset));
+  // Expert experience: before/after portfolio, Instagram section, event bookings.
+  const extras = await loadStorefrontExtras(trx, t.id, snapshot.pages.flatMap((p) => p.blocks), { all: mode === 'canvas' });
+  extras.assetIds.forEach(addAsset);
   const assets: Record<string, PublicAsset> = {};
   if (assetIds.size) {
     const rows = await trx.selectFrom('assets').select(['id', 'width', 'height', 'alt_ar', 'alt_en'])
@@ -119,6 +123,7 @@ async function assemble(trx: Tx, t: TenantRow, snapshot: SiteSnapshot, mode: Sto
     assets,
     policy: live.policy,
     features: { products: productsEnabled },
+    ...extras.data,
   };
 }
 

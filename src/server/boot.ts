@@ -16,6 +16,7 @@ import { paymentTargets } from './domains/payments/targets';
 import { recordServerEvent } from './domains/analytics/events';
 import { recordMarketplaceCommission } from './domains/marketplace/attribution';
 import { consumeMaterialsForBookingItem, markOrderPaid, releaseCouponRedemption } from './domains/commerce';
+import { onEventPaymentCaptured, onEventPaymentFailed, onEventRefunded } from './domains/events/service';
 
 const g = globalThis as unknown as { __lumaBooted?: boolean };
 if (!g.__lumaBooted) {
@@ -47,6 +48,11 @@ if (!g.__lumaBooted) {
   // Online gift card / membership purchases (storefront): activate exactly once on a verified capture.
   paymentTargets.giftCard.onCaptured = (trx, tenantId, cardId, payment) => activatePurchasedGiftCard(trx, tenantId, cardId, payment);
   paymentTargets.membership.onCaptured = (trx, tenantId, membershipId, payment) => activatePurchasedMembership(trx, tenantId, membershipId, payment);
+  // Event bookings: a captured deposit confirms the event and its reserved time; a failed
+  // checkout frees the held time; refunds update the event's refunded amount.
+  paymentTargets.event.onCaptured = (trx, tenantId, id, payment) => onEventPaymentCaptured(trx, tenantId, id, payment);
+  paymentTargets.event.onFailed = (trx, tenantId, id) => onEventPaymentFailed(trx, tenantId, id);
+  paymentTargets.event.onRefunded = (trx, tenantId, id, refund) => onEventRefunded(trx, tenantId, id, refund);
   registerBookingHook.refundDue(async (trx, tenantId, bookingId, amount, basis) => {
     await refundBookingDue(trx, tenantId, bookingId, amount, basis);
   });

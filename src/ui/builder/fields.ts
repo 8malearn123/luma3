@@ -17,7 +17,10 @@ export type FieldSpec =
   | { k: 'ref'; key: string; ref: RefKind; nullable?: boolean; categoryKind?: 'service' | 'product' }
   | { k: 'refs'; key: string; ref: RefKind }
   | { k: 'gallery'; key: string }
-  | { k: 'faq'; key: string };
+  | { k: 'faq'; key: string }
+  | { k: 'text'; key: string; max: number }
+  | { k: 'before_after'; key: string }
+  | { k: 'instagram'; key: string };
 
 const align = { k: 'select', key: 'align', options: ['start', 'center', 'end'] } as const;
 const focal = { k: 'select', key: 'focal', options: ['center', 'top', 'bottom', 'start', 'end'] } as const;
@@ -52,4 +55,9 @@ export const FIELD_SPECS: Record<BlockType, FieldSpec[]> = {
   welcome: [{ k: 'localized', key: 'message' }, { k: 'select', key: 'style', options: ['banner', 'card'] }, { k: 'boolean', key: 'dismissible' }],
   spacer: [{ k: 'select', key: 'size', options: ['sm', 'md', 'lg'] }, { k: 'boolean', key: 'divider' }],
   columns: [{ k: 'number', key: 'count', min: 2, max: 3 }, { k: 'select', key: 'gap', options: ['sm', 'md', 'lg'] }, { k: 'boolean', key: 'stack_on_mobile' }],
+  before_after: [title, { k: 'select', key: 'source', options: ['items', 'portfolio'] }, { k: 'before_after', key: 'items' }, { k: 'text', key: 'category', max: 40 },
+    { k: 'number', key: 'columns', min: 1, max: 3 }, { k: 'number', key: 'limit', min: 1, max: 60 }, { k: 'number', key: 'start', min: 10, max: 90, step: 5 }, { k: 'boolean', key: 'show_labels' }],
+  instagram: [title, { k: 'instagram', key: 'connection' }, { k: 'number', key: 'limit', min: 3, max: 12 }, { k: 'number', key: 'columns', min: 2, max: 4 },
+    { k: 'boolean', key: 'show_follow' }, { k: 'localized', key: 'follow_text' }],
+  event_request: [title, { k: 'localized', key: 'body', max: 160 }, { k: 'localized', key: 'label' }, { k: 'select', key: 'style', options: ['card', 'banner'] }],
 };

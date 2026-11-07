@@ -20,3 +20,17 @@ export function useI18n() {
   if (!ctx) throw new Error('useI18n outside I18nProvider');
   return ctx;
 }
+
+/**
+ * Re-labels translation keys for a subtree (e.g. the expert workspace's
+ * «خدماتي» instead of «الخدمات»). Keys missing from the map are unchanged.
+ */
+export function I18nLabelMap({ map, children }: { map: Readonly<Record<string, string>>; children: ReactNode }) {
+  const parent = useI18n();
+  const value = useMemo<Ctx>(() => {
+    if (!Object.keys(map).length) return parent;
+    const t: T = (key, vars) => parent.t(map[key] ?? key, vars);
+    return { ...parent, t };
+  }, [parent, map]);
+  return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
+}

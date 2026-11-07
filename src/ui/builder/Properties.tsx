@@ -12,6 +12,7 @@ import { plainToRich, richToPlain } from '@/shared/builder/richtext';
 import { FIELD_SPECS, type FieldSpec, type RefKind } from './fields';
 import { AssetAltEditor, ImagePicker } from './ImagePicker';
 import { BlockIcon } from './Library';
+import { BeforeAfterItemsEditor, InstagramConnectionField } from './ExpertFields';
 import type { BuilderPage, CatalogRefs, RefWarning } from './types';
 
 type Opt = { id: string; label: string; note?: string };
@@ -220,6 +221,14 @@ export function Properties({ slug, block, parent, pageBlocks, refs, pages, warni
           </div>
         );
       }
+      case 'text':
+        return <Field key={f.key} label={fl(f.key)}>{(p) => <Input {...p} value={String(props[f.key] ?? '')} maxLength={f.max} onChange={(e) => set(f.key, e.target.value.trim() ? e.target.value : null, true)} />}</Field>;
+      case 'before_after':
+        return props.source === 'portfolio'
+          ? <p key={f.key} className="rounded-lg bg-luma-50 p-2 text-xs text-ink-muted">{t('expert.ba.from_portfolio')}</p>
+          : <BeforeAfterItemsEditor key={f.key} slug={slug} items={props.items ?? []} assets={refs.assets} onAssetsChange={onAssetsChange} onChange={(v, c) => set('items', v, c)} />;
+      case 'instagram':
+        return <InstagramConnectionField key={f.key} slug={slug} />;
       case 'faq': {
         const items = (props.items ?? []) as Array<{ q: { ar?: string; en?: string }; a: { ar?: string; en?: string } }>;
         const setItems = (v: typeof items, c = false) => set('items', v, c);

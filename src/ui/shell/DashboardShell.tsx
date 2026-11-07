@@ -4,7 +4,8 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState, type ReactNode } from 'react';
 import { ExternalLink, Menu, X } from 'lucide-react';
-import { useI18n } from '@/i18n/client';
+import { I18nLabelMap, useI18n } from '@/i18n/client';
+import { withWorkspaceLabels, workspaceProfile } from '@/shared/workspace-profile';
 import type { ClientAccess } from '@/server/pages';
 import { AccessProvider } from './access-context';
 import { NavIcon } from './icons';
@@ -17,7 +18,9 @@ import { cx } from '../components/cx';
 import { Alert } from '../components/feedback';
 
 export function DashboardShell({ access, user, children }: { access: ClientAccess; user: { displayName: string; isDemo: boolean }; children: ReactNode }) {
-  const { t } = useI18n();
+  const { t: baseT } = useI18n();
+  // Business-type labels (e.g. the expert's «خدماتي»); identity for salons.
+  const t = withWorkspaceLabels(baseT, access.businessType);
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const items = visibleNav(access);
@@ -94,7 +97,7 @@ export function DashboardShell({ access, user, children }: { access: ClientAcces
           {user.isDemo ? <div className="bg-luma-700 px-4 py-1 text-center text-xs text-white">{t('demo.banner')}</div> : null}
           {access.support ? <Alert tone="warn" className="m-3">{t('support_banner')}</Alert> : null}
           {access.readOnly && !access.support ? <Alert tone="warn" className="m-3">{t('readonly_banner')}</Alert> : null}
-          <main id="main" className="mx-auto w-full max-w-7xl flex-1 p-3 sm:p-6">{children}</main>
+          <main id="main" className="mx-auto w-full max-w-7xl flex-1 p-3 sm:p-6"><I18nLabelMap map={workspaceProfile(access.businessType).labels}>{children}</I18nLabelMap></main>
         </div>
       </div>
     </AccessProvider>

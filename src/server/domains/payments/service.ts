@@ -119,13 +119,13 @@ export async function checkoutOrder(tenantId: string, orderId: string, input: { 
 type Account = NonNullable<Awaited<ReturnType<typeof activeAccount>>>;
 
 async function createProviderPayment(trx: Tx, a: {
-  tenantId: string; account: Account; purpose: 'booking' | 'order' | 'gift_card' | 'membership'; bookingId?: string; orderId?: string; giftCardId?: string; membershipId?: string;
+  tenantId: string; account: Account; purpose: 'booking' | 'order' | 'gift_card' | 'membership' | 'event'; bookingId?: string; orderId?: string; giftCardId?: string; membershipId?: string; eventBookingId?: string;
   kind: 'full' | 'deposit' | 'balance'; amountMinor: number; currency: string; payerUserId: string | null; idempotencyKey: string; description: string; returnUrl: string; expiresAt: Date | null;
 }) {
   const p = provider(a.account.provider)!;
   const row = await trx.insertInto('payments').values({
     tenant_id: a.tenantId, payment_account_id: a.account.id, purpose: a.purpose, booking_id: a.bookingId ?? null, order_id: a.orderId ?? null,
-    gift_card_id: a.giftCardId ?? null, customer_membership_id: a.membershipId ?? null, kind: a.kind, method: 'sandbox',
+    gift_card_id: a.giftCardId ?? null, customer_membership_id: a.membershipId ?? null, event_booking_id: a.eventBookingId ?? null, kind: a.kind, method: 'sandbox',
     amount_minor: a.amountMinor, currency: a.currency, status: 'pending', provider: a.account.provider, idempotency_key: a.idempotencyKey,
     payer_user_id: a.payerUserId, expires_at: a.expiresAt, created_by: a.payerUserId,
   }).returning('id').executeTakeFirstOrThrow();
@@ -161,14 +161,28 @@ export async function createStoredValueCheckout(trx: Tx, a: {
   return { id: payment.id, checkout_url: payment.checkoutUrl, amount_minor: a.amountMinor, simulation: p.isSimulation };
 }
 
+/**
+ * Hosted checkout for an event booking's deposit (domains/events). The caller
+ * computes the amount on the server; the payment row, provider checkout and
+ * attempt are created exactly like booking payments.
+ */
+export async function createEventCheckout(trx: Tx, a: { tenantId: string; eventBookingId: string; kind: 'deposit' | 'balance' | 'full'; amountMinor: number; currency: string; payerUserId: string; idempotencyKey: string; description: string; returnUrl: string; expiresAt: Date }) {
+  const acct = await activeAccount(trx, a.tenantId);
+  const p = acct ? provider(acct.provider) : null;
+  if (!acct || !p) throw Errors.unavailable('payments_unavailable', 'Online payment is not set up for this business');
+  const payment = await createProviderPayment(trx, { ...a, account: acct, purpose: 'event', idempotencyKey: `event:${a.eventBookingId}:${a.idempotencyKey}` });
+  return { ...payment, simulation: p.isSimulation };
+}
+
 /** Payment status for the payer (never trusts a browser redirect as proof of payment). */
 export async function paymentStatusForPayer(tenantId: string, paymentId: string, userId: string) {
   return withTenant(tenantId, async (trx) => {
-    const p = await trx.selectFrom('payments').select(['id', 'status', 'amount_minor', 'currency', 'booking_id', 'order_id', 'needs_reconciliation', 'payer_user_id']).where('id', '=', paymentId).executeTakeFirst();
+    const p = await trx.selectFrom('payments').select(['id', 'status', 'amount_minor', 'currency', 'booking_id', 'order_id', 'event_booking_id', 'needs_reconciliation', 'payer_user_id']).where('id', '=', paymentId).executeTakeFirst();
     if (!p || p.payer_user_id !== userId) throw Errors.notFound('payment');
     let target: { status: string; payment_status?: string } | null = null;
     if (p.booking_id) target = await trx.selectFrom('bookings').select(['status', 'payment_status']).where('id', '=', p.booking_id).executeTakeFirst() ?? null;
     if (p.order_id) target = await trx.selectFrom('orders').select(['status']).where('id', '=', p.order_id).executeTakeFirst() ?? null;
+    if (p.event_booking_id) target = await trx.selectFrom('event_bookings').select(['status']).where('id', '=', p.event_booking_id).executeTakeFirst() ?? null;
     const { payer_user_id: _p, ...rest } = p;
     return { ...rest, target };
   });
@@ -259,6 +273,17 @@ async function applyCaptured(trx: Tx, tenantId: string, paymentId: string, actor
     if (o.status === 'cancelled') {
       await flagReconciliation(trx, tenantId, p.id, 'captured_after_order_cancelled');
       await requestRefundInternal(trx, tenantId, { paymentId: p.id, amountMinor: p.amount_minor, reason: 'captured_after_order_cancelled', basis: { auto: true }, idempotencyKey: `auto-order:${p.id}`, system: true });
+    }
+  } else if (p.event_booking_id) {
+    // Before the event takes place the money is a customer deposit (liability), not revenue.
+    await post(trx, tenantId, { type: 'payment', id: p.id }, [
+      { account: cashAccount, debit: p.amount_minor }, { account: 'customer_deposits', credit: p.amount_minor },
+    ], { createdBy: actorUserId, memo: 'event payment' });
+    const r = await paymentTargets.event.onCaptured(trx, tenantId, p.event_booking_id, { paymentId: p.id, amountMinor: p.amount_minor }) as { refund?: string } | undefined;
+    if (r?.refund) {
+      // Paid for an event that is closed or whose time was taken meanwhile: never silently keep it.
+      await flagReconciliation(trx, tenantId, p.id, r.refund);
+      await requestRefundInternal(trx, tenantId, { paymentId: p.id, amountMinor: p.amount_minor, reason: r.refund, basis: { auto: true }, idempotencyKey: `auto-event:${p.id}`, system: true });
     }
   } else if (p.gift_card_id) {
     await paymentTargets.giftCard.onCaptured(trx, tenantId, p.gift_card_id, { paymentId: p.id, amountMinor: p.amount_minor });
@@ -377,6 +402,7 @@ async function processEvent(providerName: string, ev: VerifiedEvent): Promise<{ 
       await trx.updateTable('bookings').set({ status: 'held' }).where('id', '=', pay.booking_id).where('status', '=', 'pending_payment').execute();
     }
     if (pay.order_id) await paymentTargets.order.onFailed(trx, ref.tenant_id, pay.order_id, { paymentId: pay.id });
+    if (pay.event_booking_id) await paymentTargets.event.onFailed(trx, ref.tenant_id, pay.event_booking_id, { paymentId: pay.id });
     return 'processed';
   });
   return { result, tenantId: ref.tenant_id };
@@ -440,6 +466,11 @@ async function applyRefundSucceeded(trx: Tx, tenantId: string, refundId: string)
     const o = await trx.selectFrom('orders').selectAll().where('id', '=', p.order_id).forUpdate().executeTakeFirstOrThrow();
     await trx.updateTable('orders').set({ refunded_minor: o.refunded_minor + r.amount_minor }).where('id', '=', o.id).execute();
     await post(trx, tenantId, { type: 'refund', id: r.id }, [{ account: 'refunds', debit: r.amount_minor }, { account: cashAccount, credit: r.amount_minor }], { memo: `refund ${o.number}` });
+  } else if (p.event_booking_id) {
+    const ev = await paymentTargets.event.onRefunded(trx, tenantId, p.event_booking_id, { refundId: r.id, amountMinor: r.amount_minor });
+    await post(trx, tenantId, { type: 'refund', id: r.id }, [
+      { account: ev.completed ? 'refunds' : 'customer_deposits', debit: r.amount_minor }, { account: cashAccount, credit: r.amount_minor },
+    ], { memo: 'event refund' });
   } else {
     await post(trx, tenantId, { type: 'refund', id: r.id }, [{ account: p.gift_card_id ? 'gift_card_liability' : 'membership_liability', debit: r.amount_minor }, { account: cashAccount, credit: r.amount_minor }]);
   }
@@ -509,6 +540,22 @@ export async function refundBookingDue(trx: Tx, tenantId: string, bookingId: str
     if (room <= 0) continue;
     const amt = Math.min(room, remaining);
     await requestRefundInternal(trx, tenantId, { paymentId: p.id, amountMinor: amt, reason: basis, basis: { policy: basis }, idempotencyKey: `policy:${bookingId}:${p.id}:${basis}`, system: true });
+    remaining -= amt;
+  }
+  return amountMinor - remaining;
+}
+
+/** Events hook: refund due on an event cancellation (system-approved, newest capture first). */
+export async function refundEventDue(trx: Tx, tenantId: string, eventBookingId: string, amountMinor: number, basis: string) {
+  const pays = await trx.selectFrom('payments').selectAll().where('event_booking_id', '=', eventBookingId).where('status', '=', 'captured').orderBy('captured_at', 'desc').execute();
+  let remaining = amountMinor;
+  for (const p of pays) {
+    if (remaining <= 0) break;
+    const used = await trx.selectFrom('refunds').select(sql<number>`coalesce(sum(amount_minor), 0)::bigint`.as('n')).where('payment_id', '=', p.id).where('status', 'not in', ['failed', 'cancelled']).executeTakeFirstOrThrow();
+    const room = p.amount_minor - Number(used.n);
+    if (room <= 0) continue;
+    const amt = Math.min(room, remaining);
+    await requestRefundInternal(trx, tenantId, { paymentId: p.id, amountMinor: amt, reason: basis, basis: { policy: basis }, idempotencyKey: `event-policy:${eventBookingId}:${p.id}:${basis}`, system: true });
     remaining -= amt;
   }
   return amountMinor - remaining;

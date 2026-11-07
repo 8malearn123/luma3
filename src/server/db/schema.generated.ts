@@ -155,6 +155,7 @@ export interface BookingAllocations {
   booking_item_id: string | null;
   created_at: Generated<Timestamp>;
   during: string;
+  event_booking_id: string | null;
   expires_at: Timestamp | null;
   group_session_id: string | null;
   id: Generated<string>;
@@ -612,6 +613,69 @@ export interface EntitlementReservations {
   updated_at: Generated<Timestamp>;
 }
 
+export interface EventBookings {
+  accepted_at: Timestamp | null;
+  cancel_reason: string | null;
+  cancel_source: string | null;
+  cancelled_at: Timestamp | null;
+  completed_at: Timestamp | null;
+  confirmed_at: Timestamp | null;
+  contact_phone: string | null;
+  created_at: Generated<Timestamp>;
+  currency: Generated<string>;
+  customer_user_id: string;
+  decline_reason: string | null;
+  deposit_minor: number | null;
+  duration_min: number | null;
+  ends_at: Timestamp | null;
+  event_date: string;
+  id: Generated<string>;
+  location_text: string | null;
+  location_type: string;
+  notes: string | null;
+  number: string;
+  occasion: string;
+  paid_minor: Generated<number>;
+  payment_expires_at: Timestamp | null;
+  people_count: number;
+  policy_snapshot: Generated<Json>;
+  prep_after_min: Generated<number>;
+  prep_before_min: Generated<number>;
+  quote_expires_at: Timestamp | null;
+  quote_note: string | null;
+  quote_version: Generated<number>;
+  quoted_at: Timestamp | null;
+  quoted_by: string | null;
+  refunded_minor: Generated<number>;
+  service_ids: Generated<string[]>;
+  staff_id: string | null;
+  start_time: string;
+  starts_at: Timestamp;
+  status: Generated<string>;
+  subtotal_minor: number | null;
+  tax_minor: number | null;
+  tenant_customer_id: string;
+  tenant_id: string;
+  timezone: string;
+  total_minor: number | null;
+  updated_at: Generated<Timestamp>;
+  version: Generated<number>;
+}
+
+export interface EventSettings {
+  created_at: Generated<Timestamp>;
+  default_deposit_bp: Generated<number>;
+  enabled: Generated<boolean>;
+  free_cancellation_days: Generated<number>;
+  intro_ar: string | null;
+  intro_en: string | null;
+  max_people: Generated<number>;
+  quote_validity_days: Generated<number>;
+  tenant_id: string;
+  updated_at: Generated<Timestamp>;
+  updated_by: string | null;
+}
+
 export interface Expenses {
   amount_minor: number;
   branch_id: string | null;
@@ -863,6 +927,22 @@ export interface IncidentReviews {
   reviewer_scope: string;
   tenant_id: string;
   to_status: string;
+}
+
+export interface InstagramConnections {
+  access_token_enc: string | null;
+  created_at: Generated<Timestamp>;
+  handle: string | null;
+  ig_user_id: string | null;
+  last_error: string | null;
+  last_synced_at: Timestamp | null;
+  posts: Generated<Json>;
+  provider: Generated<string>;
+  status: Generated<string>;
+  tenant_id: string;
+  token_expires_at: Timestamp | null;
+  updated_at: Generated<Timestamp>;
+  updated_by: string | null;
 }
 
 export interface InventoryItems {
@@ -1325,6 +1405,7 @@ export interface Payments {
   created_by: string | null;
   currency: string;
   customer_membership_id: string | null;
+  event_booking_id: string | null;
   expires_at: Timestamp | null;
   gift_card_id: string | null;
   id: Generated<string>;
@@ -1654,6 +1735,22 @@ export interface PolicyRules {
   updated_at: Generated<Timestamp>;
   updated_by: string | null;
   version: Generated<number>;
+}
+
+export interface PortfolioItems {
+  after_asset_id: string;
+  before_asset_id: string | null;
+  caption_ar: string | null;
+  caption_en: string | null;
+  category: string | null;
+  created_at: Generated<Timestamp>;
+  created_by: string | null;
+  id: Generated<string>;
+  is_visible: Generated<boolean>;
+  service_id: string | null;
+  sort: Generated<number>;
+  tenant_id: string;
+  updated_at: Generated<Timestamp>;
 }
 
 export interface PreviewTokens {
@@ -2757,6 +2854,8 @@ export interface DB {
   dev_message_outbox: DevMessageOutbox;
   domain_mappings: DomainMappings;
   entitlement_reservations: EntitlementReservations;
+  event_bookings: EventBookings;
+  event_settings: EventSettings;
   expenses: Expenses;
   finance_exports: FinanceExports;
   financial_entries: FinancialEntries;
@@ -2773,6 +2872,7 @@ export interface DB {
   idempotency_records: IdempotencyRecords;
   incident_evidence: IncidentEvidence;
   incident_reviews: IncidentReviews;
+  instagram_connections: InstagramConnections;
   inventory_items: InventoryItems;
   invitations: Invitations;
   invoice_items: InvoiceItems;
@@ -2824,6 +2924,7 @@ export interface DB {
   points_entries: PointsEntries;
   policy_decisions: PolicyDecisions;
   policy_rules: PolicyRules;
+  portfolio_items: PortfolioItems;
   preview_tokens: PreviewTokens;
   product_images: ProductImages;
   product_variants: ProductVariants;
