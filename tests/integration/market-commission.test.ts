@@ -63,6 +63,10 @@ describe('سوق لوما: attribution and LUMA commission', () => {
     expect(mb.channel).toBe('marketplace');
     expect(mb.marketplace_fee_bp).toBe(1500);
     expect(mb.attribution).toMatchObject({ source: 'marketplace', commission_bp: 1500 });
+    // «كيف عرفتِ عنا؟»: a customer who arrived from سوق لوما is recorded with source «سوق لوما».
+    const acq = await withTenant(s.tenantId, (trx) => trx.selectFrom('bookings as b').innerJoin('tenant_customers as c', 'c.id', 'b.tenant_customer_id')
+      .select(['c.acquisition_source', 'c.acquisition_method']).where('b.id', '=', mkt).executeTakeFirstOrThrow());
+    expect(acq).toEqual({ acquisition_source: 'marketplace', acquisition_method: 'inferred' });
 
     // Split-payment data on the online payment: fee + provider net.
     const pay = await withTenant(s.tenantId, (trx) => trx.selectFrom('payments').select(['amount_minor', 'platform_fee_minor', 'provider_net_minor', 'status']).where('booking_id', '=', mkt).executeTakeFirstOrThrow());

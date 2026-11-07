@@ -5,6 +5,7 @@ import { newSession, platformUser, stepUp } from '../helpers/platform';
 import { at, customer, futureDate, makeSalon } from '../helpers/salon';
 import { withSystem, withTenant } from '@/server/db/client';
 import { resetPlatformSettingsCache, getPlatformSetting } from '@/server/domains/platform/settings';
+import { marketplaceSettings } from '@/server/domains/marketplace/listing';
 import { setMarketplaceFeeSource } from '@/server/domains/settlements/fees';
 import { totpCode } from '@/server/domains/platform/totp';
 import * as settings from '@/app/api/v1/platform/settings/route';
@@ -114,8 +115,8 @@ describe('maintenance mode', () => {
     expect(pub2.body.error?.details?.reason).not.toBe('approval_pending');
   });
 
-  it('exposes marketplace_requires_verification (default true) for the marketplace', async () => {
-    expect(await getPlatformSetting('marketplace_requires_verification')).toBe(true);
+  it('requires verification for the marketplace by default (single setting in marketplace_settings)', async () => {
+    expect((await marketplaceSettings()).require_verification).toBe(true);
   });
 });
 

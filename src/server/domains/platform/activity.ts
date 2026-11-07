@@ -22,11 +22,13 @@ export async function platformBookings(q: BookingQ, opts: { all?: boolean } = {}
     let base = trx.selectFrom('bookings as b').innerJoin('tenants as t', 't.id', 'b.tenant_id');
     if (q.tenant) base = base.where(sql<string>`t.slug::text`, '=', q.tenant);
     if (q.status) base = base.where('b.status', '=', q.status);
-    if (q.source) base = base.where('b.source', '=', q.source);
+    // `marketplace` is a channel (bookings tagged by سوق لوما), the rest are booking sources.
+    if (q.source === 'marketplace') base = base.where('b.channel', '=', 'marketplace');
+    else if (q.source) base = base.where('b.source', '=', q.source);
     const p = range(q.from, q.to);
     if (p) base = base.where('b.created_at', '>=', p.start).where('b.created_at', '<', p.end);
     const total = await base.select(sql<number>`count(*)::int`.as('n')).executeTakeFirstOrThrow();
-    let rows = base.select(['b.id', 'b.number', 'b.status', 'b.payment_status', 'b.source', 'b.starts_at', 'b.ends_at', 'b.total_minor', 'b.paid_minor', 'b.refunded_minor', 'b.currency', 'b.created_at',
+    let rows = base.select(['b.id', 'b.number', 'b.status', 'b.payment_status', 'b.source', 'b.channel', 'b.starts_at', 'b.ends_at', 'b.total_minor', 'b.paid_minor', 'b.refunded_minor', 'b.currency', 'b.created_at',
       't.id as tenant_id', sql<string>`t.slug::text`.as('tenant_slug'), 't.name as tenant_name', 't.city as tenant_city',
       sql<number>`(select count(*)::int from booking_items i where i.tenant_id = b.tenant_id and i.booking_id = b.id and i.superseded_at is null)`.as('items')])
       .orderBy('b.created_at', 'desc').orderBy('b.id', 'desc');

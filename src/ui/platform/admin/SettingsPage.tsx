@@ -67,7 +67,6 @@ export function PlatformSettingsPage() {
         <div className="flex flex-col gap-3">
           <Switch label={t('admin.settings.allow_signups')} checked={s.allow_signups} onChange={(v) => set({ allow_signups: v })} />
           <Switch label={t('admin.settings.require_business_approval')} checked={s.require_business_approval} onChange={(v) => set({ require_business_approval: v })} />
-          <Switch label={t('admin.settings.marketplace_requires_verification')} checked={s.marketplace_requires_verification} onChange={(v) => set({ marketplace_requires_verification: v })} />
         </div>
       </Card>
       <div className="grid gap-4 md:grid-cols-2">

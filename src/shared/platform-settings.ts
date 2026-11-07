@@ -5,8 +5,8 @@ import { z } from 'zod';
  * below are authoritative when a row is missing, and mirror the rows seeded by
  * migration 0630. Other domains read them with getPlatformSettings():
  *
- * - `marketplace_requires_verification` (boolean, default true): the LUMA
- *   marketplace lists only businesses whose verification was approved.
+ * Whether the marketplace requires verification lives in `marketplace_settings`
+ * (managed on /platform/marketplace), not here.
  * - `maintenance_mode` locks business dashboards only; storefronts and
  *   customer booking keep working.
  */
@@ -17,7 +17,6 @@ export const PLATFORM_SETTINGS_SCHEMA = z.object({
   maintenance_message_en: z.string().trim().max(400),
   allow_signups: z.boolean(),
   require_business_approval: z.boolean(),
-  marketplace_requires_verification: z.boolean(),
   founding_enabled: z.boolean(),
   founding_seats_total: z.number().int().min(0).max(100_000),
   founding_discount_bp: z.number().int().min(0).max(10_000),
@@ -35,7 +34,6 @@ export const PLATFORM_SETTING_DEFAULTS: PlatformSettings = {
   maintenance_message_en: 'We are improving the dashboard. Your storefront and bookings keep working.',
   allow_signups: true,
   require_business_approval: false,
-  marketplace_requires_verification: true,
   founding_enabled: true,
   founding_seats_total: 100,
   founding_discount_bp: 3000,

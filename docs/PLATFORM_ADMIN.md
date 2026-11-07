@@ -77,7 +77,6 @@ Table `platform_settings (key, value jsonb)`; keys, types and defaults in `src/s
 | `maintenance_message_ar` / `_en` | text | Shown on the maintenance screen and in the 503 details |
 | `allow_signups` | `true` | When off, `POST /api/v1/tenants` (new business) returns 403 `signups_closed`. Customer registration is not affected. |
 | `require_business_approval` | `false` | When on, new businesses get a `tenant_approvals` row `pending`; they can set up but **cannot publish their storefront** (403 `approval_pending`) until approved at `/platform/settings` (`GET /api/v1/platform/approvals`, `POST /api/v1/platform/approvals/{tenantId}` with step-up; the owner is notified). |
-| `marketplace_requires_verification` | `true` | Read by the LUMA marketplace (phase2-market) before listing a business: `getPlatformSetting('marketplace_requires_verification')` from `src/server/domains/platform/settings.ts`. |
 | `founding_enabled`, `founding_seats_total`, `founding_discount_bp` | `true`, `100`, `3000` | Founding customers (section 1) |
 | `referral_default_rate_bp`, `referral_min_withdrawal_minor` | `1000`, `10000` | Referrals (section 6) |
 
@@ -85,20 +84,11 @@ Table `platform_settings (key, value jsonb)`; keys, types and defaults in `src/s
 
 `GET /api/v1/platform/feed?since&limit`: new bookings (non-draft), captured payments, orders, reviews (rating only) and business sign-ups across all tenants, newest first, summary only, each linking to `/platform/tenants?q={slug}`. The header bell (`PlatformFeedBell`) polls every 20 s and counts items newer than the last time it was opened in that browser; `/platform/feed` polls every 15 s. Granted to `platform_owner`, `support_admin` and `technical_admin`.
 
-## Integration points (for after the phase2-market merge)
+## Integration with the marketplace
 
-1. **Marketplace fees.** `src/server/domains/settlements/fees.ts` is the single adapter used by settlements, analytics and reports. Default source: sums `bookings.marketplace_fee_minor` when that column exists (otherwise 0, `fee_source = 'unavailable'`). To use the marketplace branch's function, register it once at boot (e.g. in `src/server/boot.ts`):
-   ```ts
-   import { setMarketplaceFeeSource } from '@/server/domains/settlements/fees';
-   import { marketplaceFeesFor } from '@/server/domains/marketplace/fees'; // phase2-market
-   setMarketplaceFeeSource({
-     name: 'marketplace',
-     forTenant: async (_trx, tenantId, p) => { const r = await marketplaceFeesFor(tenantId, { from: p.from, to: p.to }); return { fee_minor: r.fee_minor, bookings: r.bookings ?? 0, source: 'marketplace' }; },
-   });
-   ```
-   (Adapt to the merged function's exact return shape. `byTenant` is optional; without it platform-wide totals call `forTenant` for each business with bookings in the period.)
-2. **Booking source `marketplace`.** Activity filters and labels already accept `source=marketplace`; the settlements tenant discovery ignores only `dashboard` and `walk_in` bookings.
-3. **Marketplace verification setting.** The marketplace reads `marketplace_requires_verification` via `getPlatformSetting()`; the row is seeded by 0630.
+1. **Marketplace fees** come from the `marketplace_commissions` ledger (domains/marketplace) through `src/server/domains/settlements/fees.ts`, used by settlements, analytics and reports.
+2. **Booking source `marketplace`**: activity filters and labels accept `source=marketplace` (bookings tagged by the marketplace carry `channel = 'marketplace'`).
+3. **Marketplace verification** is a single setting, `marketplace_settings.require_verification`, managed on `/platform/marketplace` (not in platform settings).
 
 ## Not covered / limits
 

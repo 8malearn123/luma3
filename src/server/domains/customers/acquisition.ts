@@ -26,6 +26,9 @@ async function firstTouch(trx: Tx, sessionId: string): Promise<{ source: Acquisi
   const events = await trx.selectFrom('analytics_events').select(['referrer_host', 'utm', 'occurred_at', 'path'])
     .where('session_id', '=', sessionId).where('type', 'not in', ['booking_confirmed', 'order_paid'])
     .orderBy('occurred_at').limit(200).execute();
+  // A session that arrived from سوق لوما (recorded by domains/marketplace) is a marketplace customer.
+  const mv = await trx.selectFrom('marketplace_visits').select('created_at').where('session_id', '=', sessionId).executeTakeFirst();
+  if (mv) return { source: 'marketplace', detail: { via: 'luma_market', at: mv.created_at, landing_path: events[0]?.path ?? null } };
   if (!events.length) return null;
   const touched = events.find((e) => e.referrer_host || e.utm) ?? events[0]!;
   const utm = (touched.utm ?? null) as { source?: string; medium?: string; campaign?: string } | null;

@@ -50,7 +50,7 @@ export async function getPlatformSettings(opts: { fresh?: boolean } = {}): Promi
   return value;
 }
 
-/** Single-key read for other domains, e.g. getPlatformSetting('marketplace_requires_verification'). */
+/** Single-key read for other domains, e.g. getPlatformSetting('maintenance_mode'). */
 export async function getPlatformSetting<K extends PlatformSettingKey>(key: K): Promise<PlatformSettings[K]> {
   return (await getPlatformSettings())[key];
 }
