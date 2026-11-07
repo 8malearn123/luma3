@@ -13,6 +13,7 @@ import { useToast } from '../components/toast';
 import { useAccess } from '../shell/access-context';
 import { parseNum, useFmt } from '../commerce/common';
 import { percent } from './common';
+import { CommissionOverridesCard } from '../hr/CommissionOverrides';
 
 type Tier = { threshold_minor: number; rate_bp: number };
 type CategoryPolicy = { enabled: boolean; rate_bp: number; tiers: Tier[] };
@@ -49,6 +50,7 @@ export function CommissionTab() {
           <CategoryCard key={`${c}:${JSON.stringify(p[c])}`} category={c} policy={p[c]} canManage={canManage} onSaved={() => q.refetch()} />
         ))}
       </div>
+      <CommissionOverridesCard />
       <Card title={t('payroll.commission.tips_title')}>
         <Switch label={<span className="font-medium">{t('payroll.commission.tips')}</span>} checked={p.tips_enabled} disabled={!canManage || tips.isPending} onChange={(v) => tips.mutate(v)} />
         <p className="ms-11 mt-1 text-xs text-ink-muted">{t('payroll.commission.tips_hint')}</p>

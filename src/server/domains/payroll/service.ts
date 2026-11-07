@@ -46,7 +46,9 @@ type Amounts = {
   product_sales_minor: number; product_count: number; product_rate_bp: number; product_commission_minor: number;
   commission_minor: number; tips_minor: number; bonus_minor: number; deduction_minor: number; advance_minor: number; net_minor: number;
 };
-type Row = Amounts & { staff_id: string; staff_name: string; entries: EntryLine[]; settle: Settle[] };
+/** Which categories used the staff member's own commission override instead of the business policy. */
+type OverrideFlags = { services: boolean; products: boolean };
+type Row = Amounts & { staff_id: string; staff_name: string; entries: EntryLine[]; settle: Settle[]; commission_override: OverrideFlags };
 
 const ZERO = (): Amounts => ({
   base_full_minor: 0, days_employed: 0, days_in_month: 0, base_minor: 0,
@@ -134,6 +136,16 @@ async function loadPolicies(trx: Tx): Promise<Record<CommissionCategory, Categor
   return { services: get('services'), products: get('products') };
 }
 
+/** Per-staff overrides (staff_commission_overrides), keyed by `${staff_id}:${category}`. */
+async function loadOverrides(trx: Tx, onlyStaff?: string) {
+  let q = trx.selectFrom('staff_commission_overrides').select(['staff_id', 'category', 'enabled', 'rate_bp', 'tiers']);
+  if (onlyStaff) q = q.where('staff_id', '=', onlyStaff);
+  const rows = await q.execute();
+  return new Map(rows.map((r) => [`${r.staff_id}:${r.category}`, {
+    enabled: r.enabled, rate_bp: r.rate_bp, tiers: ((r.tiers as Tier[] | null) ?? []).slice().sort((a, b) => a.threshold_minor - b.threshold_minor),
+  } satisfies CategoryPolicy]));
+}
+
 export async function getCommissionPolicy(access: TenantAccess) {
   return withTenant(access.tenantId, async (trx) => {
     const st = await trx.selectFrom('tenant_settings').select(['tips_enabled']).where('tenant_id', '=', access.tenantId).executeTakeFirst();
@@ -173,6 +185,7 @@ async function computeDraft(trx: Tx, tz: string, month: string, opts: { onlyStaf
   const lower = latestStart && latestStart < start ? latestStart : start;
   const policies = await loadPolicies(trx);
   const only = opts.onlyStaff;
+  const overrides = await loadOverrides(trx, only);
 
   const notSettled = (type: Settle['source_type'], ref: string) => sql<boolean>`not exists (select 1 from payroll_settled_items s where s.source_type = ${type} and s.source_id = ${sql.ref(ref)})`;
 
@@ -224,7 +237,7 @@ async function computeDraft(trx: Tx, tz: string, month: string, opts: { onlyStaf
   const rows = new Map<string, Row>();
   const row = (staffId: string) => {
     let r = rows.get(staffId);
-    if (!r) { r = { ...ZERO(), days_in_month: daysInMonth, staff_id: staffId, staff_name: '', entries: [], settle: [] }; rows.set(staffId, r); }
+    if (!r) { r = { ...ZERO(), days_in_month: daysInMonth, staff_id: staffId, staff_name: '', entries: [], settle: [], commission_override: { services: false, products: false } }; rows.set(staffId, r); }
     return r;
   };
   for (const b of bases) {
@@ -273,8 +286,11 @@ async function computeDraft(trx: Tx, tz: string, month: string, opts: { onlyStaf
     for (const n of names) rows.get(n.id)!.staff_name = n.display_name;
   }
   const list = [...rows.values()].map((r) => {
-    r.service_rate_bp = tierRate(policies.services, r.service_sales_minor);
-    r.product_rate_bp = tierRate(policies.products, r.product_sales_minor);
+    const svc = overrides.get(`${r.staff_id}:services`);
+    const prd = overrides.get(`${r.staff_id}:products`);
+    r.commission_override = { services: !!svc, products: !!prd };
+    r.service_rate_bp = tierRate(svc ?? policies.services, r.service_sales_minor);
+    r.product_rate_bp = tierRate(prd ?? policies.products, r.product_sales_minor);
     r.service_commission_minor = Math.round((r.service_sales_minor * r.service_rate_bp) / 10000);
     r.product_commission_minor = Math.round((r.product_sales_minor * r.product_rate_bp) / 10000);
     r.commission_minor = r.service_commission_minor + r.product_commission_minor;
@@ -297,6 +313,13 @@ function closeBlocker(month: string, tz: string, latest: { period_month: string 
 }
 
 const publicRow = ({ settle: _s, ...r }: Row) => r;
+
+/** Lateness/absence/unpaid-leave deduction suggestions still waiting for a decision, dated up to the end of the month. */
+async function pendingSuggestionCount(trx: Tx, month: string) {
+  const end = DateTime.fromISO(`${month}-01`).endOf('month').toISODate()!;
+  const r = await trx.selectFrom('payroll_deduction_suggestions').select(sql<number>`count(*)::int`.as('n')).where('status', '=', 'pending').where('on_date', '<=', end).executeTakeFirstOrThrow();
+  return r.n;
+}
 
 // ── Payroll sheet ───────────────────────────────────────────────────────────
 export async function payrollSheet(access: TenantAccess, month: string) {
@@ -321,8 +344,10 @@ export async function payrollSheet(access: TenantAccess, month: string) {
       };
     }
     const draft = await computeDraft(trx, tz, month);
-    const blocker = closeBlocker(month, tz, latest);
+    const pendingSuggestions = await pendingSuggestionCount(trx, month);
+    const blocker = closeBlocker(month, tz, latest) ?? (pendingSuggestions ? { code: 'payroll_suggestions_pending' as const, expected: null } : null);
     return {
+      pending_suggestions: pendingSuggestions,
       month, status: 'open' as const, timezone: tz, currency: access.currency, run: null,
       rows: draft.rows.map(publicRow), totals: { ...draft.totals, paid_minor: 0 }, carried_from: draft.carried_from, policies: draft.policies,
       close: { allowed: !blocker && !access.readOnly, blocker: blocker?.code ?? null, expected_month: blocker?.expected ?? (latestMonth ? addMonths(latestMonth, 1) : null) },
@@ -342,6 +367,8 @@ export async function closeMonth(access: TenantAccess, actor: AuditActor, month:
     const latest = await latestRun(trx);
     const blocker = closeBlocker(month, tz, latest);
     if (blocker) throw Errors.conflict(blocker.code, 'This month cannot be closed now', { expected_month: blocker.expected });
+    const pendingSuggestions = await pendingSuggestionCount(trx, month);
+    if (pendingSuggestions) throw Errors.conflict('payroll_suggestions_pending', 'Approve or reject the deduction suggestions first', { pending: pendingSuggestions });
 
     const draft = await computeDraft(trx, tz, month, { lock: true });
     const t = draft.totals;
@@ -352,7 +379,7 @@ export async function closeMonth(access: TenantAccess, actor: AuditActor, month:
     }).returning(['id', 'closed_at']).executeTakeFirstOrThrow();
 
     for (const r of draft.rows) {
-      const { staff_id, staff_name, entries, settle: _s, ...amounts } = r;
+      const { staff_id, staff_name, entries, settle: _s, commission_override: _o, ...amounts } = r;
       const number = await nextReadableNumber(trx, access.tenantId, 'payslip');
       await trx.insertInto('payroll_slips').values({ tenant_id: access.tenantId, run_id: run.id, staff_id, number, staff_name, ...amounts, lines: JSON.stringify(entries) }).execute();
     }
@@ -423,7 +450,7 @@ export async function myEarnings(access: TenantAccess, month: string) {
     else {
       const draft = await computeDraft(trx, access.timezone, month, { onlyStaff: staffId });
       const r = draft.rows[0];
-      current = r ? publicRow(r) : { ...ZERO(), staff_id: staffId, staff_name: '', entries: [] };
+      current = r ? publicRow(r) : { ...ZERO(), staff_id: staffId, staff_name: '', entries: [], commission_override: { services: false, products: false } };
     }
     return { month, status: closed ? 'closed' as const : 'open' as const, currency: access.currency, current, slips: clean };
   });
@@ -452,6 +479,11 @@ export const tipInput = z.object({
 }).strict();
 
 export async function addPayrollEntry(access: TenantAccess, actor: AuditActor, input: z.infer<typeof payrollEntryInput>) {
+  return withTenant(access.tenantId, (trx) => recordPayrollEntry(trx, access, actor, input));
+}
+
+/** Records a bonus, deduction, advance or tip inside the caller's transaction (also used by HR approvals). */
+export async function recordPayrollEntry(trx: Tx, access: TenantAccess, actor: AuditActor, input: z.infer<typeof payrollEntryInput>) {
   const tz = access.timezone;
   const effectiveOn = input.effective_on ?? DateTime.now().setZone(tz).toISODate()!;
   if (!DateTime.fromISO(effectiveOn).isValid) throw Errors.invalid('invalid_date');
@@ -467,38 +499,36 @@ export async function addPayrollEntry(access: TenantAccess, actor: AuditActor, i
   if (input.kind !== 'advance' && input.installments && input.installments > 1) throw Errors.invalid('installments_only_for_advances');
   if (input.kind !== 'tip' && input.booking_id) throw Errors.invalid('booking_only_for_tips');
   if (input.kind === 'advance' && input.amount_minor < installments) throw Errors.invalid('advance_too_small_for_installments');
-  return withTenant(access.tenantId, async (trx) => {
-    const latest = await latestRun(trx);
-    if (latest && effectiveOn < latest.period_month) throw Errors.conflict('payroll_period_closed', 'That month is already closed', { latest_closed_month: monthOf(latest.period_month) });
-    const staff = await trx.selectFrom('staff_profiles').select(['id', 'display_name']).where('id', '=', input.staff_id).where('archived_at', 'is', null).executeTakeFirst();
-    if (!staff) throw Errors.notFound('staff');
-    if (input.kind === 'tip') {
-      const s = await trx.selectFrom('tenant_settings').select('tips_enabled').where('tenant_id', '=', access.tenantId).executeTakeFirst();
-      if (s && !s.tips_enabled) throw Errors.conflict('tips_disabled', 'Tips are switched off for this business');
-      if (input.booking_id) {
-        const b = await trx.selectFrom('bookings').select(['id', 'status']).where('id', '=', input.booking_id).executeTakeFirst();
-        if (!b) throw Errors.notFound('booking');
-        if (!['confirmed', 'checked_in', 'in_service', 'completed'].includes(b.status)) throw Errors.conflict('invalid_transition', `Booking is ${b.status}`);
-        const onBooking = await trx.selectFrom('booking_items').select('id').where('booking_id', '=', input.booking_id).where('staff_id', '=', input.staff_id)
-          .where('superseded_at', 'is', null).executeTakeFirst();
-        if (!onBooking) throw Errors.invalid('tip_staff_not_on_booking', 'This staff member did not serve this booking');
-      }
+  const latest = await latestRun(trx);
+  if (latest && effectiveOn < latest.period_month) throw Errors.conflict('payroll_period_closed', 'That month is already closed', { latest_closed_month: monthOf(latest.period_month) });
+  const staff = await trx.selectFrom('staff_profiles').select(['id', 'display_name']).where('id', '=', input.staff_id).where('archived_at', 'is', null).executeTakeFirst();
+  if (!staff) throw Errors.notFound('staff');
+  if (input.kind === 'tip') {
+    const s = await trx.selectFrom('tenant_settings').select('tips_enabled').where('tenant_id', '=', access.tenantId).executeTakeFirst();
+    if (s && !s.tips_enabled) throw Errors.conflict('tips_disabled', 'Tips are switched off for this business');
+    if (input.booking_id) {
+      const b = await trx.selectFrom('bookings').select(['id', 'status']).where('id', '=', input.booking_id).executeTakeFirst();
+      if (!b) throw Errors.notFound('booking');
+      if (!['confirmed', 'checked_in', 'in_service', 'completed'].includes(b.status)) throw Errors.conflict('invalid_transition', `Booking is ${b.status}`);
+      const onBooking = await trx.selectFrom('booking_items').select('id').where('booking_id', '=', input.booking_id).where('staff_id', '=', input.staff_id)
+        .where('superseded_at', 'is', null).executeTakeFirst();
+      if (!onBooking) throw Errors.invalid('tip_staff_not_on_booking', 'This staff member did not serve this booking');
     }
-    const e = await trx.insertInto('payroll_entries').values({
-      tenant_id: access.tenantId, staff_id: input.staff_id, kind: input.kind, amount_minor: input.amount_minor, currency: access.currency,
-      effective_on: effectiveOn, installments, note: input.note || null, booking_id: input.kind === 'tip' ? input.booking_id ?? null : null,
-      method, created_by: actor.userId,
-    }).returningAll().executeTakeFirstOrThrow();
-    if (e.kind === 'tip') {
-      await post(trx, access.tenantId, { type: 'payroll_tip', id: e.id }, [{ account: TIP_ACCOUNT[e.method as 'cash' | 'pos_terminal'], debit: e.amount_minor }, { account: 'tips_payable', credit: e.amount_minor }],
-        { createdBy: actor.userId, memo: `tip ${staff.display_name}` });
-    } else if (e.kind === 'advance') {
-      await post(trx, access.tenantId, { type: 'payroll_advance', id: e.id }, [{ account: 'staff_advances', debit: e.amount_minor }, { account: PAYOUT_ACCOUNT[e.method as 'cash' | 'bank_transfer'], credit: e.amount_minor }],
-        { createdBy: actor.userId, memo: `advance ${staff.display_name} (${installments})` });
-    }
-    await audit(trx, actor, `payroll.${e.kind}_recorded`, { tenantId: access.tenantId, targetType: 'payroll_entry', targetId: e.id, data: { staff_id: e.staff_id, amount_minor: e.amount_minor, effective_on: e.effective_on, installments, booking_id: e.booking_id } });
-    return e;
-  });
+  }
+  const e = await trx.insertInto('payroll_entries').values({
+    tenant_id: access.tenantId, staff_id: input.staff_id, kind: input.kind, amount_minor: input.amount_minor, currency: access.currency,
+    effective_on: effectiveOn, installments, note: input.note || null, booking_id: input.kind === 'tip' ? input.booking_id ?? null : null,
+    method, created_by: actor.userId,
+  }).returningAll().executeTakeFirstOrThrow();
+  if (e.kind === 'tip') {
+    await post(trx, access.tenantId, { type: 'payroll_tip', id: e.id }, [{ account: TIP_ACCOUNT[e.method as 'cash' | 'pos_terminal'], debit: e.amount_minor }, { account: 'tips_payable', credit: e.amount_minor }],
+      { createdBy: actor.userId, memo: `tip ${staff.display_name}` });
+  } else if (e.kind === 'advance') {
+    await post(trx, access.tenantId, { type: 'payroll_advance', id: e.id }, [{ account: 'staff_advances', debit: e.amount_minor }, { account: PAYOUT_ACCOUNT[e.method as 'cash' | 'bank_transfer'], credit: e.amount_minor }],
+      { createdBy: actor.userId, memo: `advance ${staff.display_name} (${installments})` });
+  }
+  await audit(trx, actor, `payroll.${e.kind}_recorded`, { tenantId: access.tenantId, targetType: 'payroll_entry', targetId: e.id, data: { staff_id: e.staff_id, amount_minor: e.amount_minor, effective_on: e.effective_on, installments, booking_id: e.booking_id } });
+  return e;
 }
 
 export async function voidPayrollEntry(access: TenantAccess, actor: AuditActor, id: string, reason: string) {
@@ -595,5 +625,49 @@ export async function setOrderSeller(access: TenantAccess, actor: AuditActor, or
     await trx.updateTable('orders').set({ sold_by_staff_id: input.staff_id }).where('id', '=', orderId).execute();
     await audit(trx, actor, 'order.seller_set', { tenantId: access.tenantId, targetType: 'order', targetId: orderId, data: { from: o.sold_by_staff_id, to: input.staff_id } });
     return { id: orderId, sold_by_staff_id: input.staff_id };
+  });
+}
+
+// ── Per-staff commission override ───────────────────────────────────────────
+/** An override replaces the business policy of that category for one staff member; null removes it. */
+export const staffCommissionInput = z.object({
+  services: categorySchema.nullable().optional(),
+  products: categorySchema.nullable().optional(),
+}).strict();
+
+export async function listCommissionOverrides(access: TenantAccess) {
+  return withTenant(access.tenantId, async (trx) => {
+    const rows = await trx.selectFrom('staff_commission_overrides as o').innerJoin('staff_profiles as sp', 'sp.id', 'o.staff_id')
+      .select(['o.staff_id', 'sp.display_name as staff_name', 'o.category', 'o.enabled', 'o.rate_bp', 'o.tiers', 'o.updated_at'])
+      .where('sp.archived_at', 'is', null).orderBy('sp.sort').execute();
+    const byStaff = new Map<string, { staff_id: string; staff_name: string; services: CategoryPolicy | null; products: CategoryPolicy | null }>();
+    for (const r of rows) {
+      const cur = byStaff.get(r.staff_id) ?? { staff_id: r.staff_id, staff_name: r.staff_name, services: null, products: null };
+      cur[r.category as CommissionCategory] = { enabled: r.enabled, rate_bp: r.rate_bp, tiers: (r.tiers as Tier[] | null) ?? [] };
+      byStaff.set(r.staff_id, cur);
+    }
+    return [...byStaff.values()];
+  });
+}
+
+export async function setCommissionOverride(access: TenantAccess, actor: AuditActor, staffId: string, input: z.infer<typeof staffCommissionInput>) {
+  return withTenant(access.tenantId, async (trx) => {
+    const staff = await trx.selectFrom('staff_profiles').select('id').where('id', '=', staffId).where('archived_at', 'is', null).executeTakeFirst();
+    if (!staff) throw Errors.notFound('staff');
+    for (const category of ['services', 'products'] as const) {
+      const p = input[category];
+      if (p === undefined) continue;
+      if (p === null) {
+        await trx.deleteFrom('staff_commission_overrides').where('staff_id', '=', staffId).where('category', '=', category).execute();
+        continue;
+      }
+      const tiers = JSON.stringify([...p.tiers].sort((a, b) => a.threshold_minor - b.threshold_minor));
+      await trx.insertInto('staff_commission_overrides').values({ tenant_id: access.tenantId, staff_id: staffId, category, enabled: p.enabled, rate_bp: p.rate_bp, tiers, updated_by: actor.userId })
+        .onConflict((oc) => oc.columns(['tenant_id', 'staff_id', 'category']).doUpdateSet({ enabled: p.enabled, rate_bp: p.rate_bp, tiers, updated_by: actor.userId })).execute();
+    }
+    await audit(trx, actor, 'payroll.commission_override_set', { tenantId: access.tenantId, targetType: 'staff', targetId: staffId, data: input });
+    const rows = await trx.selectFrom('staff_commission_overrides').select(['category', 'enabled', 'rate_bp', 'tiers']).where('staff_id', '=', staffId).execute();
+    const get = (c: CommissionCategory) => { const r = rows.find((x) => x.category === c); return r ? { enabled: r.enabled, rate_bp: r.rate_bp, tiers: (r.tiers as Tier[] | null) ?? [] } : null; };
+    return { staff_id: staffId, services: get('services'), products: get('products') };
   });
 }

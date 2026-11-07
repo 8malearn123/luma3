@@ -14,6 +14,7 @@ import { useToast } from '../components/toast';
 import { useAccess } from '../shell/access-context';
 import { ApiErrorBox, localToIso, todayIn } from '../catalog/common';
 import type { StaffRow } from './TeamPage';
+import { DayFlagBadge, type DayFlag } from '../hr/common';
 
 type Event = { id: string; staff_id: string; kind: 'clock_in' | 'clock_out'; at: string; source: string; note: string | null };
 
@@ -33,6 +34,10 @@ export function AttendanceTab({ staff }: { staff: StaffRow[] }) {
   const toIso = localToIso(`${to}T23:59`, access.timezone);
   const query = fromIso && toIso ? `?from=${encodeURIComponent(fromIso)}&to=${encodeURIComponent(toIso)}${staffId ? `&staff_id=${staffId}` : ''}` : null;
   const q = useApiQuery<Event[]>(['attendance', access.slug, query], query ? access.api(`/attendance${query}`) : null);
+  // Late / absent flags against the schedule (grace period applies).
+  const flagQuery = from && to && to >= from ? `?from=${from}&to=${to}${staffId ? `&staff_id=${staffId}` : ''}` : null;
+  const flags = useApiQuery<{ grace_minutes: number; days: DayFlag[] }>(['hr-attendance', access.slug, flagQuery], flagQuery ? access.api(`/hr/attendance${flagQuery}`) : null);
+  const flagOf = (sid: string, day: string) => flags.data?.days.find((d) => d.staff_id === sid && d.date === day);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<unknown>(null);
   const name = (id: string) => { const s = staff.find((x) => x.id === id); return s ? pick(s.display_name, s.display_name_en) : id === access.staffProfileId ? t('catalog_team.attendance.me') : '—'; };
@@ -55,8 +60,13 @@ export function AttendanceTab({ staff }: { staff: StaffRow[] }) {
       }
       g.open = start != null;
     }
+    // Scheduled working days without any clock-in (absences) appear too.
+    for (const f of flags.data?.days ?? []) {
+      const k = `${f.staff_id}:${f.date}`;
+      if (f.absent && !out.has(k)) out.set(k, { staffId: f.staff_id, day: f.date, events: [], minutes: 0, open: false });
+    }
     return [...out.values()].sort((a, b) => b.day.localeCompare(a.day));
-  }, [q.data, access.timezone]);
+  }, [q.data, flags.data, access.timezone]);
 
   async function clock(kind: 'clock_in' | 'clock_out') {
     setBusy(true); setErr(null);
@@ -98,6 +108,7 @@ export function AttendanceTab({ staff }: { staff: StaffRow[] }) {
               <div className="flex flex-wrap items-center gap-2">
                 <span className="font-medium">{formatDate(`${g.day}T12:00:00Z`, { tz: 'UTC', locale, weekday: true })}</span>
                 {!staffId ? <span className="text-sm text-ink-muted">{name(g.staffId)}</span> : null}
+                <DayFlagBadge flag={flagOf(g.staffId, g.day)} />
                 <Badge tone="info" className="ms-auto">{t('catalog_team.attendance.worked', { d: formatDuration(g.minutes, locale) || '0' })}</Badge>
                 {g.open ? <Badge tone="warn">{t('catalog_team.attendance.still_in')}</Badge> : null}
               </div>

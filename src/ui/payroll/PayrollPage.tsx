@@ -18,8 +18,9 @@ import { MonthPicker, percent, useMonth, useMonthLabel, type Sheet, type SheetRo
 import { EntriesTab } from './EntriesTab';
 import { SalariesTab } from './SalariesTab';
 import { CommissionTab } from './CommissionTab';
+import { SuggestionsTab } from '../hr/SuggestionsTab';
 
-const TABS = ['sheet', 'entries', 'salaries', 'commission'] as const;
+const TABS = ['sheet', 'suggestions', 'entries', 'salaries', 'commission'] as const;
 type Tab = (typeof TABS)[number];
 
 export function PayrollPage() {
@@ -39,6 +40,7 @@ export function PayrollPage() {
       <PageHeader title={t('payroll.title')} subtitle={t('payroll.subtitle')} />
       <Tabs value={tab} onChange={setTab} items={TABS.map((k) => ({ value: k, label: t(`payroll.tabs.${k}`) }))} />
       {tab === 'sheet' ? <SheetTab /> : null}
+      {tab === 'suggestions' ? <SuggestionsTab /> : null}
       {tab === 'entries' ? <EntriesTab /> : null}
       {tab === 'salaries' ? <SalariesTab /> : null}
       {tab === 'commission' ? <CommissionTab /> : null}

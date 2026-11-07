@@ -61,6 +61,10 @@ export const CAPABILITIES = [
   'payroll.view',
   'payroll.manage',
   'payroll.view_own',
+  // HR (requests and approval chains, staff file)
+  'hr.request',
+  'hr.configure',
+  'staff_file.manage',
   // Policy
   'incidents.submit',
   'incidents.review',
@@ -88,7 +92,7 @@ const ROLE_DEFAULTS: Record<TenantRole, readonly Capability[]> = {
     'customers.view', 'customers.manage', 'customers.view_notes',
     'orders.view', 'orders.manage', 'inventory.view', 'inventory.manage',
     'payments.collect', 'refunds.request',
-    'schedule.manage', 'leave.approve', 'attendance.manage', 'attendance.own', 'schedule.view_own', 'payroll.view_own',
+    'schedule.manage', 'leave.approve', 'attendance.manage', 'attendance.own', 'schedule.view_own', 'payroll.view_own', 'hr.request',
     'marketing.view', 'analytics.view', 'waitlist.manage', 'giftcards.manage', 'loyalty.manage', 'memberships.manage',
   ],
   receptionist: [
@@ -96,16 +100,16 @@ const ROLE_DEFAULTS: Record<TenantRole, readonly Capability[]> = {
     'customers.view', 'customers.manage', 'customers.view_notes',
     'orders.view', 'orders.manage', 'inventory.view',
     'payments.collect', 'waitlist.manage', 'giftcards.manage',
-    'attendance.own', 'schedule.view_own', 'payroll.view_own',
+    'attendance.own', 'schedule.view_own', 'payroll.view_own', 'hr.request',
   ],
   specialist: [
     'bookings.view_assigned', 'bookings.manage_assigned',
-    'schedule.view_own', 'leave.request', 'attendance.own', 'staff.edit_own_profile', 'payroll.view_own',
+    'schedule.view_own', 'leave.request', 'attendance.own', 'staff.edit_own_profile', 'payroll.view_own', 'hr.request',
   ],
   finance: [
     'finance.view', 'finance.manage', 'finance.export', 'costs.view',
     'bookings.view_financial', 'orders.view', 'refunds.request', 'refunds.approve',
-    'attendance.own', 'schedule.view_own', 'payroll.view', 'payroll.manage', 'payroll.view_own',
+    'attendance.own', 'schedule.view_own', 'payroll.view', 'payroll.manage', 'payroll.view_own', 'hr.request',
   ],
 };
 
@@ -114,7 +118,7 @@ const ROLE_DELEGABLE: Record<TenantRole, readonly Capability[]> = {
   owner: [],
   manager: [
     'subscription.view', 'team.manage', 'staff.edit', 'catalog.edit', 'costs.view', 'builder.edit', 'builder.publish',
-    'finance.view', 'finance.export', 'refunds.approve', 'payments.configure', 'payroll.view', 'payroll.manage',
+    'finance.view', 'finance.export', 'refunds.approve', 'payments.configure', 'payroll.view', 'payroll.manage', 'hr.configure',
     'incidents.submit', 'incidents.review', 'marketing.manage', 'campaigns.approve', 'audit.view',
   ],
   receptionist: ['incidents.submit', 'builder.edit', 'refunds.request', 'analytics.view', 'loyalty.manage'],
@@ -123,7 +127,7 @@ const ROLE_DELEGABLE: Record<TenantRole, readonly Capability[]> = {
 };
 
 /** Capabilities that must never be granted to anyone but the owner, even by delegation. */
-const OWNER_ONLY: readonly Capability[] = ['subscription.manage', 'business.manage'];
+const OWNER_ONLY: readonly Capability[] = ['subscription.manage', 'business.manage', 'staff_file.manage'];
 
 export function roleDefaults(role: TenantRole): ReadonlySet<Capability> {
   return new Set(ROLE_DEFAULTS[role]);
@@ -178,7 +182,7 @@ export function capabilitiesBeyondActor(actorRole: TenantRole, actorCaps: Readon
 }
 
 /** Capabilities that only ever reach the holder's own records; handing them out grants nothing over others. */
-const SELF_SCOPED = new Set<Capability>(['bookings.view_assigned', 'bookings.manage_assigned', 'schedule.view_own', 'leave.request', 'attendance.own', 'staff.edit_own_profile', 'payroll.view_own']);
+const SELF_SCOPED = new Set<Capability>(['bookings.view_assigned', 'bookings.manage_assigned', 'schedule.view_own', 'leave.request', 'attendance.own', 'staff.edit_own_profile', 'payroll.view_own', 'hr.request']);
 
 // ── Support access ──────────────────────────────────────────────────────────
 /** Capabilities a LUMA support user gets through a time-limited grant. */

@@ -206,6 +206,21 @@ export interface BookingItems {
   variant_id: string | null;
 }
 
+export interface BookingReroutes {
+  action: string;
+  actor_user_id: string | null;
+  booking_id: string;
+  created_at: Generated<Timestamp>;
+  from_staff_id: string | null;
+  from_starts_at: Timestamp | null;
+  id: Generated<string>;
+  leave_request_id: string | null;
+  note: string | null;
+  tenant_id: string;
+  to_staff_id: string | null;
+  to_starts_at: Timestamp | null;
+}
+
 export interface Bookings {
   analytics_session_id: string | null;
   attribution: Json | null;
@@ -715,6 +730,71 @@ export interface GroupSessions {
   updated_at: Generated<Timestamp>;
 }
 
+export interface HrRequestActions {
+  action: string;
+  actor_user_id: string | null;
+  created_at: Generated<Timestamp>;
+  data: Generated<Json>;
+  id: Generated<string>;
+  note: string | null;
+  request_id: string;
+  role: string | null;
+  step: number;
+  tenant_id: string;
+}
+
+export interface HrRequests {
+  amount_minor: number | null;
+  approval_chain: Json;
+  balance_warning: Generated<boolean>;
+  created_at: Generated<Timestamp>;
+  current_step: Generated<number>;
+  decided_at: Timestamp | null;
+  ends_on: string | null;
+  field_values: Generated<Json>;
+  id: Generated<string>;
+  installments: number | null;
+  leave_days: Numeric | null;
+  leave_request_id: string | null;
+  note: string | null;
+  payroll_entry_id: string | null;
+  requested_by: string | null;
+  staff_id: string;
+  starts_on: string | null;
+  status: Generated<string>;
+  tenant_id: string;
+  type_id: string;
+  updated_at: Generated<Timestamp>;
+}
+
+export interface HrRequestTypes {
+  approval_chain: Generated<Json>;
+  code: string;
+  created_at: Generated<Timestamp>;
+  fields: Generated<Json>;
+  id: Generated<string>;
+  is_active: Generated<boolean>;
+  is_system: Generated<boolean>;
+  kind: string;
+  leave_type: string | null;
+  name_ar: string;
+  name_en: string | null;
+  sort: Generated<number>;
+  tenant_id: string;
+  updated_at: Generated<Timestamp>;
+  updated_by: string | null;
+}
+
+export interface HrSettings {
+  attendance_deductions: Generated<boolean>;
+  created_at: Generated<Timestamp>;
+  grace_minutes: Generated<number>;
+  leave_balance_policy: Generated<string>;
+  tenant_id: string;
+  updated_at: Generated<Timestamp>;
+  updated_by: string | null;
+}
+
 export interface IdempotencyRecords {
   created_at: Generated<Timestamp>;
   expires_at: Generated<Timestamp>;
@@ -833,6 +913,19 @@ export interface JobRuns {
   run_at: Generated<Timestamp>;
   status: Generated<string>;
   tenant_id: string | null;
+}
+
+export interface LeaveLedger {
+  bucket: string;
+  created_at: Generated<Timestamp>;
+  created_by: string | null;
+  days: Numeric;
+  id: Generated<string>;
+  kind: string;
+  leave_request_id: string | null;
+  note: string | null;
+  staff_id: string;
+  tenant_id: string;
 }
 
 export interface LeaveRequests {
@@ -1182,6 +1275,27 @@ export interface Payouts {
   provider_payout_id: string | null;
   status: string;
   tenant_id: string;
+}
+
+export interface PayrollDeductionSuggestions {
+  amount_minor: number;
+  basis: Generated<Json>;
+  created_at: Generated<Timestamp>;
+  days: Numeric | null;
+  decided_at: Timestamp | null;
+  decided_by: string | null;
+  decision_note: string | null;
+  dedupe_key: string;
+  hr_request_id: string | null;
+  id: Generated<string>;
+  minutes: number | null;
+  on_date: string;
+  payroll_entry_id: string | null;
+  source: string;
+  staff_id: string;
+  status: Generated<string>;
+  tenant_id: string;
+  updated_at: Generated<Timestamp>;
 }
 
 export interface PayrollEntries {
@@ -1875,6 +1989,49 @@ export interface StaffBreaks {
   weekday: number | null;
 }
 
+export interface StaffCommissionOverrides {
+  category: string;
+  created_at: Generated<Timestamp>;
+  enabled: Generated<boolean>;
+  rate_bp: Generated<number>;
+  staff_id: string;
+  tenant_id: string;
+  tiers: Generated<Json>;
+  updated_at: Generated<Timestamp>;
+  updated_by: string | null;
+}
+
+export interface StaffDocuments {
+  bytes: number;
+  created_at: Generated<Timestamp>;
+  deleted_at: Timestamp | null;
+  deleted_by: string | null;
+  expires_on: string | null;
+  id: Generated<string>;
+  mime: string;
+  staff_id: string;
+  storage_key: string;
+  tenant_id: string;
+  title: string;
+  updated_at: Generated<Timestamp>;
+  uploaded_by: string | null;
+}
+
+export interface StaffFiles {
+  admin_notes: string | null;
+  created_at: Generated<Timestamp>;
+  employee_number: string | null;
+  id_expiry: string | null;
+  id_number: string | null;
+  id_type: string | null;
+  nationality: string | null;
+  residence: string | null;
+  staff_id: string;
+  tenant_id: string;
+  updated_at: Generated<Timestamp>;
+  updated_by: string | null;
+}
+
 export interface StaffPayProfiles {
   base_salary_minor: Generated<number>;
   created_at: Generated<Timestamp>;
@@ -2293,6 +2450,7 @@ export interface DB {
   booking_allocations: BookingAllocations;
   booking_events: BookingEvents;
   booking_items: BookingItems;
+  booking_reroutes: BookingReroutes;
   bookings: Bookings;
   branch_hours: BranchHours;
   branches: Branches;
@@ -2326,6 +2484,10 @@ export interface DB {
   gift_cards: GiftCards;
   group_session_bookings: GroupSessionBookings;
   group_sessions: GroupSessions;
+  hr_request_actions: HrRequestActions;
+  hr_request_types: HrRequestTypes;
+  hr_requests: HrRequests;
+  hr_settings: HrSettings;
   idempotency_records: IdempotencyRecords;
   incident_evidence: IncidentEvidence;
   incident_reviews: IncidentReviews;
@@ -2334,6 +2496,7 @@ export interface DB {
   invoice_items: InvoiceItems;
   invoices: Invoices;
   job_runs: JobRuns;
+  leave_ledger: LeaveLedger;
   leave_requests: LeaveRequests;
   loyalty_accounts: LoyaltyAccounts;
   loyalty_programs: LoyaltyPrograms;
@@ -2356,6 +2519,7 @@ export interface DB {
   payment_attempts: PaymentAttempts;
   payments: Payments;
   payouts: Payouts;
+  payroll_deduction_suggestions: PayrollDeductionSuggestions;
   payroll_entries: PayrollEntries;
   payroll_runs: PayrollRuns;
   payroll_settled_items: PayrollSettledItems;
@@ -2405,6 +2569,9 @@ export interface DB {
   site_versions: SiteVersions;
   staff_branch_assignments: StaffBranchAssignments;
   staff_breaks: StaffBreaks;
+  staff_commission_overrides: StaffCommissionOverrides;
+  staff_documents: StaffDocuments;
+  staff_files: StaffFiles;
   staff_pay_profiles: StaffPayProfiles;
   staff_profiles: StaffProfiles;
   stock_movements: StockMovements;

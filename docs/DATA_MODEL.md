@@ -166,6 +166,7 @@ It also has CHECK exactly one of `staff_id` / `resource_id`, CHECK `state <> 'he
 | `expenses` | Expenses | CHECK voided expenses need a `void_reason` |
 | `commission_rules`, `commission_entries` | Retired per-booking commission engine (history only; see 0600) | entries **append-only** |
 | `commission_policies`, `staff_pay_profiles`, `payroll_entries`, `payroll_runs`, `payroll_slips`, `payroll_slip_payments`, `payroll_settled_items` | Payroll (0600, [PAYROLL.md](PAYROLL.md)) | one run per month; runs, slips, payments and settled items **append-only**; settled-item primary key = nothing is paid twice |
+| `hr_settings`, `leave_ledger`, `hr_request_types`, `hr_requests`, `hr_request_actions`, `payroll_deduction_suggestions`, `booking_reroutes`, `staff_files`, `staff_documents`, `staff_commission_overrides` | HR (0610, [HR.md](HR.md)) | ledger, request history and reroute log **append-only**; one suggestion per dedupe key; staff file owner-only |
 | `invoices`, `invoice_items` | Receipts, invoices, credit notes | **append-only**; `unique (tenant_id, number)`; partial uniques: one receipt per payment, one invoice per booking, one invoice per order |
 | `finance_exports` | CSV export jobs | status CHECK |
 
