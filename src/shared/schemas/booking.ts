@@ -62,7 +62,7 @@ export const listBookingsQuery = z.object({
   to: z.string().datetime({ offset: true }).optional(),
   status: z.string().max(200).optional(),
   staff_id: z.string().uuid().optional(),
-  branch_id: z.string().uuid().optional(),
+  branch_id: z.union([z.string().uuid(), z.literal('all')]).optional(),
   customer_id: z.string().uuid().optional(),
   q: z.string().max(80).optional(),
   limit: z.coerce.number().int().min(1).max(100).default(50),

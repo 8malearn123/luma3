@@ -15,10 +15,15 @@ import { parseIdentifier } from '@/shared/phone';
 import type { inviteInput, membershipPatch, ownProfilePatch, staffInput, staffPatch } from '@/shared/schemas/team';
 
 // ── Staff profiles (separate from login identity) ───────────────────────────
-export async function listStaff(access: TenantAccess, opts: { includeArchived?: boolean } = {}) {
+export async function listStaff(access: TenantAccess, opts: { includeArchived?: boolean; branchIds?: string[] | null } = {}) {
   return withTenant(access.tenantId, async (trx) => {
     let q = trx.selectFrom('staff_profiles').selectAll();
     if (!opts.includeArchived) q = q.where('archived_at', 'is', null);
+    if (opts.branchIds) {
+      // Branch switcher: staff assigned to any selected branch.
+      const ids = opts.branchIds;
+      q = ids.length ? q.where((eb) => eb.exists(eb.selectFrom('staff_branch_assignments as sba').select('sba.staff_id').whereRef('sba.staff_id', '=', 'staff_profiles.id').where('sba.branch_id', 'in', ids))) : q.where((eb) => eb.val(false));
+    }
     const staff = await q.orderBy('sort').orderBy('created_at').execute();
     if (!staff.length) return [];
     const ids = staff.map((s) => s.id);

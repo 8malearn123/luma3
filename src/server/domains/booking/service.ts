@@ -400,7 +400,7 @@ export async function getBooking(access: TenantAccess, bookingId: string) {
 
 export type BookingSegment = { staff_id: string; staff_name: string; starts_at: string; ends_at: string; service_name_ar: string | null; service_name_en: string | null };
 
-export async function listBookings(access: TenantAccess, f: { from?: string; to?: string; status?: string[]; staffId?: string; branchId?: string; customerId?: string; q?: string; limit: number; cursor?: { starts_at: string; id: string } | null }) {
+export async function listBookings(access: TenantAccess, f: { from?: string; to?: string; status?: string[]; staffId?: string; branchId?: string; branchIds?: string[] | null; customerId?: string; q?: string; limit: number; cursor?: { starts_at: string; id: string } | null }) {
   return withTenant(access.tenantId, async (trx) => {
     let q = trx.selectFrom('bookings as b').innerJoin('tenant_customers as c', 'c.id', 'b.tenant_customer_id')
       .select(['b.id', 'b.number', 'b.status', 'b.payment_status', 'b.starts_at', 'b.ends_at', 'b.timezone', 'b.branch_id', 'b.hold_expires_at', 'b.total_minor', 'b.paid_minor', 'b.source', 'c.display_name as customer_name',
@@ -417,6 +417,7 @@ export async function listBookings(access: TenantAccess, f: { from?: string; to?
     if (f.status?.length) q = q.where('b.status', 'in', f.status);
     if (f.staffId) q = q.where(sql<boolean>`exists (select 1 from booking_items i where i.booking_id = b.id and i.staff_id = ${f.staffId} and i.superseded_at is null)`);
     if (f.branchId) q = q.where('b.branch_id', '=', f.branchId);
+    if (f.branchIds) q = f.branchIds.length ? q.where('b.branch_id', 'in', f.branchIds) : q.where(sql<boolean>`false`);
     if (f.customerId) q = q.where('b.tenant_customer_id', '=', f.customerId);
     if (f.q) q = q.where((eb) => eb.or([eb('b.number', 'ilike', `%${f.q}%`), eb('c.display_name', 'ilike', `%${f.q}%`)]));
     if (f.cursor) q = q.where(sql<boolean>`(b.starts_at, b.id) > (${new Date(f.cursor.starts_at)}, ${f.cursor.id})`);

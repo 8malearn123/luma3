@@ -1,4 +1,5 @@
 import { sql } from 'kysely';
+import { badgeOf } from '@/shared/badges';
 import { db, withTenant, type Tx } from '../../db/client';
 import { hashToken } from '../../auth/crypto';
 import { loadEntitlements } from '../../tenancy/access';
@@ -143,7 +144,7 @@ export async function loadLiveCatalog(trx: Tx, tenantId: string, opts: { product
   const visibleCats = new Set(cats.map((c) => c.id));
 
   const svcRows = await trx.selectFrom('services')
-    .select(['id', 'name_ar', 'name_en', 'description_ar', 'description_en', 'price_minor', 'price_display', 'duration_min', 'image_asset_id', 'category_id'])
+    .select(['id', 'name_ar', 'name_en', 'description_ar', 'description_en', 'price_minor', 'price_display', 'duration_min', 'image_asset_id', 'category_id', 'badge_kind', 'badge_text_ar', 'badge_text_en'])
     .where('tenant_id', '=', tenantId).where('archived_at', 'is', null).where('is_active', '=', true).where('is_visible', '=', true)
     .orderBy('sort').orderBy('created_at').execute();
   // Hiding a category hides its services publicly (they and their history remain).
@@ -163,6 +164,7 @@ export async function loadLiveCatalog(trx: Tx, tenantId: string, opts: { product
       price_minor: s.price_minor, price_display: s.price_display as PublicService['price_display'], duration_min: s.duration_min,
       image_asset_id: s.image_asset_id, category_id: s.category_id,
       staff_ids: qualified.filter((l) => publicStaff.has(l.staff_id)).map((l) => l.staff_id), bookable: qualified.length > 0,
+      badge: badgeOf(s),
     };
   });
   const svcIds = new Set(services.map((s) => s.id));

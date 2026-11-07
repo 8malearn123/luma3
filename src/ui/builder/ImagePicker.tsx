@@ -1,9 +1,10 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import { ImagePlus, Loader2, Trash2, Upload } from 'lucide-react';
+import { Crop, ImagePlus, Loader2, Trash2, Upload } from 'lucide-react';
 import { useI18n } from '@/i18n/client';
 import { api } from '../api';
+import { useCropUpload } from '../business/CropEditor';
 import { useErrorMessage } from '../hooks';
 import { Button } from '../components/button';
 import { Dialog } from '../components/overlay';
@@ -22,19 +23,14 @@ export function ImagePicker({ slug, purpose, value, onChange, label, assets, onU
   const { t } = useI18n();
   const msg = useErrorMessage();
   const [open, setOpen] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState<unknown>(null);
   const input = useRef<HTMLInputElement>(null);
-
-  async function upload(file: File) {
-    const fd = new FormData(); fd.set('file', file); fd.set('purpose', purpose);
-    setBusy(true); setErr(null);
-    try {
-      const r = await api<{ id: string; width: number; height: number }>(`/api/v1/t/${slug}/assets`, { form: fd });
-      onUploaded({ id: r.id, purpose, width: r.width, height: r.height, alt_ar: null, alt_en: null, created_at: new Date().toISOString() });
-      onChange(r.id); setOpen(false);
-    } catch (e) { setErr(e); } finally { setBusy(false); }
-  }
+  // Logo/cover/… open the crop editor before upload; the stored asset is the cropped derivative.
+  const crop = useCropUpload(slug, purpose, (r) => {
+    onUploaded({ id: r.id, purpose, width: r.width, height: r.height, alt_ar: null, alt_en: null, created_at: new Date().toISOString() });
+    onChange(r.id); setOpen(false);
+  });
+  const busy = crop.busy;
+  const err = crop.error;
 
   return (
     <div className="flex flex-col gap-1.5">
@@ -46,14 +42,17 @@ export function ImagePicker({ slug, purpose, value, onChange, label, assets, onU
         ) : <div className="flex size-16 items-center justify-center rounded-lg border border-dashed border-luma-300 bg-luma-50"><ImagePlus className="size-5 text-luma-300" aria-hidden /></div>}
         <div className="flex flex-col gap-1">
           <Button size="sm" variant="outline" onClick={() => setOpen(true)}>{value ? t('builder.image.change') : t('builder.image.choose')}</Button>
+          {value && crop.canCrop ? <Button size="sm" variant="ghost" icon={<Crop className="size-4" />} onClick={() => crop.recrop(value)}>{t('business.crop.edit')}</Button> : null}
           {value ? <Button size="sm" variant="ghost" icon={<Trash2 className="size-4" />} onClick={() => onChange(null)}>{t('builder.image.remove')}</Button> : null}
         </div>
       </div>
+      {!open && err ? <p className="text-xs text-danger" role="alert">{msg(err)}</p> : null}
+      {crop.dialog}
       <Dialog open={open} onClose={() => setOpen(false)} title={label} footer={<Button variant="ghost" onClick={() => setOpen(false)}>{t('actions.close')}</Button>}>
         <div className="flex flex-col gap-3">
           <Button variant="primary" size="sm" icon={busy ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />} disabled={busy} onClick={() => input.current?.click()}>{busy ? t('builder.image.uploading') : t('builder.image.upload')}</Button>
           <input ref={input} type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif" className="sr-only" aria-label={t('builder.image.upload')}
-            onChange={(e) => { const f = e.target.files?.[0]; if (f) void upload(f); e.target.value = ''; }} />
+            onChange={(e) => { const f = e.target.files?.[0]; if (f) { if (crop.canCrop) setOpen(false); crop.pick(f); } e.target.value = ''; }} />
           <p className="text-xs text-ink-muted">{t('builder.image.hint')}</p>
           {err ? <p className="text-xs text-danger" role="alert">{msg(err)}</p> : null}
           {assets.length ? (

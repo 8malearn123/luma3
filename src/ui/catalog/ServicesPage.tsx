@@ -24,6 +24,7 @@ export type ServiceRow = {
   buffer_before_min: number; buffer_after_min: number; image_asset_id: string | null; is_active: boolean; is_visible: boolean;
   bookable_internally_when_hidden: boolean; booking_mode: 'individual' | 'group'; min_notice_min: number | null; max_advance_days: number | null;
   requires_manual_approval: boolean; archived_at: string | null; cost_minor?: number | null;
+  badge_kind?: 'popular' | 'new' | 'offer' | 'custom' | null; badge_text_ar?: string | null; badge_text_en?: string | null;
   staff: Array<{ staff_id: string; price_override_minor: number | null; duration_override_min: number | null; display_name: string; is_active: boolean }>;
   variants: Array<{ id: string; name_ar: string | null; name_en: string | null; price_minor: number; duration_min: number; is_active: boolean }>;
   addons: Array<{ id: string; name_ar: string | null; name_en: string | null; price_minor: number; duration_min: number; is_active: boolean }>;

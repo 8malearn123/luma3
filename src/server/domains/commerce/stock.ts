@@ -51,25 +51,41 @@ export async function moveStock(trx: Tx, tenantId: string, itemId: string, m: {
     ref_type: m.refType ?? null, ref_id: m.refId ?? null, actor_user_id: m.actorUserId ?? null,
   }).execute();
   const available = Number(row.on_hand) - Number(row.reserved);
-  if (row.low_stock_threshold != null && available <= Number(row.low_stock_threshold) && available < Number(row.prev_available)) {
-    await lowStockAlert(trx, tenantId, itemId, row.name, available);
-  }
+  await syncLowStockAlert(trx, tenantId, itemId, row.name, available, row.low_stock_threshold == null ? null : Number(row.low_stock_threshold));
   return { onHand: Number(row.on_hand), reserved: Number(row.reserved), available };
 }
 
-/** Deduplicated per item per day (notifications unique on (user_id, dedupe_key)). */
-async function lowStockAlert(trx: Tx, tenantId: string, itemId: string, name: string, available: number) {
+/**
+ * Low-stock alert state machine, run on every movement. When available stock
+ * is at or below the item's minimum and no alert is outstanding, the owner and
+ * members with inventory.manage are notified once and `low_stock_alerted_at`
+ * is set (atomically, so concurrent movements alert once). Further movements
+ * while still low do not alert again. Once stock rises above the minimum
+ * (restocked) the marker is cleared and the next crossing alerts again.
+ */
+export async function syncLowStockAlert(trx: Tx, tenantId: string, itemId: string, name: string, available: number, threshold: number | null) {
+  if (threshold != null && available <= threshold) {
+    const claimed = await trx.updateTable('inventory_items').set({ low_stock_alerted_at: new Date() })
+      .where('id', '=', itemId).where('tenant_id', '=', tenantId).where('low_stock_alerted_at', 'is', null)
+      .returning('low_stock_alerted_at').executeTakeFirst();
+    if (claimed?.low_stock_alerted_at) await lowStockAlert(trx, tenantId, itemId, name, available, threshold, claimed.low_stock_alerted_at);
+    return;
+  }
+  await trx.updateTable('inventory_items').set({ low_stock_alerted_at: null })
+    .where('id', '=', itemId).where('tenant_id', '=', tenantId).where('low_stock_alerted_at', 'is not', null).execute();
+}
+
+async function lowStockAlert(trx: Tx, tenantId: string, itemId: string, name: string, available: number, threshold: number, alertedAt: Date) {
   const slug = await tenantSlug(trx, tenantId);
-  const day = new Date().toISOString().slice(0, 10);
-  await notifyCapability(trx, tenantId, ['inventory.manage'], {
+  await notifyCapability(trx, tenantId, ['business.manage', 'inventory.manage'], {
     kind: 'inventory.low_stock',
     title_ar: `مخزون منخفض: ${name}`,
     title_en: `Low stock: ${name}`,
-    body_ar: `المتاح الآن ${available}.`,
-    body_en: `Available now: ${available}.`,
+    body_ar: `المتاح الآن ${available} (الحد الأدنى ${threshold}). لن يتكرر التنبيه حتى تُعاد تعبئة المخزون.`,
+    body_en: `Available now: ${available} (minimum ${threshold}). No repeat alert until restocked.`,
     target_path: slug ? `/app/${slug}/inventory?item=${itemId}` : undefined,
-    data: { inventory_item_id: itemId, available },
-    dedupe_key: `low_stock:${itemId}:${day}`,
+    data: { inventory_item_id: itemId, available, threshold },
+    dedupe_key: `low_stock:${itemId}:${alertedAt.getTime()}`,
   });
 }
 

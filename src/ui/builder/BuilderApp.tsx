@@ -29,6 +29,7 @@ import { BrandPanel } from './BrandPanel';
 import { LayoutPanel } from './LayoutPanel';
 import { PagesPanel } from './PagesPanel';
 import { PublishDialog } from './PublishDialog';
+import { StoreQrButton } from '../business/StoreQr';
 import { VersionsDrawer } from './VersionsDrawer';
 import { TemplatesDrawer } from './TemplatesDrawer';
 import { AssistantPanel } from './AssistantPanel';
@@ -254,6 +255,7 @@ export function BuilderApp({ slug, initial }: { slug: string; initial: BuilderSt
         <Button size="sm" variant="ghost" icon={<ExternalLink className="size-4" />} loading={previewBusy} onClick={openPreview}>{t('builder.preview')}</Button>
         <Button size="sm" variant="ghost" icon={<LayoutTemplate className="size-4" />} onClick={() => setDrawer('templates')} className="hidden sm:inline-flex">{t('builder.templates.title')}</Button>
         <Button size="sm" variant="ghost" icon={<History className="size-4" />} onClick={() => setDrawer('versions')}>{t('builder.versions.title')}</Button>
+        <StoreQrButton slug={slug} name={access.name} logoAssetId={b.doc.brand.logo_asset_id} />
         <Button size="sm" icon={<Rocket className="size-4" />} onClick={() => setDrawer('publish')}>{t('builder.publish.button')}</Button>
       </div>
       {!canEdit ? <Alert tone="info">{t('builder.read_only')}</Alert> : null}

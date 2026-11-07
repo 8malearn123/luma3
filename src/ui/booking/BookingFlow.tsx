@@ -9,10 +9,12 @@ import { api, ApiError, newIdempotencyKey } from '../api';
 import { useErrorMessage } from '../hooks';
 import { cx } from '../components/cx';
 import { formatDuration, formatMoney, formatTime, tzLabel } from '@/shared/format';
+import { badgeLabel, type ServiceBadge } from '@/shared/badges';
 
 export type FlowService = {
   id: string; name_ar: string | null; name_en: string | null; description_ar: string | null; description_en: string | null; price_minor: number; price_display: string; duration_min: number;
   category: { id: string; name_ar: string | null; name_en: string | null } | null;
+  badge?: ServiceBadge | null;
   staff: Array<{ id: string; name: string; name_en: string | null; title_ar: string | null; title_en: string | null; photo: string | null }>;
 };
 type Pick = { key: string; serviceId: string; staffId: string | null };
@@ -161,7 +163,7 @@ export function BookingFlow({ slug, tenantName, timezone, services, signedIn, ve
                 <li key={p.key} className="rounded-[var(--radius-sf)] border border-sf-border bg-sf-surface p-3">
                   <div className="flex items-start justify-between gap-2">
                     <div>
-                      <p className="font-medium">{pick(s.name_ar, s.name_en)}</p>
+                      <p className="flex flex-wrap items-center gap-2 font-medium">{pick(s.name_ar, s.name_en)}{s.badge ? <FlowBadge b={s.badge} locale={locale} /> : null}</p>
                       <p className="text-xs text-sf-muted">{formatDuration(s.duration_min, locale)} · {s.price_display === 'starting_from' ? '≥ ' : ''}{formatMoney(s.price_minor, 'SAR', locale)}</p>
                     </div>
                     <button className="text-sf-muted hover:text-sf-text" aria-label={t('booking.flow.remove_service')} onClick={() => setPicks(picks.filter((x) => x.key !== p.key))}><Trash2 className="size-4" /></button>
@@ -189,7 +191,7 @@ export function BookingFlow({ slug, tenantName, timezone, services, signedIn, ve
                     <li key={s.id}>
                       <button disabled={picks.length >= 6} onClick={() => setPicks([...picks, { key: newKey(), serviceId: s.id, staffId: null }])}
                         className="flex w-full items-center justify-between gap-2 rounded-[var(--radius-sf)] px-2 py-2 text-start hover:bg-sf-bg">
-                        <span><span className="block text-sm">{pick(s.name_ar, s.name_en)}</span><span className="text-xs text-sf-muted">{formatDuration(s.duration_min, locale)}</span></span>
+                        <span><span className="flex flex-wrap items-center gap-2 text-sm">{pick(s.name_ar, s.name_en)}{s.badge ? <FlowBadge b={s.badge} locale={locale} /> : null}</span><span className="text-xs text-sf-muted">{formatDuration(s.duration_min, locale)}</span></span>
                         <span className="text-sm">{formatMoney(s.price_minor, 'SAR', locale)}</span>
                       </button>
                     </li>
@@ -290,4 +292,9 @@ export function BookingFlow({ slug, tenantName, timezone, services, signedIn, ve
       ) : null}
     </div>
   );
+}
+
+function FlowBadge({ b, locale }: { b: ServiceBadge; locale: 'ar' | 'en' }) {
+  const text = badgeLabel(b, locale);
+  return text ? <span data-badge={b.kind} className="rounded-full bg-sf-primary px-2 py-0.5 text-[10px] font-semibold text-sf-on-primary">{text}</span> : null;
 }
