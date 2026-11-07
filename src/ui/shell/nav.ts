@@ -34,6 +34,7 @@ export const NAV: NavItem[] = [
   { key: 'loyalty', href: (s) => `/app/${s}/loyalty`, icon: 'Gem', caps: ['loyalty.manage'], feature: 'feature.loyalty', section: 'grow' },
   { key: 'gifts', href: (s) => `/app/${s}/gifts`, icon: 'Gift', caps: ['giftcards.manage'], feature: 'feature.gift_cards', section: 'grow' },
   { key: 'memberships', href: (s) => `/app/${s}/memberships`, icon: 'BadgeCheck', caps: ['memberships.manage'], feature: 'feature.memberships', section: 'grow' },
+  { key: 'referrals', href: (s) => `/app/${s}/referrals`, icon: 'Share2', caps: ['business.manage'], section: 'grow' },
 
   { key: 'builder', href: (s) => `/app/${s}/builder`, icon: 'Palette', caps: ['builder.edit'], section: 'configure' },
   { key: 'settings', href: (s) => `/app/${s}/settings`, icon: 'Settings', caps: ['business.manage', 'payments.configure', 'subscription.view'], section: 'configure' },

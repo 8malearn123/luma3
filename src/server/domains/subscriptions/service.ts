@@ -5,6 +5,8 @@ import { audit, type AuditActor } from '../../infra/audit';
 import { notifyCapability } from '../../infra/notify';
 import type { TenantAccess } from '../../tenancy/access';
 import { PLAN_FEATURES, type PlanLimitKey } from '@/shared/plans';
+import { chargeFor, consumePromotionCycle, ensureFoundingSeat } from '../platform/pricing';
+import { rewardReferralForPaidInvoice } from '../referrals/service';
 
 /**
  * LUMA subscriptions (the business's plan with LUMA). Completely independent
@@ -117,6 +119,9 @@ export async function getSubscriptionOverview(access: TenantAccess) {
         id: sub.id, status: sub.status, billing_cycle: sub.billing_cycle, trial_ends_at: sub.trial_ends_at, current_period_start: sub.current_period_start,
         current_period_end: sub.current_period_end, grace_until: sub.grace_until, cancel_at: sub.cancel_at, cancelled_at: sub.cancelled_at, paused_at: sub.paused_at,
         overage_state: overageState(exceeded), read_only: access.readOnly, plan: serializePlan(plan),
+        founding: sub.founding_number !== null ? { number: sub.founding_number, discount_bp: sub.founding_discount_bp, active: sub.founding_lost_at === null } : null,
+        promotion: sub.promotion_id ? { discount_bp: sub.promotion_discount_bp, cycles_remaining: sub.promotion_cycles_remaining } : null,
+        next_charge: chargeFor(sub, plan),
       },
       usage: LIMIT_KEYS.map((k) => {
         const f = features.get(k);
@@ -286,6 +291,10 @@ export async function platformSubscriptionAction(id: string, actor: AuditActor, 
         throw Errors.invalid('invalid_action');
     }
     await trx.updateTable('subscriptions').set({ ...patch, version: sql`version + 1` }).where('id', '=', sub.id).execute();
+    if (to === 'active') {
+      const seat = await ensureFoundingSeat(trx, sub.id);
+      if (seat) data.founding_number = seat;
+    }
     await recordEvent(trx, { tenantId: sub.tenant_id, subscriptionId: sub.id, kind: `platform.${input.action}`, from: s, to, actorUserId: actor.userId, data });
     await audit(trx, actor, `platform.subscription.${input.action}`, { tenantId: sub.tenant_id, targetType: 'subscription', targetId: sub.id, data: { from: s, to, ...data } });
     if (to !== s) {
@@ -340,8 +349,12 @@ export async function platformSubscriptionDetail(id: string) {
 // ── Test-mode billing (no real charging) ─────────────────────────────────────
 export async function issueTestInvoice(trx: Tx, sub: SubRow, actorUserId: string | null, note?: string) {
   const plan = await trx.selectFrom('plans').selectAll().where('id', '=', sub.plan_id).executeTakeFirstOrThrow();
-  const amount = sub.billing_cycle === 'yearly' ? plan.price_yearly_minor : plan.price_monthly_minor;
-  if (amount === null) throw Errors.invalid('pricing_not_configured', 'This plan has no price configured; no invoice can be issued');
+  if ((sub.billing_cycle === 'yearly' ? plan.price_yearly_minor : plan.price_monthly_minor) === null) throw Errors.invalid('pricing_not_configured', 'This plan has no price configured; no invoice can be issued');
+  // A paying subscriber takes a founding seat (first 100) before the first invoice is priced.
+  await ensureFoundingSeat(trx, sub.id);
+  const fresh = await trx.selectFrom('subscriptions').selectAll().where('id', '=', sub.id).executeTakeFirstOrThrow();
+  const charge = chargeFor(fresh, plan)!;
+  const amount = charge.amount_minor;
   const seq = await sql<{ n: number }>`select nextval('platform_invoice_number_seq')::int as n`.execute(trx);
   const start = sub.current_period_end && sub.current_period_end > new Date() ? (sub.current_period_start ?? new Date()) : (sub.current_period_end ?? new Date());
   const end = addCycle(start, sub.billing_cycle);
@@ -349,8 +362,10 @@ export async function issueTestInvoice(trx: Tx, sub: SubRow, actorUserId: string
     tenant_id: sub.tenant_id, subscription_id: sub.id, plan_id: plan.id, number: `LUMA-TEST-${new Date().getUTCFullYear()}-${String(seq.rows[0]!.n).padStart(6, '0')}`,
     amount_minor: amount, currency: plan.currency, status: 'open', period_start: start.toISOString().slice(0, 10), period_end: end.toISOString().slice(0, 10),
     issued_at: new Date(), is_test: true, note: note ?? null,
+    list_amount_minor: charge.list_minor, discount_minor: charge.discount_minor, discount_detail: JSON.stringify(charge.detail),
   }).returningAll().executeTakeFirstOrThrow();
-  await recordEvent(trx, { tenantId: sub.tenant_id, subscriptionId: sub.id, kind: 'test_invoice_issued', from: sub.status, to: sub.status, actorUserId, data: { invoice: inv.number, amount_minor: amount, is_test: true } });
+  if (charge.detail.promotion_bp) await consumePromotionCycle(trx, fresh);
+  await recordEvent(trx, { tenantId: sub.tenant_id, subscriptionId: sub.id, kind: 'test_invoice_issued', from: sub.status, to: sub.status, actorUserId, data: { invoice: inv.number, amount_minor: amount, list_amount_minor: charge.list_minor, discount: charge.detail, is_test: true } });
   return inv;
 }
 
@@ -377,6 +392,8 @@ export async function platformMarkInvoice(invoiceId: string, actor: AuditActor, 
       await trx.updateTable('platform_invoices').set({ status: 'void', note: input.note ?? inv.note }).where('id', '=', inv.id).execute();
     } else {
       await trx.updateTable('platform_invoices').set({ status: 'paid', paid_at: now, marked_paid_by: actor.userId, note: input.note ?? inv.note }).where('id', '=', inv.id).execute();
+      // Referral reward: a share of the referred business's first paid month (no-op if not referred or already rewarded).
+      await rewardReferralForPaidInvoice(trx, { ...inv, status: 'paid' });
       if (inv.subscription_id) {
         const sub = await lockSub(trx, inv.subscription_id);
         if (['past_due', 'expired', 'trialing'].includes(sub.status)) {

@@ -40,6 +40,7 @@ Source of truth: `db/migrations/*.sql`. Generated TypeScript types: `src/server/
 | 0010–0024 | hardening, null-tenant inserts, reference plans, settings confirmation, asset lookup, notification reads, booking revisions, sandbox provider, group/waitlist columns, loyalty/gift columns, finance documents, platform notifications, conversion sessions, conventions fix, platform evidence access |
 | 0620_marketplace | سوق لوما: listings, verification + private documents, favourites, marketplace visits, `bookings.channel`, payment platform fee, commission ledger, `app.marketplace_directory()` (see `docs/MARKETPLACE.md`) |
 | 0100–0500 | builder publishing + starter templates, commerce operations, policy/customer lifecycle, marketing/analytics extensions, platform admin (MFA, versions, test invoices) |
+| 0630_platform_admin_ext | approved plan prices (data), founding seats and promotions on `subscriptions`, `plan_promotions`, `platform_settings`, `tenant_approvals`, `referrers` (RLS; marketers have no tenant), `referrals`, `referral_withdrawals`, `referral_ledger` (**append-only**), `settlement_statements` (RLS); see [PLATFORM_ADMIN.md](PLATFORM_ADMIN.md) |
 
 ## Tables by domain
 

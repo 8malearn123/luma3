@@ -12,10 +12,11 @@ import { BUSINESS_TYPES } from '@/shared/onboarding';
 
 type Plan = { code: string; name_ar: string; name_en: string; trial_days: number };
 
-export function CreateBusinessForm({ verified, plans, initialPlan }: { verified: boolean; plans: Plan[]; initialPlan?: string }) {
+export function CreateBusinessForm({ verified, plans, initialPlan, initialCycle = 'monthly', initialPromo, initialRef }: { verified: boolean; plans: Plan[]; initialPlan?: string; initialCycle?: 'monthly' | 'yearly'; initialPromo?: string; initialRef?: string }) {
   const { t, pick } = useI18n();
   const msg = useErrorMessage();
-  const [f, setF] = useState({ name: '', slug: '', business_type: 'salon', city: '', branch_name: '', plan_code: initialPlan && plans.some((p) => p.code === initialPlan) ? initialPlan : plans[0]?.code ?? 'sanaa' });
+  const [f, setF] = useState({ name: '', slug: '', business_type: 'salon', city: '', branch_name: '', plan_code: initialPlan && plans.some((p) => p.code === initialPlan) ? initialPlan : plans[0]?.code ?? 'sanaa',
+    billing_cycle: initialCycle, promo_code: (initialPromo ?? '').slice(0, 32), referral_code: (initialRef ?? '').slice(0, 32) });
   const [slugTouched, setSlugTouched] = useState(false);
   const [avail, setAvail] = useState<boolean | null>(null);
   const [err, setErr] = useState<unknown>(null);
@@ -37,7 +38,7 @@ export function CreateBusinessForm({ verified, plans, initialPlan }: { verified:
   async function submit(e: React.FormEvent) {
     e.preventDefault(); setBusy(true); setErr(null);
     try {
-      const r = await api<{ slug: string }>('/api/v1/tenants', { body: { ...f, city: f.city || undefined, branch_name: f.branch_name || undefined } });
+      const r = await api<{ slug: string }>('/api/v1/tenants', { body: { ...f, city: f.city || undefined, branch_name: f.branch_name || undefined, promo_code: f.promo_code || undefined, referral_code: f.referral_code || undefined } });
       window.location.href = `/app/${r.slug}/onboarding`;
     } catch (x) { setErr(x); } finally { setBusy(false); }
   }
@@ -65,6 +66,13 @@ export function CreateBusinessForm({ verified, plans, initialPlan }: { verified:
         <Field label={t('onboarding.fields.plan')}>
           {(p) => <Select {...p} value={f.plan_code} onChange={(e) => setF({ ...f, plan_code: e.target.value })}>{plans.map((pl) => <option key={pl.code} value={pl.code}>{pick(pl.name_ar, pl.name_en)} · {t('onboarding.fields.trial', { days: pl.trial_days })}</option>)}</Select>}
         </Field>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label={t('pricing.billing_cycle')}>
+            {(p) => <Select {...p} value={f.billing_cycle} onChange={(e) => setF({ ...f, billing_cycle: e.target.value as 'monthly' | 'yearly' })}><option value="monthly">{t('pricing.monthly')}</option><option value="yearly">{t('pricing.yearly')} · {t('pricing.yearly_badge')}</option></Select>}
+          </Field>
+          <Field label={t('pricing.promo_code')}>{(p) => <Input {...p} dir="ltr" value={f.promo_code} onChange={(e) => setF({ ...f, promo_code: e.target.value.replace(/[^A-Za-z0-9_-]/g, '') })} />}</Field>
+        </div>
+        <Field label={t('pricing.referral_code')}>{(p) => <Input {...p} dir="ltr" value={f.referral_code} onChange={(e) => setF({ ...f, referral_code: e.target.value.replace(/[^A-Za-z0-9_-]/g, '') })} />}</Field>
         <Button type="submit" size="lg" loading={busy} disabled={!verified || !f.name || avail === false}>{t('onboarding.create_business')}</Button>
       </form>
     </div>
