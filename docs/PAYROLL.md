@@ -26,7 +26,7 @@ net pay = base salary (pro-rated) + service commission + product commission
 - `rate_bp` — the base rate;
 - `tiers` — optional, up to 10, thresholds strictly increasing: `[{threshold_minor, rate_bp}]`. The highest tier whose threshold the staff member's **monthly** sales in that category reached sets the rate for **all** her sales of that category that month.
 
-There are no per-service rates and no per-staff overrides. The earlier per-booking rule engine (`commission_rules`, `commission_entries`) is retired; its rows stay as history and earlier postings remain in the journal.
+There are no per-service rates. **Per-staff overrides** (`staff_commission_overrides`, migration 0610) replace the business policy of a category for one staff member (`enabled`, `rate_bp`, optional tiers — same rules); `PUT /payroll/commission-overrides/{staffId}` with `null` removes one. The rate used is frozen on the payslip as before (`service_rate_bp`, `product_rate_bp`), and the draft sheet shows `commission_override` per category. The earlier per-booking rule engine (`commission_rules`, `commission_entries`) is retired; its rows stay as history and earlier postings remain in the journal.
 
 Tips can be switched off with `tenant_settings.tips_enabled`.
 
@@ -36,6 +36,8 @@ Tips can be switched off with `tenant_settings.tips_enabled`.
 - Closing freezes one `payroll_slips` row per staff member (`PAY-000001`…) with the amounts **and** the rates and day counts used, records every settled booking item, order item, entry and advance instalment in `payroll_settled_items` (primary key = nothing is paid twice), and posts the journal.
 - Anything recorded after a close carries into the next month automatically. Entries cannot be dated before the start of the latest closed month. A settled entry (even one instalment of an advance) cannot be voided, and the seller of an order already settled cannot change. Runs, payslips, payments and settled items are append-only.
 - A payslip is paid once, from cash or by bank transfer.
+- A month cannot close while **deduction suggestions** dated up to its end are pending (`payroll_suggestions_pending`). Lateness, absence and unpaid-leave suggestions are produced by HR ([HR.md](HR.md)); an approved one becomes a `deduction` entry, a rejected one is kept for the record.
+- An approved **advance request** (HR approval chain) records a normal `advance` entry with the instalments the approver set.
 
 ## Journal
 

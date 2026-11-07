@@ -62,6 +62,9 @@ Legend: ✓ = role default, D = delegable to that role (the "if delegated" colum
 | `payroll.view` | ✓ | D |  |  | ✓ |  |  |
 | `payroll.manage` | ✓ | D |  |  | ✓ |  |  |
 | `payroll.view_own` (self-scoped) | ✓ | ✓ | ✓ | ✓ | ✓ |  |  |
+| `hr.request` (self-scoped) | ✓ | ✓ | ✓ | ✓ | ✓ |  |  |
+| `hr.configure` | ✓ | D |  |  |  |  |  |
+| `staff_file.manage` (owner-only) | ✓ |  |  |  |  |  |  |
 | `incidents.submit` | ✓ | D | D | D | D |  |  |
 | `incidents.review` | ✓ | D |  |  |  |  |  |
 | `marketing.view` | ✓ | ✓ |  |  |  | ✓ | ✓ |
@@ -79,14 +82,23 @@ Delegable allowlists, verbatim from `ROLE_DELEGABLE`:
 | Role | Delegable capabilities |
 |---|---|
 | owner | none (already has everything) |
-| manager | `subscription.view`, `team.manage`, `staff.edit`, `catalog.edit`, `costs.view`, `builder.edit`, `builder.publish`, `finance.view`, `finance.export`, `refunds.approve`, `payments.configure`, `payroll.view`, `payroll.manage`, `incidents.submit`, `incidents.review`, `marketing.manage`, `campaigns.approve`, `audit.view` |
+| manager | `subscription.view`, `team.manage`, `staff.edit`, `catalog.edit`, `costs.view`, `builder.edit`, `builder.publish`, `finance.view`, `finance.export`, `refunds.approve`, `payments.configure`, `payroll.view`, `payroll.manage`, `hr.configure`, `incidents.submit`, `incidents.review`, `marketing.manage`, `campaigns.approve`, `audit.view` |
 | receptionist | `incidents.submit`, `builder.edit`, `refunds.request`, `analytics.view`, `loyalty.manage` |
 | specialist | `incidents.submit`, `customers.view` |
 | finance | `subscription.view`, `analytics.view`, `incidents.submit` |
 
 ### Owner-only capabilities
 
-`business.manage` and `subscription.manage` (`OWNER_ONLY`). They are never added by delegation, even if a grant array contains them, and `invalidGrants()` rejects them.
+`business.manage`, `subscription.manage` and `staff_file.manage` (`OWNER_ONLY`). They are never added by delegation, even if a grant array contains them, and `invalidGrants()` rejects them.
+
+### HR (see [HR.md](HR.md))
+
+- `hr.request` (every role, self-scoped): submit requests for her own linked staff profile and cancel them while pending; read her own balance, own non-sensitive file fields (`GET /me/hr`) and own late/absent flags. Holders of `schedule.manage` may submit on behalf of a staff member.
+- Approving a request step is decided by **role**, not capability: a member whose role is the role of the current step (never on her own request), or the owner at any step (her approval is final). Members only see requests whose chain contains their role, plus their own; `hr.configure` and the owner see all.
+- `hr.configure`: request types, approval chains, custom fields, HR settings (grace minutes, balance policy, attendance deductions) and leave balance adjustments.
+- `staff_file.manage` (owner only, not delegable, not in support grants): staff files, ID reveal (audited), private documents (viewing audited), expiry alerts go to owners only.
+- Lateness/absence/unpaid-leave deduction suggestions: read with `payroll.view`, decide and scan with `payroll.manage`. Per-staff commission overrides: read `payroll.view`, write `payroll.manage`.
+- Booking reroutes after an approved leave: `bookings.manage`.
 
 ### Role assignment
 

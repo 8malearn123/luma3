@@ -4,7 +4,7 @@ import { Errors } from '../../http/errors';
 import { audit, type AuditActor } from '../../infra/audit';
 import { notifyCapability, notifyStaff } from '../../infra/notify';
 import { hasCapability, type TenantAccess } from '../../tenancy/access';
-import { futureBookingsFor } from '../team/service';
+import { attachLeaveToChain, decideRequest, finalizeLegacyLeave, requestForLeave } from '../hr/requests';
 import type { leaveDecision, leaveInput, overrideInput, timeBlockInput, weeklyHoursInput } from '@/shared/schemas/team';
 
 /** A specialist may only see/act on her own staff profile unless she can manage schedules. */
@@ -113,19 +113,31 @@ export async function requestLeave(access: TenantAccess, actor: AuditActor, inpu
       tenant_id: access.tenantId, staff_id: staffId, during: `[${from.toISOString()},${to.toISOString()})`,
       leave_type: input.leave_type, reason: input.reason ?? null, requested_by: actor.userId,
     }).returningAll().executeTakeFirstOrThrow();
-    await notifyCapability(trx, access.tenantId, ['leave.approve'], {
-      kind: 'leave.requested', title_ar: 'طلب إجازة جديد', title_en: 'New leave request', target_path: `/app/${access.slug}/team?tab=leave`, data: { leave_id: r.id },
-    });
+    // Annual, sick, emergency and unpaid leave follow the approval chain of their request type (and the balance rules).
+    const chained = await attachLeaveToChain(trx, access, actor, { id: r.id, staff_id: staffId, leave_type: input.leave_type, from, to, reason: input.reason ?? null });
+    if (!chained) {
+      await notifyCapability(trx, access.tenantId, ['leave.approve'], {
+        kind: 'leave.requested', title_ar: 'طلب إجازة جديد', title_en: 'New leave request', target_path: `/app/${access.slug}/team?tab=leave`, data: { leave_id: r.id },
+      });
+    }
     await audit(trx, actor, 'leave.requested', { tenantId: access.tenantId, targetType: 'leave', targetId: r.id });
-    return r;
+    return { ...r, request_id: chained?.id ?? null, balance_warning: chained?.balance_warning ?? false };
   });
 }
 
 /**
  * Approving leave that overlaps booked appointments does not silently cancel
- * them: the affected bookings are recorded and management is alerted to act.
+ * them: the affected bookings are recorded and management is alerted to act
+ * (with reassignment suggestions, see domains/hr/reroute.ts). A leave linked
+ * to an approval chain is decided step by step through its HR request.
  */
 export async function decideLeave(access: TenantAccess, actor: AuditActor, leaveId: string, input: z.infer<typeof leaveDecision>) {
+  const linked = await requestForLeave(access, leaveId);
+  if (linked) {
+    const r = await decideRequest(access, actor, linked.id, { decision: input.decision, note: input.note });
+    const status = r.status === 'pending' ? 'requested' : r.status;
+    return { id: leaveId, status, request_status: r.status, affected_booking_ids: r.affected_booking_ids };
+  }
   return withTenant(access.tenantId, async (trx) => {
     const lr = await trx.selectFrom('leave_requests').selectAll()
       .select([sql<Date>`lower(during)`.as('from_at'), sql<Date>`upper(during)`.as('to_at')])
@@ -134,22 +146,15 @@ export async function decideLeave(access: TenantAccess, actor: AuditActor, leave
     if (lr.status !== 'requested') throw Errors.conflict('already_decided');
     let affected: string[] = [];
     if (input.decision === 'approved') {
-      affected = await futureBookingsFor(trx, lr.staff_id, { from: lr.from_at, to: lr.to_at });
+      affected = await finalizeLegacyLeave(trx, access, actor, { id: lr.id, staff_id: lr.staff_id, leave_type: lr.leave_type, from: lr.from_at, to: lr.to_at }, input.note ?? null);
+    } else {
+      await trx.updateTable('leave_requests').set({ status: 'rejected', decided_by: actor.userId, decided_at: new Date(), decision_note: input.note ?? null }).where('id', '=', leaveId).execute();
+      await audit(trx, actor, 'leave.rejected', { tenantId: access.tenantId, targetType: 'leave', targetId: leaveId });
     }
-    await trx.updateTable('leave_requests').set({
-      status: input.decision, decided_by: actor.userId, decided_at: new Date(), decision_note: input.note ?? null, affected_booking_ids: affected,
-    }).where('id', '=', leaveId).execute();
     await notifyStaff(trx, access.tenantId, lr.staff_id, {
       kind: `leave.${input.decision}`, title_ar: input.decision === 'approved' ? 'تمت الموافقة على إجازتك' : 'تم رفض طلب الإجازة',
       title_en: input.decision === 'approved' ? 'Your leave was approved' : 'Your leave request was declined', target_path: '/staff',
     });
-    if (affected.length) {
-      await notifyCapability(trx, access.tenantId, ['bookings.manage'], {
-        kind: 'leave.affects_bookings', title_ar: `إجازة معتمدة تتعارض مع ${affected.length} مواعيد`, title_en: `Approved leave conflicts with ${affected.length} appointments`,
-        target_path: `/app/${access.slug}/bookings?staff=${lr.staff_id}&upcoming=1`, data: { booking_ids: affected, leave_id: leaveId },
-      });
-    }
-    await audit(trx, actor, `leave.${input.decision}`, { tenantId: access.tenantId, targetType: 'leave', targetId: leaveId, data: { affected_bookings: affected.length } });
     return { id: leaveId, status: input.decision, affected_booking_ids: affected };
   });
 }
