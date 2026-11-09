@@ -6,6 +6,7 @@ import type { GoalKind, ResolvedProfile } from '../profile/facts';
 import type { QualityReport } from '../quality/gate';
 import type { SectorPack } from '../sector/types';
 import type { Localized } from '../util/text';
+import type { ForecastRow } from '../models/types';
 
 /** Detector contract (§6.4): deterministic, no AI, no I/O. */
 export type DetectContext = {
@@ -16,6 +17,8 @@ export type DetectContext = {
   profile: ResolvedProfile;
   pack: SectorPack;
   params: Record<string, number>;
+  /** Phase 6: forecasts (active model versions or labelled baselines). Optional: detectors work without them. */
+  forecasts?: ForecastRow[];
 };
 
 export type EvidenceItem = { metric_key: string; grain_ref: string; value: number | null; n: number; label: Localized; grade: 'observed' | 'inferred' | 'assumption' };

@@ -16,6 +16,8 @@ import { emitLoomEvent } from '../webhooks/outgoing';
 import { readPlatformSettings } from '../settings/platform';
 import { enforceNoMarketPriceCut, observedOfferings } from '../radar/market';
 import { applyRadarTiming } from '../radar/timing';
+import { attachForecasts } from '../models/attach';
+import { forecastsForAnalysis } from '../models/service';
 
 /**
  * Analysis pipeline (§6.1), rules path:
@@ -139,6 +141,8 @@ export async function runAnalysis(analysisId: string, businessId: string, opts: 
     const metrics = applyMetricOverrides(computeMetrics(ctx, { sector: pack.id }), pack);
     const quality = applyPackQuality(qualityGate(ctx), pack);
     const hash = datasetHash(ds);
+    // Phase 6: forecasts from the ACTIVE model version of each kind, else labelled baselines (platform switch; never fails the analysis).
+    const forecasts = platform.learned_models.enabled && ctx.activeOfferings.length ? await forecastsForAnalysis(businessId, ds, analysisId) : [];
 
     return await withTenant(businessId, async (trx) => {
       const prev = await trx.selectFrom('loom.analyses').select(['id']).where('business_id', '=', businessId).where('snapshot_hash', '=', hash).where('id', '!=', analysisId).executeTakeFirst();
@@ -151,13 +155,15 @@ export async function runAnalysis(analysisId: string, businessId: string, opts: 
 
       const noData = !ctx.activeOfferings.length || quality.overall === 'insufficient';
       let engine = noData ? { opportunities: [], suppressed: [{ detector_id: '*', reason: 'insufficient_data' }] } as ReturnType<typeof runEngine>
-        : runEngine({ ds, ctx, metrics, quality, profile, pack, params: {} }, { reserved: await reservedVolumes(trx, businessId) });
+        : runEngine({ ds, ctx, metrics, quality, profile, pack, params: {}, forecasts }, { reserved: await reservedVolumes(trx, businessId) });
       if (!noData) {
         // Phase 4 (radar): adopted/attached platform events time EXISTING opportunities only (P1, T8);
         // market prices are context and never a price cut (T15).
         await applyRadarTiming(trx, businessId, engine.opportunities, ds.meta.today, pack.id);
         const guard = enforceNoMarketPriceCut(engine.opportunities, await observedOfferings(trx, businessId));
         engine = { opportunities: guard.kept, suppressed: [...engine.suppressed, ...guard.removed.map((r) => ({ detector_id: '*', subject_key: r.fingerprint, reason: r.reason }))] };
+        // Forecasts are separate `model_forecast` entries next to the proposed goals (never mixed).
+        attachForecasts(engine.opportunities, forecasts);
       }
       const budgetFact = profile.facts.find((f) => f.key === 'pref.monthly_budget_minor' && f.kind === 'explicit');
       const persisted = await persistOpportunities(trx, businessId, analysisId, engine.opportunities, {
@@ -173,6 +179,7 @@ export async function runAnalysis(analysisId: string, businessId: string, opts: 
         opportunities: engine.opportunities.length, persisted, suppressed: engine.suppressed,
         market_signals: { live: ds.signals.filter((s) => s.freshness === 'fresh' || s.freshness === 'aging').map((s) => s.id), stale: ds.signals.filter((s) => s.freshness === 'stale' || s.freshness === 'unknown').map((s) => ({ id: s.id, freshness: s.freshness })) },
         sector_pack: pack.version,
+        forecasts: { count: forecasts.length, sources: [...new Set(forecasts.map((f) => `${f.model_kind}:${f.source}`))].sort() },
       };
       const status = noData ? 'insufficient_data' as const : 'succeeded' as const;
       await trx.updateTable('loom.analyses').set({

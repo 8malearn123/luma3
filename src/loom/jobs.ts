@@ -7,6 +7,7 @@ import { importDueOfficialSources } from './radar/calendar';
 import { sweepSources } from './radar/sources';
 import { jobBusiness } from './hosts';
 import { DELIVERY_JOB, deliverWebhook } from './webhooks/outgoing';
+import { evaluateShadows, FORECAST_JOB, refreshForecasts, scheduleModelWork, SECTOR_TRAIN_JOB, SHADOW_JOB, trainBusiness, trainSectorModel, TRAIN_JOB } from './models/service';
 
 /** Loom background work: the analysis job (one per loom.analyses row) and a sweeper for stuck runs. */
 registerJob(ANALYSIS_JOB, async (payload, ctx) => {
@@ -51,3 +52,19 @@ registerPeriodic({ name: 'loom.stuck_planner_runs', everySec: 900, run: failStuc
 registerPeriodic({ name: 'loom.radar_sweep', everySec: 900, run: async () => { await importDueOfficialSources(); await sweepSources(); } });
 /** Outgoing webhook delivery (signed POST, retried with the framework's backoff). */
 registerJob(DELIVERY_JOB, async (payload, ctx) => deliverWebhook(await jobBusiness(ctx.tenantId, payload), String(payload.delivery_id), ctx.attempt));
+
+// ── Phase 6: learned models (docs/LOOM_CORE.md §24) ──
+/** Training per business (cadence from platform settings; deduped per business and day), shadow evaluation, forecast refresh, sector training. */
+registerJob(TRAIN_JOB, async (payload, ctx) => {
+  const businessId = await jobBusiness(ctx.tenantId, payload);
+  const r = await trainBusiness(businessId, { trigger: payload.trigger === 'manual' ? 'manual' : 'schedule' });
+  return { status: r.status, kinds: Object.fromEntries(Object.entries(r.kinds).map(([k, v]) => [k, v?.status])) };
+});
+registerJob(SHADOW_JOB, async (payload, ctx) => ({ ...(await evaluateShadows(await jobBusiness(ctx.tenantId, payload))) }));
+registerJob(FORECAST_JOB, async (payload, ctx) => ({ forecasts: (await refreshForecasts(await jobBusiness(ctx.tenantId, payload))).length }));
+registerJob(SECTOR_TRAIN_JOB, async () => {
+  const out: Record<string, string> = {};
+  for (const sector of ['beauty', 'retail']) out[sector] = (await trainSectorModel(sector)).status;
+  return out;
+});
+registerPeriodic({ name: 'loom.model_work', everySec: 3600, run: async () => { await scheduleModelWork(); } });

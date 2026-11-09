@@ -1,4 +1,4 @@
-# Loom Marketing Core (phases 1–5, 7)
+# Loom Marketing Core (phases 1–7)
 
 > Spec: [LOOM_MARKETING_ARCHITECTURE.md](LOOM_MARKETING_ARCHITECTURE.md) (§4–§8, §14, §15, §20). This file documents what is built, the contracts later phases build on, and how to extend them.
 
@@ -78,6 +78,7 @@ Every business table has `business_id` (= LUMA tenant id) with RLS `app.tenant_v
 | Connector (optional, phase 5): `LoomConnector.campaignGroups?(conn, campaignId)` → `CampaignGroupStats` | `src/loom/contracts/connector.ts` | LUMA: `loom_export.campaign_groups` |
 | API service: `loomApi.*` and request schemas (`goalsInput`, `preferencesInput`, `setupInput`, `decisionInput`, `convertInput`, `opportunityListQuery`, `profilePatchInput`) | `src/loom/api/*` | host-agnostic: `{ businessId, actor, locale }` |
 | Radar (phase 4): `timingContextFor`, `checkAwarenessRule`, `clusterSignals`, `evidenceClassOf`, `signalRelevance`/`eventRelevance`, `marketPriceContext`, `enforceNoMarketPriceCut`, `priceProposalAllowed`, `RadarFetcher` port (`setRadarFetcher`), `SignalApiProvider` (`registerApiProvider`), `radarApi.*` | `src/loom/radar/*` | see §10 |
+| Learned models (phase 6): `ModelKind`, `ModelStatus`, `MODEL_TRANSITIONS`, `Evaluation`, `GateResult`, `TemporalSplit`, `ForecastRow`; `eligibility`, `temporalSplit`, `assertNoLeakage`, `promotionGate`, `shadowDecision`; `trainDemand` / `trainReturn` / `trainResponse` / `trainSector` (pure); `trainBusiness`, `evaluateShadows`, `refreshForecasts`, `promoteVersion`, `rollbackModel`, `trainSectorModel`; `attachForecasts`, `splitSuccessMetrics`; `SuccessMetric` + `ForecastLabel` (opportunity contract); `loomModels.*` | `src/loom/models/*`, `src/loom/api/models.ts` | see §24 |
 
 ### 3.1 Analysis pipeline (rules path)
 
@@ -105,7 +106,8 @@ Reads only `loom_export.*` inside `withTenant(business_id)`. Views are `security
 |---|---|---|
 | `default_ranking_weights` | goal fit .20, evidence .20, impact .20, feasibility .15, cost/effort .10, timing .10, risk .05 (sum = 1, each ≤ .6) | ranking when the business has not customised weights |
 | `cost_completeness_threshold` | 0.80 (0.5–1) | quality gate, `margin_check = costs_incomplete`, `missing_cost_blocker` |
-| `learned_model_thresholds` | 180 days, 500 completed transactions | phase 6 (stored now) |
+| `learned_model_thresholds` | 180 days, 500 completed transactions | phase 6 eligibility per business (below ⇒ baseline only, the «النماذج» tab says why) |
+| `learned_models` | `enabled: false`, `auto_promote: true`, `promotion_margin` demand .05 / return .02 / response .05, `guardrail_tolerance` .05, `shadow_days` 14, `retrain_days` 7, `min_measured_outcomes` 30, `sector_models: false` | phase 6 (§24): the platform switch, the declared promotion margins, the shadow period and the retrain cadence |
 | `event_sources` | `[]` (id, name, https url, region, kind, licence note, enabled) | official calendars (§10.3): imported daily through safe-fetch; `kind = other` ⇒ imported events need verification |
 | `enabled_sector_packs` | `['beauty']` | analysis refuses a disabled pack |
 
@@ -456,3 +458,71 @@ Category `stockout_risk` was added to `OPPORTUNITY_CATEGORIES`; the DB check on 
 ## 23. Extraction readiness
 
 See [LOOM_EXTRACTION.md](LOOM_EXTRACTION.md). `tests/integration/loom-connectors-extraction.test.ts` revokes the runtime role's access to schema `public` and runs CSV sync → review → approval → analysis → opportunities for an external business: the pipeline touches no LUMA table.
+
+# Phase 6 — learned models (experimental)
+
+## 24. Learned models and their governance (§10.4–§10.5)
+
+Layer 2 of §10.4: baselines first, then small explainable models, only where they beat the baseline on a strict temporal split. Pure TypeScript, deterministic (no randomness: zero / mean initialisation, fixed order; synthetic test data is seeded), no new dependency. Everything is behind the platform switch `learned_models.enabled` (default off) and labelled «تجريبي».
+
+### 24.1 Kinds, baselines and models (`src/loom/models/*`, pure)
+
+| Kind | Grain | Baseline(s) | Learned | Primary metric · guardrails (lower is better) |
+|---|---|---|---|---|
+| `demand_forecast` (`demand.ts`) | offering × local date × hour (completed units, zero-filled over the observed hours, ≤ 365 days) | `seasonal_naive_4w` (same weekday + hour, last 4 weeks at/before the origin) and `moving_average_28d`; the gate uses the **better** of the two | `poisson_glm_v1`: ridge Poisson regression (offering, weekday, hour, offering×weekday, offering×hour, two nested recent-level effects), recency-weighted (half-life 120 d); coefficients = multiplicative effects (`explain`) | WAPE on daily totals per offering · hourly MAE, |bias| |
+| `return_probability` (`returns.ts`) | customer (pseudonymous) at a reference date; label = a visit within 45 days | `historical_rate_cohort`: return rate per cohort (recency 5 buckets × visits-in-365-days 3 buckets), shrunk to the overall rate | `logistic_ridge_v1`: cohort + standardised recency, frequency, tenure, recency ÷ usual gap, single-visit flag, average spend | Brier · log loss, ECE (10 bins) |
+| `intervention_response` (`response.ts`) | measured outcome (phase 5 `loom.outcomes`, not `insufficient`): relative change of the primary goal metric, keyed by the card's intervention and category | `historical_mean_by_intervention` (shrunk, 3 pseudo-observations) | `ridge_linear_v1` (intervention + category effects) **only** with ≥ `min_measured_outcomes`; otherwise the kind stays baseline | MAE · |mean error| |
+
+Numerics: `math.ts` (`solveSpd` Cholesky with jitter, `fitGlm` ridge Newton/IRLS with step halving for Poisson/logistic, `fitRidge`).
+
+**Temporal split** (`governance.temporalSplit`, `assertNoLeakage`): demand — T = yesterday − 28 days, train ≤ T, test (T, yesterday]; return — T = yesterday − 45 days, test = customers at reference T labelled in (T, T + 45], training references T − 45 − 14k (their labels end ≤ T); response — the latest 20 % of outcomes by measurement date (≥ 5) are the test set. Never random. Unit tests change the data after T and check the fitted parameters do not move.
+
+**Eligibility** (`governance.eligibility`): days since the first completed sale ≥ `learned_model_thresholds.min_days` and completed transactions ≥ `min_completed_transactions`. Below: nothing is trained, the run is stored as `ineligible` with bilingual reasons and the business keeps the baseline.
+
+### 24.2 Governance
+
+- **Gate** (`promotionGate`): primary(candidate) ≤ primary(ref) × (1 − margin) for ref ∈ {best baseline, active version} — the active version is re-evaluated on the candidate's test window (only if its own T ≤ the new T, else `active_not_comparable` ⇒ fail); every guardrail ≤ ref × (1 + `guardrail_tolerance`); a reference of 0 cannot be beaten. Failing candidates are retired (`gate_failed`), with the full gate result stored.
+- **Shadow**: a passing candidate becomes `shadow` (a previous shadow is `superseded`) for `shadow_days` (return: ≥ 46 days so the 45-day outcome can be realised; response: ≥ 30 days and ≥ 3 new outcomes). Its predictions and the reference's (active version or baseline) are stored in `shadow_predictions`. `evaluateShadows` compares both on realised data (no margin, guardrail tolerance applies, minimum realised points); pass ⇒ `active` (the previous active is retired `replaced`) when `auto_promote`, fail ⇒ `shadow_failed`; still pending 60 days after the end ⇒ retired.
+- **Manual promotion** (`promoteVersion`, `loom.manage`) never bypasses a gate: candidate → shadow only if its gate passed; shadow → active only once the shadow evaluation passed.
+- **Rollback** (`rollback`, one click): retire the active version (`rollback`) and restore the version it replaced (`retired_reason = replaced`, once active); a rolled-back version is never restored again; no such version ⇒ the baseline. Forecasts of a retired version disappear at once (read filter).
+- **Audit**: every status change is a `model_events` row (created, shadow_started, shadow_evaluated, activated, retired, rollback, restored) and an audit entry (`loom.model_*` in `audit_logs`, or `loom.audit_events` for external businesses).
+- **Determinism / idempotency**: a candidate with the same kind, algorithm and data hash is not stored twice (`skipped`).
+
+### 24.3 Storage (migration `0740_loom_models`)
+
+| Table | Content | Mutability |
+|---|---|---|
+| `model_versions` | business model (or sector model: `business_id` null + `sector`), kind, algorithm, version, status, training window, `split_at`, `test_to`, data hash + data version, params (the exact served artifact), metrics (`candidate`, `baseline`, `active` on the test window, `n_train`, `explain`), gate, shadow window + result, promoted/retired | training record frozen by trigger `loom.guard_model_version`, which also enforces the transitions (candidate → shadow/retired, shadow → active/retired, active → retired, retired → active only for a once-active version); one active and one shadow per scope + kind (partial unique indexes); never deleted |
+| `model_events` | the audit of status changes | append-only |
+| `model_training_runs` | every attempt: `trained` / `ineligible` / `disabled` / `skipped` / `failed`, eligibility, per-kind summary | append-only |
+| `forecasts` | batch, kind, source `model` \| `baseline`, version, subject, horizon, value, 90 % interval | append-only; trigger `loom.forecast_from_active` refuses a model forecast whose version is not the business's **active** one |
+| `shadow_predictions` | shadow vs reference predictions per subject and period | append-only |
+
+RLS `business_isolation` on `business_id` for all five (sector rows, `business_id` null, are visible in system scope only).
+
+### 24.4 Forecasts on cards and plans
+
+`refreshForecasts()` computes, per kind, forecasts from the **active** version or else the labelled baseline: demand daily per offering for 14 days, returning customers within 45 days (all customers and per offering's past customers), expected response per (intervention, category). `runAnalysis` calls it (when the switch is on; errors never fail the analysis) and `attachForecasts()` adds **separate** `success_metrics` entries: `{ metric_key: 'forecast.demand_units@offering:<id>' | 'forecast.returning_customers@offering:<id>' | 'forecast.intervention_response@intervention:<id>', baseline: null, target: <forecast>, target_kind: 'model_forecast', forecast: { source, model_kind, algorithm, model_version_id, version, low, high, interval: 0.9, horizon, unit } }`. Proposed goals are never modified; the schema refuses a `forecast` label on a goal and a forecast entry without one (`successMetricSchema`). Plan actions copy the card metrics; the plan-level `success_metrics` are goals only. The `quiet_capacity` detector adds the demand forecast as an assumption when one exists and works unchanged without it (`DetectContext.forecasts` is optional).
+
+### 24.5 Consent and sector models
+
+Shared-training consent is the explicit fact `consent.shared_training` (default false; the fact chain records who/when) and is audited (`loom.shared_training_consent`). `trainSectorModel(sector)` (job `loom.sector_train`, weekly when `sector_models` is on) loads **only** businesses whose current explicit consent is true, reduces each to counts per (reference date, cohort, tenure bucket, single-visit flag) — no customer or business id, no amounts — needs ≥ 3 contributors, and trains `sector_logistic_v1` vs the pooled cohort rate with the same split and gate; stored with `business_id` null, contributors count in the metrics. Platform owner: `GET/POST /api/v1/platform/loom/models` (train, promote after the shadow period, rollback; step-up, audited). **Not yet:** sector models are not served to businesses (no business consumes them as a prior); they are trained, gated and governed only.
+
+### 24.6 Jobs
+
+`loom.train` (per business; manual or scheduled), `loom.shadow_eval`, `loom.forecast_refresh`, `loom.sector_train`; periodic `loom.model_work` (hourly): for businesses with a succeeded analysis in the last 30 days, schedules training when the last run is older than `retrain_days` (dedupe per business and day), shadow evaluations that are due and a daily forecast refresh.
+
+### 24.7 API (`/api/v1/t/{slug}/loom/models`, plan feature `feature.marketing_ai`)
+
+| Method & path | Capability | |
+|---|---|---|
+| `GET models` | view | switch, thresholds, eligibility (status, history days, completed transactions, reasons), per kind: serving (model / baseline), active, shadow, candidates and recent versions with metrics vs baseline and active, gate, shadow result; consent; recent events |
+| `GET models/versions?kind=` · `GET models/forecasts` | view | registry · latest forecasts (active versions or labelled baselines) |
+| `POST models/versions/{id}/promote` · `POST models/rollback { model_kind }` · `POST models/train` | manage | 409 `gate_not_passed` / `shadow_not_passed` / `no_active_model` |
+| `GET models/consent` · `PUT models/consent { shared_training_consent }` | view · manage **and** owner (`business.manage`) | 403 `owner_only` otherwise |
+
+UI: tab «النماذج» (`src/ui/marketing/LoomModels.tsx`, «تجريبي»): eligibility and why, per kind what serves forecasts, versions with metrics against the baseline and the active version, gate and shadow, promote, rollback with confirmation, latest forecasts («ليست أهدافًا»), the consent explained. Cards list forecasts apart from goals («التوقعات (تجريبي)», source + version + interval). `/platform/loom`: the `learned_models` settings card and the sector models list. i18n `src/i18n/messages/loom_models.ts`.
+
+### 24.8 Tests
+
+`tests/unit/loom-models.test.ts`: numerics, baselines (exact values), temporal split and no leakage (data after T does not move the parameters), learned vs baseline on seeded synthetic histories (`tests/helpers/loom-models.ts`: demand WAPE ≥ 5 % better than the best baseline, return Brier ≥ 2 % better), gate (must beat both; guardrail regression blocks; zero reference), shadow decision, transitions, response threshold, sector minimum contributors, forecasts attached as separate labelled entries + schema. `tests/integration/loom-models.test.ts`: switch off, eligibility from the platform thresholds (a real LUMA salon ⇒ ineligible with reasons), candidate → shadow → active on realised data with events and audit, shadow forecasts never served, idempotent retraining, forecasts on the real analysis' cards from the active version, DB refusal of a non-active forecast, gate vs the active version, manual promotion refused, rollback (previous version, then baseline) with capability checks, append-only tables and frozen versions, T12 isolation, consent default false / owner only / audited, sector training excluding non-consenting and withdrawn businesses and invisible to tenants.

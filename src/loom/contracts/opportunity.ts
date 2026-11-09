@@ -59,7 +59,12 @@ export type CardContent = {
   margin_check: { status: MarginStatus; unit_margin_before_minor: number | null; unit_margin_after_minor: number | null; breakeven_volume_increase: number | null; note?: Localized };
   prerequisites: Localized[];
   draft_content: null;
-  success_metrics: Array<{ metric_key: string; baseline: number | null; target: number | null; target_kind: 'proposed_goal' | 'model_forecast' }>;
+  /**
+   * Proposed goals (`proposed_goal`) and, separately, forecasts (`model_forecast`,
+   * phase 6) — never mixed: a forecast entry carries `forecast` (source model |
+   * baseline, version, 90% interval, horizon) and `baseline: null`.
+   */
+  success_metrics: SuccessMetric[];
   measurement_design: 'holdout' | 'ab' | 'pre_post_with_control' | 'observational';
   assumptions: Localized[];
   limitations: Localized[];
@@ -70,6 +75,34 @@ export type CardContent = {
 };
 
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+
+/** Phase 6: the label of a forecast on a card or plan action (never on a proposed goal). */
+export type ForecastLabel = {
+  source: 'model' | 'baseline';
+  model_kind: 'demand_forecast' | 'return_probability' | 'intervention_response';
+  algorithm: string;
+  model_version_id: string | null;
+  version: number | null;
+  low: number;
+  high: number;
+  interval: 0.9;
+  horizon: { from: string; to: string };
+  unit: 'count' | 'ratio';
+};
+export type SuccessMetric = { metric_key: string; baseline: number | null; target: number | null; target_kind: 'proposed_goal' | 'model_forecast'; forecast?: ForecastLabel };
+export const forecastLabelSchema = z.object({
+  source: z.enum(['model', 'baseline']),
+  model_kind: z.enum(['demand_forecast', 'return_probability', 'intervention_response']),
+  algorithm: z.string(),
+  model_version_id: z.string().nullable(),
+  version: z.number().int().nullable(),
+  low: z.number(), high: z.number(), interval: z.literal(0.9),
+  horizon: z.object({ from: isoDate, to: isoDate }).strict(),
+  unit: z.enum(['count', 'ratio']),
+}).strict();
+export const successMetricSchema = z.object({
+  metric_key: z.string(), baseline: z.number().nullable(), target: z.number().nullable(), target_kind: z.enum(['proposed_goal', 'model_forecast']), forecast: forecastLabelSchema.optional(),
+}).strict().refine((m) => (m.target_kind === 'model_forecast') === !!m.forecast, { message: 'a forecast entry (and only a forecast entry) carries its forecast label' });
 
 /** The rendered card, exactly §11.1 (one language, additionalProperties: false). */
 export const opportunityCardSchema = z.object({
@@ -95,7 +128,7 @@ export const opportunityCardSchema = z.object({
   }).strict(),
   prerequisites: z.array(z.string()),
   draft_content: z.record(z.string(), z.unknown()).nullable(),
-  success_metrics: z.array(z.object({ metric_key: z.string(), baseline: z.number().nullable(), target: z.number().nullable(), target_kind: z.enum(['proposed_goal', 'model_forecast']) }).strict()).min(1),
+  success_metrics: z.array(successMetricSchema).min(1),
   measurement_design: z.enum(['holdout', 'ab', 'pre_post_with_control', 'observational']),
   assumptions: z.array(z.string()),
   limitations: z.array(z.string()),

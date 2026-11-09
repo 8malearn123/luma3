@@ -29,12 +29,38 @@ export const eventSourceSchema = z.object({
 
 export const SECTOR_PACK_IDS = ['beauty', 'retail', 'restaurant', 'professional_services'] as const;
 
+/**
+ * Phase 6 (learned models, docs/LOOM_CORE.md §24). Margins are relative
+ * improvements of the declared primary metric (lower is better) a candidate
+ * must show over BOTH the baseline and the active version; guardrail metrics
+ * may not be worse than either by more than `guardrail_tolerance`.
+ */
+export const learnedModelsSchema = z.object({
+  enabled: z.boolean(),
+  auto_promote: z.boolean(),
+  promotion_margin: z.object({
+    demand_forecast: z.number().min(0).max(0.5), return_probability: z.number().min(0).max(0.5), intervention_response: z.number().min(0).max(0.5),
+  }).strict(),
+  guardrail_tolerance: z.number().min(0).max(0.5),
+  shadow_days: z.number().int().min(1).max(90),
+  retrain_days: z.number().int().min(1).max(90),
+  min_measured_outcomes: z.number().int().min(10).max(10_000),
+  sector_models: z.boolean(),
+}).strict();
+export type LearnedModelSettings = z.infer<typeof learnedModelsSchema>;
+export const LEARNED_MODEL_DEFAULTS: LearnedModelSettings = {
+  enabled: false, auto_promote: true,
+  promotion_margin: { demand_forecast: 0.05, return_probability: 0.02, intervention_response: 0.05 },
+  guardrail_tolerance: 0.05, shadow_days: 14, retrain_days: 7, min_measured_outcomes: 30, sector_models: false,
+};
+
 export const platformSettingsSchema = z.object({
   default_ranking_weights: rankingWeightsSchema(),
   cost_completeness_threshold: z.number().min(0.5).max(1),
   learned_model_thresholds: z.object({ min_days: z.number().int().min(30).max(1095), min_completed_transactions: z.number().int().min(50).max(100_000) }).strict(),
   event_sources: z.array(eventSourceSchema).max(50).refine((xs) => new Set(xs.map((x) => x.id)).size === xs.length, { message: 'duplicate source id' }),
   enabled_sector_packs: z.array(z.enum(SECTOR_PACK_IDS)).min(1).max(SECTOR_PACK_IDS.length),
+  learned_models: learnedModelsSchema,
 }).strict();
 export type LoomPlatformSettings = z.infer<typeof platformSettingsSchema>;
 export const platformSettingsPatch = platformSettingsSchema.partial().strict().refine((p) => Object.keys(p).length > 0, { message: 'empty patch' });
@@ -45,6 +71,7 @@ export const PLATFORM_DEFAULTS: LoomPlatformSettings = {
   learned_model_thresholds: { min_days: 180, min_completed_transactions: 500 },
   event_sources: [],
   enabled_sector_packs: ['beauty'],
+  learned_models: LEARNED_MODEL_DEFAULTS,
 };
 
 const KEY = (k: keyof LoomPlatformSettings) => `platform.${k}`;

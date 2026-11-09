@@ -133,9 +133,11 @@ export function buildPlanDraft(pc: PlanningContext, wording: Map<string, Wording
   if (pc.analysis.mode === 'exploratory') limitations.push(L('خطة استكشافية: البيانات قليلة؛ تجارب محدودة فقط.', 'Exploratory plan: little data; limited trials only.'));
   limitations.push(L('الأهداف المقترحة أهداف للنقاش وليست وعودًا أو توقعات.', 'Proposed targets are goals for discussion, not promises or forecasts.'));
 
-  const metricKeys = [...new Set(actions.flatMap((a) => a.success_metrics.map((m) => m.metric_key)))];
+  // Plan-level success metrics are proposed goals only; forecasts stay on their actions, labelled (phase 6, never mixed).
+  const goals = actions.flatMap((a) => a.success_metrics.filter((m) => m.target_kind === 'proposed_goal'));
+  const metricKeys = [...new Set(goals.map((m) => m.metric_key))];
   const sm = metricKeys.map((k) => {
-    const m = actions.flatMap((a) => a.success_metrics).find((x) => x.metric_key === k)!;
+    const m = goals.find((x) => x.metric_key === k)!;
     return { metric_key: k, label: metricDefinition(k)?.label ?? L(k, k), baseline: m.baseline, proposed_target: m.target };
   });
 

@@ -145,7 +145,14 @@ function OpportunityCard({ o }: { o: any }) {
           {c.prerequisites.length ? <ListDetail label={t('loom.card.prerequisites')} items={c.prerequisites} /> : null}
           {c.hypotheses.length ? <ListDetail label={t('loom.card.hypotheses')} items={c.hypotheses.map((h: any) => h.text)} /> : null}
           {c.alternatives_considered.length ? <ListDetail label={t('loom.card.alternatives')} items={c.alternatives_considered.map((a: any) => `${t(`loom.action_kind.${a.kind}`)}: ${a.rejected_because}`)} /> : null}
-          <ListDetail label={`${t('loom.card.success')} (${t('loom.card.target_note')})`} items={c.success_metrics.map((m: any) => `${m.metric_key}: ${m.baseline ?? '—'} → ${m.target ?? '—'}`)} ltr />
+          <ListDetail label={`${t('loom.card.success')} (${t('loom.card.target_note')})`} items={c.success_metrics.filter((m: any) => m.target_kind !== 'model_forecast').map((m: any) => `${m.metric_key}: ${m.baseline ?? '—'} → ${m.target ?? '—'}`)} ltr />
+          {/* Phase 6: forecasts are listed apart from the proposed goals, labelled with their source and interval (never mixed). */}
+          {c.success_metrics.some((m: any) => m.target_kind === 'model_forecast') ? (
+            <ListDetail label={`${t('loom_models.card.title')} — ${t('loom_models.card.note')}`} items={c.success_metrics.filter((m: any) => m.target_kind === 'model_forecast').map((m: any) => t('loom_models.card.line', {
+              label: t(`loom_models.card.metric.${m.metric_key.split('@')[0].replace('forecast.', '')}`), value: m.target, low: m.forecast.low, high: m.forecast.high,
+              source: m.forecast.source === 'model' ? t('loom_models.forecasts.model', { v: m.forecast.version }) : t('loom_models.forecasts.baseline'),
+            }))} />
+          ) : null}
           <Detail label={t('loom.card.measurement')} value={t(`loom.measurement.${c.measurement_design}`)} />
           <Detail label={t('loom.card.data_quality')} value={t(`loom.quality.${c.data_quality}`)} />
           {c.assumptions.length ? <ListDetail label={t('loom.card.assumptions')} items={c.assumptions} /> : null}

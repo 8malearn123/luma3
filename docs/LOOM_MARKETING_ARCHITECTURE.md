@@ -102,7 +102,8 @@
 | الصلة والربط بفرصة داخلية (§12.2، P1) | **منفّذ**: صلة بالقواعد (القطاع، الجمهور، المنطقة، فرصة مفتوحة) مع أسبابها؛ الربط بفرصة قائمة فقط ولا فرصة موسمية مستقلة (T8)؛ عقد `timingContextFor` للمخطِّط | `src/loom/radar/{relevance,timing}.ts` |
 | التوعوي مقابل الترويجي (§12.2) | **منفّذ**: المناسبات الصحية توعوية فقط، ودالة `checkAwarenessRule` النقية للمدقِّق (لا خصم مباشر، لا ادعاء علاجي) | `src/loom/radar/awareness.ts` |
 | الملاحظات السوقية (§12.3) | **منفّذ**: `market_observations` بقابلية المقارنة وأسبابها، يدويًا أو من رابط؛ سعر المنافس سياق فقط ولا يولّد خفض سعر (T15) | `src/loom/radar/market.ts` |
-| النماذج المتعلّمة والموصلات | **قيد التنفيذ** (المراحل 6، 7) | |
+| النماذج المتعلّمة (§10.4–§10.5) — المرحلة 6 | **منفّذ — تجريبي** خلف مفتاح المنصة (افتراضيًا مغلق): خطوط أساس أولًا (موسمي ساذج ٤ أسابيع ومتوسط ٢٨ يومًا للطلب، معدل تاريخي لكل شريحة للعودة، متوسط تاريخي لكل تدخل)، ثم انحدار Poisson وlogistic بتنظيم ridge مكتوبان داخليًا (حتميان وقابلان للتفسير)؛ تقسيم زمني صارم، أهلية من حدود المنصة (وإلا خط أساس فقط مع السبب)، بوابة ترقية تتفوق على النشط **و**خط الأساس بفارق معلن بلا تراجع في حواجز الأمان، فترة ظل على بيانات فعلية، رجوع بنقرة، سجل تدقيق؛ توقعات `model_forecast` منفصلة عن الأهداف على البطاقات والخطط من الإصدار النشط فقط أو موسومة «خط أساس»؛ نماذج قطاع من مجاميع المنشآت الموافقة فقط (لا تُخدَم للمنشآت بعد)؛ استجابة التدخل تبقى خط أساس حتى ٣٠ نتيجة مقاسة | `src/loom/models/*`، الترحيل `0740_loom_models`، تبويب «النماذج»؛ [LOOM_CORE.md §24](LOOM_CORE.md) |
+| الموصلات (المرحلة 7) | **منفّذ** — انظر §3.2 | |
 
 ### 3.2 حالة التنفيذ للمرحلة 7 (التوسع)
 
@@ -638,7 +639,8 @@ measurement_quality        → 'experimental' | 'quasi' | 'observational' | 'ins
     "draft_content": { "type": ["object","null"] },
     "success_metrics": { "type": "array", "minItems": 1, "items": { "type": "object", "required": ["metric_key","target_kind"],
       "properties": { "metric_key": {"type":"string"}, "baseline": {"type":["number","null"]}, "target": {"type":["number","null"]},
-        "target_kind": { "enum": ["proposed_goal","model_forecast"] } } } },
+        "target_kind": { "enum": ["proposed_goal","model_forecast"] },
+        "forecast": { "type": "object", "description": "phase 6: only on model_forecast entries — source (model|baseline), model_kind, algorithm, model_version_id, version, low, high, interval 0.9, horizon {from,to}, unit" } } } },
     "measurement_design": { "enum": ["holdout","ab","pre_post_with_control","observational"] },
     "assumptions": { "type": "array", "items": { "type": "string" } },
     "limitations": { "type": "array", "items": { "type": "string" } },
