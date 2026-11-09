@@ -33,4 +33,12 @@ export type SectorPack = {
   validation: { forbiddenClaims: RegExp[]; awarenessOnlyTopics: string[] };
   /** Default discount tried by a limited-discount intervention (bounded by the business maximum). */
   default_discount_bp: number;
+  /** Optional metric overrides (phase 7): a stricter min_sample per metric key for this sector. */
+  metrics?: { overrides: Record<string, { min_sample: number }> };
+  /** Optional quality model (phase 7): domains that decide `overall` with sales (default: capacity). */
+  quality?: { core: Array<'capacity' | 'inventory' | 'sales'> };
+  /** Optional sector parameters used by sector-specific checks (e.g. retail order preparation minutes). */
+  params?: Record<string, number>;
+  /** Human name of the pack. */
+  label?: Localized;
 };

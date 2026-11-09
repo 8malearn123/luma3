@@ -35,6 +35,7 @@ const catalog: Record<InterventionId, InterventionDef> = {
 /** Beauty (salons and independent experts): capacity = qualified specialists' minutes + rooms. */
 export const beautyPack: SectorPack = {
   id: 'beauty',
+  label: L('تجميل', 'Beauty'),
   version: 'beauty-1.0.0',
   vocabulary: { resource: L('أخصائية', 'Specialist'), offering: L('خدمة', 'Service'), customer: L('عميلة', 'Customer') },
   capacityModel: { resources: ['staff', 'room', 'equipment'], unit: 'minutes', quiet_below: 0.4, full_above: 0.9 },
@@ -76,5 +77,7 @@ export const beautyPack: SectorPack = {
 };
 
 const PACKS: Record<string, SectorPack> = { beauty: beautyPack };
+/** Registers another sector pack (src/loom/sector/packs.ts registers retail and restaurant). */
+export function registerSectorPack(p: SectorPack) { PACKS[p.id] = p; }
 export function sectorPack(id: string): SectorPack { return PACKS[id] ?? beautyPack; }
 export const registeredSectorPacks = () => Object.keys(PACKS);
