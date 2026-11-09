@@ -40,6 +40,8 @@ const schema = z.object({
   WHATSAPP_PROVIDER: z.enum(['none']).default('none'),
   OPENAI_API_KEY: z.string().optional().default(''),
   OPENAI_MODEL: z.string().optional().default(''),
+  /** Optional stronger model for 'strong' tier prompts (Loom monthly plan assembly); falls back to OPENAI_MODEL. */
+  OPENAI_MODEL_STRONG: z.string().optional().default(''),
   OPENAI_BASE_URL: z.string().url().default('https://api.openai.com/v1'),
   OPENAI_PRICE_INPUT_PER_MTOK: z.coerce.number().optional(),
   OPENAI_PRICE_OUTPUT_PER_MTOK: z.coerce.number().optional(),

@@ -11,6 +11,7 @@ import { Checkbox, Field, FormErrorSummary, Input, Select } from '../../componen
 import { Card, PageHeader } from '../../components/layout';
 import { useToast } from '../../components/toast';
 import { useStepUp } from '../stepup';
+import { LoomKnowledgeList } from './LoomKnowledgeList';
 
 const FACTORS = ['goal_fit', 'evidence', 'impact', 'feasibility', 'cost_effort', 'timing', 'risk'] as const;
 const PACKS = ['beauty', 'retail', 'restaurant', 'professional_services'] as const;
@@ -104,6 +105,7 @@ export function LoomSettingsPage() {
           </ul>
         )}
       </Card>
+      <LoomKnowledgeList />
     </div>
   );
 }

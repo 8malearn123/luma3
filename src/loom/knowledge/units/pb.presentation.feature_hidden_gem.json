@@ -1,0 +1,62 @@
+{
+  "id": "pb.presentation.feature_hidden_gem",
+  "version": 1,
+  "title": {
+    "ar": "إبراز خدمة محبوبة قليلة الطلب",
+    "en": "Feature a well-loved, under-booked service"
+  },
+  "applies_to": {
+    "sectors": [
+      "beauty"
+    ],
+    "detectors": [
+      "high_satisfaction_low_demand"
+    ],
+    "interventions": [
+      "content_feature",
+      "targeted_reminder"
+    ],
+    "channels": [
+      "storefront",
+      "instagram"
+    ]
+  },
+  "guidance": {
+    "ar": "خدمة تقييمها عالٍ وطلبها قليل غالبًا غير مرئية. ضعيها في أعلى المتجر بصور حقيقية واقتباسات من آراء العميلات (بإذن)، ووضّحي المدة والنتيجة المتوقعة بلغة واقعية.",
+    "en": "A highly rated but rarely booked service is usually invisible. Put it at the top of the storefront with real photos and customer quotes (with permission), and state the duration and the realistic result."
+  },
+  "when_not_to_use": {
+    "ar": "لا تصلح إذا كان التقييم مبنيًا على أقل من خمس مراجعات أو إذا لم تتوفر طاقة لها.",
+    "en": "Not suitable when the rating rests on fewer than five reviews or when there is no capacity for it."
+  },
+  "common_mistakes": [
+    {
+      "ar": "وعود نتائج مبالغ فيها",
+      "en": "Exaggerated promises of results"
+    }
+  ],
+  "measurement": {
+    "primary": "demand.views",
+    "design": "pre_post_with_control"
+  },
+  "examples": {
+    "good": [
+      {
+        "ar": "«جلسة النضارة — ٦٠ دقيقة، يقيّمها عميلاتنا ٥ نجوم»",
+        "en": "“Glow facial — 60 minutes, rated 5 stars by our customers”"
+      }
+    ],
+    "bad": [
+      {
+        "ar": "«يعالج كل مشاكل البشرة»",
+        "en": "“Treats every skin problem”"
+      }
+    ]
+  },
+  "source": {
+    "type": "internal_review",
+    "ref": "Loom marketing methodology review, beauty pack v1",
+    "reviewed_at": "2026-11-01"
+  },
+  "owner": "loom.methodology"
+}

@@ -1490,6 +1490,39 @@ export interface LoomInitiatives {
   window_to: string;
 }
 
+export interface LoomKnowledgeCitations {
+  business_id: string;
+  created_at: Generated<Timestamp>;
+  id: Generated<string>;
+  item_ref: string;
+  opportunity_id: string | null;
+  plan_action_id: string | null;
+  planner_run_id: string | null;
+  unit_id: string;
+  unit_version: number;
+  used_by: string;
+}
+
+export interface LoomKnowledgeUnits {
+  channels: Generated<string[]>;
+  common_mistakes: Generated<Json>;
+  content_hash: string;
+  created_at: Generated<Timestamp>;
+  detectors: Generated<string[]>;
+  examples: Json;
+  guidance: Json;
+  id: string;
+  interventions: Generated<string[]>;
+  measurement: Json;
+  owner: string;
+  reviewed_at: string;
+  sectors: string[];
+  source: Json;
+  title: Json;
+  version: number;
+  when_not_to_use: Json;
+}
+
 export interface LoomLoomSettings {
   key: string;
   updated_at: Generated<Timestamp>;
@@ -1560,6 +1593,7 @@ export interface LoomOpportunities {
   status: string;
   subject: Generated<Json>;
   updated_at: Generated<Timestamp>;
+  wording: Json | null;
 }
 
 export interface LoomOpportunityChecks {
@@ -1571,6 +1605,15 @@ export interface LoomOpportunityChecks {
   id: Generated<string>;
   opportunity_id: string;
   status: string;
+}
+
+export interface LoomOpportunityComments {
+  author_id: string;
+  body: string;
+  business_id: string;
+  created_at: Generated<Timestamp>;
+  id: Generated<string>;
+  opportunity_id: string;
 }
 
 export interface LoomOpportunityEvents {
@@ -1622,6 +1665,67 @@ export interface LoomOutcomes {
   primary_metrics: Generated<Json>;
   window_from: string;
   window_to: string;
+}
+
+export interface LoomPlanActions {
+  action_kind: string;
+  audience: Generated<Json>;
+  budget_basis: Generated<string>;
+  budget_minor: number | null;
+  business_id: string;
+  channels: Generated<string[]>;
+  content_idea: Json | null;
+  created_at: Generated<Timestamp>;
+  description: Json;
+  evidence_refs: Generated<string[]>;
+  highlighted: Generated<Json>;
+  id: Generated<string>;
+  intervention_id: string | null;
+  knowledge_refs: Generated<string[]>;
+  operational: Generated<Json>;
+  opportunity_id: string | null;
+  owner: Json;
+  plan_id: string;
+  plan_kind: string;
+  plan_version_id: string;
+  planner_run_id: string | null;
+  ref: string;
+  revision_note: Json | null;
+  role: Generated<string>;
+  schedule_from: string | null;
+  schedule_to: string | null;
+  seq: number;
+  success_metrics: Generated<Json>;
+  title: Json;
+}
+
+export interface LoomPlannerRuns {
+  ai_reason: string | null;
+  ai_run_id: string | null;
+  analysis_id: string | null;
+  business_id: string;
+  candidates_hash: string | null;
+  created_at: Generated<Timestamp>;
+  error_code: string | null;
+  error_message: string | null;
+  finished_at: Timestamp | null;
+  id: Generated<string>;
+  kind: string;
+  mode: Generated<string>;
+  model: string | null;
+  period_from: string | null;
+  period_to: string | null;
+  plan_id: string | null;
+  plan_version_id: string | null;
+  prompt_version: string | null;
+  reason: Json | null;
+  requested_by: string | null;
+  result: Generated<Json>;
+  source: string | null;
+  started_at: Timestamp | null;
+  status: Generated<string>;
+  trigger: Generated<string>;
+  validation: Generated<Json>;
 }
 
 export interface LoomSourceMappings {
@@ -2400,6 +2504,7 @@ export interface PromptVersions {
   created_at: Generated<Timestamp>;
   description: string | null;
   key: string;
+  model_tier: string | null;
   output_schema: Json;
   version: string;
 }
@@ -3536,14 +3641,19 @@ export interface DB {
   "loom.feedback": LoomFeedback;
   "loom.initiative_executions": LoomInitiativeExecutions;
   "loom.initiatives": LoomInitiatives;
+  "loom.knowledge_citations": LoomKnowledgeCitations;
+  "loom.knowledge_units": LoomKnowledgeUnits;
   "loom.loom_settings": LoomLoomSettings;
   "loom.metric_definitions": LoomMetricDefinitions;
   "loom.metric_values": LoomMetricValues;
   "loom.opportunities": LoomOpportunities;
   "loom.opportunity_checks": LoomOpportunityChecks;
+  "loom.opportunity_comments": LoomOpportunityComments;
   "loom.opportunity_events": LoomOpportunityEvents;
   "loom.opportunity_evidence": LoomOpportunityEvidence;
   "loom.outcomes": LoomOutcomes;
+  "loom.plan_actions": LoomPlanActions;
+  "loom.planner_runs": LoomPlannerRuns;
   "loom.source_mappings": LoomSourceMappings;
   "loom.sync_runs": LoomSyncRuns;
   loyalty_accounts: LoyaltyAccounts;

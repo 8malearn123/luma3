@@ -1,0 +1,60 @@
+{
+  "id": "pb.measurement.campaign_review",
+  "version": 1,
+  "title": {
+    "ar": "مراجعة نتيجة الحملة مقابل الضابط",
+    "en": "Review a campaign against its holdout"
+  },
+  "applies_to": {
+    "sectors": [
+      "beauty"
+    ],
+    "detectors": [
+      "campaign_learning"
+    ],
+    "interventions": [
+      "review_results"
+    ],
+    "channels": [
+      "in_app"
+    ]
+  },
+  "guidance": {
+    "ar": "قبل تكرار حملة قارني المجموعة المستهدفة بالضابطة؛ المنسوب ليس إضافيًا. لا تحكمي بعينة أقل من ٣٠ في كل مجموعة.",
+    "en": "Before repeating a campaign, compare the target group with the holdout; attributed is not incremental. Do not judge with fewer than 30 in each group."
+  },
+  "when_not_to_use": {
+    "ar": "لا يصلح لحملة بلا مجموعة ضابطة (النتيجة وصفية فقط).",
+    "en": "Not suitable for a campaign without a holdout (descriptive only)."
+  },
+  "common_mistakes": [
+    {
+      "ar": "اعتبار كل حجز بعد الحملة نتيجة لها",
+      "en": "Treating every booking after the campaign as its result"
+    }
+  ],
+  "measurement": {
+    "primary": "campaign.incremental_bookings",
+    "design": "holdout"
+  },
+  "examples": {
+    "good": [
+      {
+        "ar": "تكرار التذكير فقط لأن الفرق مع الضابط موجب بعينة كافية",
+        "en": "Repeat the reminder only because the holdout difference is positive with enough sample"
+      }
+    ],
+    "bad": [
+      {
+        "ar": "«الحملة نجحت لأن الحجوزات زادت»",
+        "en": "“The campaign worked because bookings went up”"
+      }
+    ]
+  },
+  "source": {
+    "type": "internal_review",
+    "ref": "Loom marketing methodology review, beauty pack v1",
+    "reviewed_at": "2026-11-01"
+  },
+  "owner": "loom.methodology"
+}

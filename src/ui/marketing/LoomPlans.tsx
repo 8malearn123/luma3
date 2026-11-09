@@ -12,6 +12,7 @@ import { Field, Input, Select, Textarea } from '../components/form';
 import { Card, Tabs } from '../components/layout';
 import { Drawer } from '../components/overlay';
 import { loomKey, PlanStatus, SourceBadge, useAct } from './loom-shared';
+import { LoomPlanActions } from './LoomPlanActions';
 
 const ACTIONS_BY_STATUS: Record<string, string[]> = {
   draft: ['propose', 'review', 'approve', 'defer', 'reject'],
@@ -103,6 +104,7 @@ function PlanDrawer({ id, onClose }: { id: string; onClose: () => void }) {
           {mode === 'diff' ? <VersionDiff planId={id} versions={p.versions.map((x: any) => x.version)} />
             : mode === 'edit' ? <PlanEditor key={p.versions[0].id} planId={id} version={p.versions[0]} onDone={() => setMode('view')} />
               : <PlanContentView v={v} locale={locale} />}
+          {mode === 'view' ? <LoomPlanActions planId={id} versionId={v.id} /> : null}
           <Provenance v={v} />
           <Card title={<span className="inline-flex items-center gap-2"><MessageSquare className="size-4" aria-hidden />{t('marketing.plan.comments')}</span>}>
             {p.comments.length ? (

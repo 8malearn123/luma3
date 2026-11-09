@@ -1,0 +1,62 @@
+{
+  "id": "pb.demand.open_slots_waitlist",
+  "version": 1,
+  "title": {
+    "ar": "فتح خانات وقائمة انتظار للطلب غير الملبّى",
+    "en": "Open slots and a waitlist for unserved demand"
+  },
+  "applies_to": {
+    "sectors": [
+      "beauty"
+    ],
+    "detectors": [
+      "unserved_demand"
+    ],
+    "interventions": [
+      "open_slots",
+      "waitlist_flow"
+    ],
+    "channels": [
+      "storefront",
+      "in_store"
+    ]
+  },
+  "guidance": {
+    "ar": "عندما يبحث العملاء ولا يجدون موعدًا، الحل تشغيلي لا ترويجي: افتحي خانات إضافية في الأوقات المطلوبة إن وُجدت أخصائية مؤهلة، وفعّلي قائمة انتظار تُبلغ عند الإلغاء.",
+    "en": "When customers search and find no appointment, the fix is operational, not promotional: open extra slots at the requested times if a qualified specialist exists, and enable a waitlist that notifies on cancellations."
+  },
+  "when_not_to_use": {
+    "ar": "لا تروّجي للخدمة أثناء امتلاء مواعيدها.",
+    "en": "Never promote the service while its slots are full."
+  },
+  "common_mistakes": [
+    {
+      "ar": "حملة إعلانية لخدمة ممتلئة",
+      "en": "Advertising a fully booked service"
+    }
+  ],
+  "measurement": {
+    "primary": "demand.availability_empty",
+    "design": "pre_post_with_control"
+  },
+  "examples": {
+    "good": [
+      {
+        "ar": "فتح ساعتين مساء الخميس للأخصائية المؤهلة",
+        "en": "Open two Thursday evening hours for the qualified specialist"
+      }
+    ],
+    "bad": [
+      {
+        "ar": "«احجزي الآن!» لخدمة بلا مواعيد",
+        "en": "“Book now!” for a service with no slots"
+      }
+    ]
+  },
+  "source": {
+    "type": "internal_review",
+    "ref": "Loom marketing methodology review, beauty pack v1",
+    "reviewed_at": "2026-11-01"
+  },
+  "owner": "loom.methodology"
+}

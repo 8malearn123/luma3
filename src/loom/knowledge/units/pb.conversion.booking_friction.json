@@ -1,0 +1,62 @@
+{
+  "id": "pb.conversion.booking_friction",
+  "version": 1,
+  "title": {
+    "ar": "تقليل احتكاك الحجز",
+    "en": "Reduce booking friction"
+  },
+  "applies_to": {
+    "sectors": [
+      "beauty"
+    ],
+    "detectors": [
+      "conversion_friction"
+    ],
+    "interventions": [
+      "simplify_booking",
+      "faq",
+      "improve_description"
+    ],
+    "channels": [
+      "storefront"
+    ]
+  },
+  "guidance": {
+    "ar": "إذا بدأت الزائرات الحجز ولم يكملنه فراجعي الخطوات: عدد الحقول، وشروط العربون، ووضوح السعر والمدة. أجيبي عن أسباب التردد في أسئلة شائعة قصيرة.",
+    "en": "When visitors start booking but do not finish, review the steps: number of fields, deposit terms, clarity of price and duration. Answer the reasons for hesitation in short FAQs."
+  },
+  "when_not_to_use": {
+    "ar": "لا يصلح إذا كان السبب غياب المواعيد المتاحة (هذا طلب غير ملبّى).",
+    "en": "Not suitable when the cause is no available slots (that is unserved demand)."
+  },
+  "common_mistakes": [
+    {
+      "ar": "إضافة خطوات تحقق غير ضرورية",
+      "en": "Adding unnecessary verification steps"
+    }
+  ],
+  "measurement": {
+    "primary": "demand.start_to_confirm",
+    "design": "pre_post_with_control"
+  },
+  "examples": {
+    "good": [
+      {
+        "ar": "توضيح أن العربون يُخصم من السعر النهائي",
+        "en": "Clarify that the deposit is deducted from the final price"
+      }
+    ],
+    "bad": [
+      {
+        "ar": "نافذة منبثقة تطلب التسجيل قبل رؤية المواعيد",
+        "en": "A pop-up demanding sign-up before seeing slots"
+      }
+    ]
+  },
+  "source": {
+    "type": "internal_review",
+    "ref": "Loom marketing methodology review, beauty pack v1",
+    "reviewed_at": "2026-11-01"
+  },
+  "owner": "loom.methodology"
+}

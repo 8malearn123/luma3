@@ -84,7 +84,7 @@ export async function requestAiJob(tenantId: string, opts: {
 }
 
 /** Atomically consumes one unit of limit.ai_runs_monthly for the tenant-local month. */
-async function consumeAiBudget(trx: Tx, tenantId: string, limit: number | null, monthStart: string): Promise<boolean> {
+export async function consumeAiBudget(trx: Tx, tenantId: string, limit: number | null, monthStart: string): Promise<boolean> {
   const r = await sql<{ value: number }>`
     insert into usage_counters (tenant_id, metric, period_start, value) values (${tenantId}, 'ai_runs', ${monthStart}, 1)
     on conflict (tenant_id, metric, period_start) do update set value = usage_counters.value + 1

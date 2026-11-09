@@ -2,6 +2,7 @@
 
 > Target product concept and architecture for Loom Marketing (gap analysis, canonical model, engines, API, phases): [LOOM_MARKETING_ARCHITECTURE.md](LOOM_MARKETING_ARCHITECTURE.md).
 > The independent Loom core (connector, metrics registry, quality gate, opportunity engine, Loom API v1, setup checklist, platform settings) is documented in [LOOM_CORE.md](LOOM_CORE.md). The plans/recommendations pipeline below still runs alongside it.
+> **Phase 3:** plans are now prepared by the Loom planner from opportunities (`POST /loom/plans`, validator v2, `loom.plan_actions`, knowledge citations; see LOOM_CORE.md §10–§13). The legacy recommendations and the «الملخص» tab are deprecated but kept (LOOM_CORE.md §8). `runAi` accepts `modelTier` (`OPENAI_MODEL_STRONG`, optional) and `prompt_versions.model_tier` records it.
 
 | File | Role |
 |---|---|

@@ -1,8 +1,8 @@
-# Loom Marketing Core (phases 1–2, 5)
+# Loom Marketing Core (phases 1–3, 5)
 
 > Spec: [LOOM_MARKETING_ARCHITECTURE.md](LOOM_MARKETING_ARCHITECTURE.md) (§4–§8, §14, §15, §20). This file documents what is built, the contracts later phases build on, and how to extend them.
 
-Loom core is an independent module in `src/loom/` with its own schema `loom`. It reads LUMA only through the **LUMA connector** (read-only views in schema `loom_export`) and changes LUMA only through LUMA's **ActionPort** (`src/server/loom-host/actions.ts`). The engine is deterministic and rules-based; no AI is involved in phases 1–2.
+Loom core is an independent module in `src/loom/` with its own schema `loom`. It reads LUMA only through the **LUMA connector** (read-only views in schema `loom_export`) and changes LUMA only through LUMA's **ActionPort** (`src/server/loom-host/actions.ts`). The engine is deterministic and rules-based; no AI is involved in phases 1–2. Phase 3 adds the planner (AI wording with a rules fallback), validator v2, plans from opportunities, the knowledge layer and the home page (§10–§13 below).
 
 ## 1. Boundary
 
@@ -11,9 +11,9 @@ Loom core is an independent module in `src/loom/` with its own schema `loom`. It
 | Nothing in `src/loom/**` imports `src/server/domains/**`, `src/app/**`, `src/ui/**` or `@/shared/schemas/*` | `tests/unit/loom-architecture.test.ts`, ESLint `no-restricted-imports` on `src/loom/**` |
 | Shared infrastructure only from an allowlist: `@/server/db/client`, `@/server/db/schema.generated` (types), `@/server/infra/audit`, `@/server/infra/outbox`, `@/server/http/errors`, `@/server/jobs/registry` (re-exported by `src/loom/db.ts`) | architecture test |
 | Query builders and raw SQL in `src/loom` name only `loom.*` and `loom_export.*` relations | architecture test (derives the public table list from `schema.generated.ts`) |
-| Loom writes only schema `loom`; LUMA writes (plan items, campaign drafts, price proposals) go through `ActionPort` in the host | `src/server/loom-host/actions.ts` is the only file importing both `@/loom` and LUMA domains |
+| Loom writes only schema `loom`; LUMA writes (plan items, campaign drafts, price proposals) go through `ActionPort` in the host | `src/server/loom-host/{actions,planner-port}.ts` are the only files importing both `@/loom` and LUMA domains |
 
-The host glue lives outside the core: `src/server/loom-host/{access,actions}.ts`, the routes in `src/app/api/v1/t/[tenantSlug]/loom/*` and `src/app/api/v1/platform/loom/settings`, and the UI in `src/ui/marketing/Loom{Opportunities,Setup}.tsx` and `src/ui/platform/admin/LoomSettingsPage.tsx`.
+The host glue lives outside the core: `src/server/loom-host/{access,actions,planner-port}.ts` (`planner-port.ts` implements the phase-3 `LoomHost` ports: AI through `runAi` and plans through the marketing domain), the routes in `src/app/api/v1/t/[tenantSlug]/loom/*` and `src/app/api/v1/platform/loom/settings`, and the UI in `src/ui/marketing/Loom{Opportunities,Setup}.tsx` and `src/ui/platform/admin/LoomSettingsPage.tsx`.
 
 ## 2. Storage decision
 
@@ -31,6 +31,12 @@ Canonical records are **not stored**. Each analysis pulls every canonical entity
 | `opportunities` | one row per fingerprint: status, bilingual card (`CardContent`), rank, bucket, decision, conversions, subject + reserved volume | updatable |
 | `opportunity_evidence`, `opportunity_checks`, `opportunity_events` | evidence rows (`ev_…` ids cited by cards), check results per analysis, lifecycle history | append-only |
 | `loom_settings` | platform settings (`platform.<key>` → JSON) with versions | system scope only |
+| `planner_runs` (0710) | one row per plan generation / revision: kind, mode, source (ai/rules), `ai_reason`, `ai_run_id`, `candidates_hash`, plan + version ids, validation report, the plan draft | updatable; one live run per (business, kind) |
+| `plan_actions` (0710) | the structured actions of a plan version (FK to `plan_versions` and to the opportunity): role, kind, schedule, owner, budget, operational checks, highlighted offerings with real slots and materials, evidence + knowledge refs, revision note | append-only |
+| `knowledge_units` (0710) | mirror of the curated library `src/loom/knowledge/units/*.json`, `(id, version)` + content hash | global, insert-only (system scope) |
+| `knowledge_citations` (0710) | every use of a unit by a card (`card:<opportunity>`) or a plan action (`plan_action:la_n`), with the planner run and `used_by` (planner_ai / rules) | append-only |
+| `opportunity_comments` (0710) | notes on an opportunity (generalises `plan_comments`) | append-only |
+| `opportunities.wording` (0710) | the latest validated planner wording (bilingual) with provenance; used only while its `basis` hash matches the card's rules text | updatable |
 | `decision_history` (0730) | §10.1 decision ladder: one row per stage per opportunity / initiative | append-only |
 | `feedback` (0730) | like / dislike reactions (taste, never an outcome) | append-only |
 | `initiatives` (0730) | §10.2 initiative record; `baseline`, `baseline_data_version`, `baseline_analysis_id`, `original_proposal` and the artifact link are frozen by trigger `loom.freeze_initiative` | updatable (frozen columns), never deleted |
@@ -59,6 +65,13 @@ Every business table has `business_id` (= LUMA tenant id) with RLS `app.tenant_v
 | Profile: `ProfileFact`, `resolveProfile(facts, goals, platformWeights)` → `ResolvedProfile { goals, prefs, competitor_prices, setup }`, `EXPLICIT_FACTS`, `SETUP_ITEMS`, `GOAL_KINDS` | `src/loom/profile/facts.ts` | |
 | Settings: `getPlatformSettings()`, `updatePlatformSettings(actor, patch)`, `platformSettingsSchema`, `PLATFORM_DEFAULTS`, `RankingWeights` | `src/loom/settings/platform.ts` | |
 | Pipeline: `requestAnalysis(businessId, …)`, `runAnalysis(id, businessId, { now })`, `analyzeNow(businessId)`, job kind `loom.analysis` | `src/loom/analysis/run.ts`, `src/loom/jobs.ts` | |
+| Plan contract: `PlanDraft`, `PlanAction`, `HighlightedOffering`, `PlanRevisionChange`, `PlanKind` | `src/loom/contracts/plan.ts` | bilingual §11.2 plan; the host renders it, Loom keeps actions as rows |
+| Host ports: `LoomHost { ai: PlannerAiPort, plans: PlanStorePort }`, `registerLoomHost()`, `loomHost()`, `PlannerAiError` | `src/loom/contracts/host.ts` | implemented by LUMA in `src/server/loom-host/planner-port.ts` |
+| Planner: `generatePlanNow()`, `requestPlan()`, `runPlannerRun()`, job `loom.plan`, `loadPlanningContext()`, `plannerOutput` (zod), `plannerPrompt()`, `runTools()` | `src/loom/planner/*` | §10 |
+| Revisions: `proposePlanRevision(businessId, planId, reason, changes, opts?)`, `applyRevision()` | `src/loom/planner/revision.ts` | §12 — the entry point for phase 5's change aggregator |
+| Validator v2: `validatePlannerOutput()`, `validatePlanDraft()`, `checkText()`, `ensureReviewAt()`, `HEALTH_CLAIM_PATTERNS` | `src/loom/validator/validate.ts` | §11 |
+| Knowledge: `knowledgeLibrary()`, `rankUnits()`, `retrieveKnowledge()`, `recordCitations()`, `knowledgeTitles()`, `listKnowledgeUnits()` | `src/loom/knowledge/*` | §13 |
+| Phase-3 API service: `loomPlannerApi.*` (`startPlan`, `listPlannerRuns`, `getPlanActions`, `home`, `listComments`, `addComment`, `platformKnowledge`), `planRequestInput`, `commentInput` | `src/loom/api/planner.ts` | |
 | Memory (phase 5): `recordLadder`, `recordView`, `recordReaction`, `inferBrandFit`, `LADDER_STAGES`; `createInitiative`, `recordExecution`, `applyEdits`, `goalMetricsFor`; `measureInitiative` (pure), `MIN_GROUP_FOR_INCREMENTAL`, `NOT_CAUSAL`; `measureBusiness`, `MEASURE_JOB` | `src/loom/memory/{ladder,initiatives,measure,outcomes}.ts` | see §10–§11 |
 | Change aggregator: `recordChange`, `eventThreshold`, `processChanges`, `scheduleDueChanges`, `CHANGE_RULES`, `CHANGE_TOPIC`, `CHANGES_JOB`, `loomEngaged` | `src/loom/memory/changes.ts` | see §12 |
 | PlanRevisionPort: `PlanRevisionPort { approvedPlans(businessId, planIds), proposePlanRevision(businessId, planId, reason, changes) }`, `setPlanRevisionPort()` | `src/loom/contracts/plan-revision.ts` | host adapter `src/server/loom-host/plan-revisions.ts` |
@@ -97,7 +110,7 @@ Reads only `loom_export.*` inside `withTenant(business_id)`. Views are `security
 
 **Business setup checklist (`GET/PUT /loom/setup`, tab «إعداد لووم»):** goals, monthly budget, discount policy (`no_discounts` / max discount), excluded and growth offerings, content tone, ranking weights (accept the platform default or customise, each ≤ .5, sum = 1), shared-training consent (owner only, default false). Each item shows «مطلوب» until an explicit fact confirms it. Analyses still run; every card lists the unconfirmed items in `limitations` and says when the platform default weights were used.
 
-## 5. API v1 (phases 1–2, 5)
+## 5. API v1 (phases 1–3, 5)
 
 All under `/api/v1/t/{slug}/loom`, plan feature `feature.marketing_ai`. Capability mapping (`src/server/loom-host/access.ts`): `loom.view` → `marketing.view | marketing.manage`, `loom.manage` → `marketing.manage`, `loom.connections.manage` → `business.manage`.
 
@@ -112,6 +125,11 @@ All under `/api/v1/t/{slug}/loom`, plan feature `feature.marketing_ai`. Capabili
 | `POST opportunities/{id}/convert` `{ target: plan_action | campaign_draft(channel?) | price_proposal(proposed_price_minor) }` | manage (+ `feature.campaigns` / `catalog.edit`) | executed by LUMA's ActionPort |
 | `GET connections` | `business.manage` | status, last sync, health, manifest |
 | `GET/PUT /api/v1/platform/loom/settings` | `platform.loom.manage` (+ step-up for PUT) | |
+| `GET home` (phase 3) | view | §11.3 home: situation tiles with trend, data-quality strip + improvements, top ≤5, current plan and this week, pending decisions (opportunities + plan revisions with reason), alerts, setup; `results` is a placeholder for phase 5 |
+| `POST plans` `{ kind: monthly|weekly, period_start?, mode?: auto|rules }` → `202 { job_id }` · `GET plans` (planner runs) | manage · view | one live run per kind |
+| `GET plans/{id}/actions[?version_id=]` | view | structured actions of a version (checks, materials, real slots, owners, knowledge) + the run's notes |
+| `GET/POST opportunities/{id}/comments` `{ body }` | view · manage | notes; `GET opportunities/{id}` now also returns `knowledge` («مرجع المنهجية») and `comments` |
+| `GET /api/v1/platform/loom/knowledge` | `platform.loom.manage` | read-only knowledge library with review flags and citation counts |
 | `POST opportunities/{id}/feedback` `{ kind: viewed } \| { kind: reaction, reaction: like \| dislike \| none }` | view | phase 5 ladder stages `viewed` / `reacted` |
 | `GET initiatives?status=` · `GET initiatives/{id}` · `GET initiatives/{id}/outcome` | view | phase 5 |
 | `POST initiatives/{id}/executions` `{ executed_from, executed_to, channel?, audience_size?, actual_cost_minor?, note? }` | manage | manual execution entry |
@@ -132,21 +150,90 @@ Statuses: `detected → assessed → proposed → (studying | deferred | dismiss
 
 ## 8. Relation to the existing marketing pipeline
 
-The plans/recommendations pipeline (`src/server/domains/marketing/*`, `ai_jobs`) is unchanged and still produces plans and recommendations from `rules.ts` / the LLM. Loom opportunities are produced by the new engine and shown in the «الفرص» tab; conversions append plan versions or create campaign drafts / price proposals through the existing domain functions. Moving recommendations and plans onto Loom opportunities is phase 3 (planner + plan_actions).
+Since phase 3 the Loom planner writes plans into the same `marketing_plans` / `plan_versions` (through the host's `PlanStorePort`, append-only, approval untouched), so the «الخطط» tab shows Loom plans and legacy plans side by side; a Loom version additionally has rows in `loom.plan_actions`, shown in the plan drawer («بنود الخطة من لووم»).
+
+**Deprecated (kept for backward compatibility, data and routes unchanged):**
+
+| Legacy | Replaced by | Status |
+|---|---|---|
+| `marketing/recommendations` (rules/LLM recommendations, `recommendations` table, `GET/POST /marketing/recommendations*`) | Loom opportunities (`/loom/opportunities`) | hidden from the tab bar; reachable with `?tab=recommendations` behind a deprecation notice |
+| «الملخص» tab (`?tab=summary`, `GET /marketing/summary`) | «الرئيسية» (`GET /loom/home`) | default tab is now `home`; summary reachable by URL |
+| `marketing.ai_job` kinds `monthly_plan` / `weekly_plan` / `recommendations` (`marketing/pipeline.ts`, `rules.ts`, `validate.ts`, `prompts.ts`) | `loom.plan` job (`POST /loom/plans`) with validator v2 | still callable (`POST /marketing/jobs`, scheduler); the home page uses the Loom planner |
+
+`trend_assessment`, `employee_insights`, campaigns and the trend radar are not affected.
 
 ## 9. Tests
 
-`tests/unit/loom-{architecture,engine,economics,connector,metrics-quality,ranking}.test.ts` (pure, synthetic datasets in `tests/helpers/loom-dataset.ts`) and `tests/integration/loom-{core,api,settings}.test.ts` (DB, fixtures in `tests/helpers/loom-core.ts`). §20 coverage on the rules path: T1, T2, T3, T4, T5, T6, T7, T8, T11, T12, T13, T15 (T9, T14 belong to phase 3).
+`tests/unit/loom-{architecture,engine,economics,connector,metrics-quality,ranking}.test.ts` (pure, synthetic datasets in `tests/helpers/loom-dataset.ts`) and `tests/integration/loom-{core,api,settings}.test.ts` (DB, fixtures in `tests/helpers/loom-core.ts`). §20 coverage on the rules path: T1, T2, T3, T4, T5, T6, T7, T8, T11, T12, T13, T15 (T9, T10, T14 belong to phases 3 and 5).
+
+Phase 3: `tests/unit/loom-planner-{validator,knowledge}.test.ts` and `tests/integration/loom-planner-{plans,api}.test.ts` — planner with a fake AI provider (wording, provenance, model tier, re-ask, read tools, budget overflow), T9 (rules fallback, budget exhausted, previous plans intact), T10 (revision proposal), T14 (unsupported numbers), T12 (planner cache, citations, plan actions, comments), sector-filtered retrieval, citations persisted, weekly slots and materials, home page and routes.
 
 Phase 5: `tests/unit/loom-memory.test.ts` (measurement: MIN_GROUP 30 boundary, quasi, observational + diff-in-diff, guardrails; thresholds; window occupancy; edits diff; revision content) and `tests/integration/loom-memory-{ladder,changes,measure}.test.ts`: ladder stages append-only, reactions stored apart, edit + approve diff, frozen baseline, brand_fit inference + confirmation, T13 ladder + resurfacing (capacity, budget), **T10** (stock movement → outbox → signal → revision version, approved untouched, idempotent), leave > 20 %, thresholds / aggregation / cool-down / no duplicate pending signal, isolation, observational and insufficient measurement, campaign holdout insufficient (< 30) and experimental (30/30).
 
-## 10. Decision ladder and initiatives (phase 5, §10.1–§10.2)
+## 10. Planner (phase 3, §6.9)
+
+`POST /loom/plans` → `loom.planner_runs` (queued) + job `loom.plan` → `runPlannerRun`:
+
+1. **Context** (`loadPlanningContext`): the latest succeeded analysis, the profile, the canonical dataset (through the connector), and the selected opportunities — accepted/converted first, then open ones by rank (k = 6 monthly, 5 weekly); blocked ones become operational prerequisites. For each: evidence rows (`ev_*`), computed facts (`cf_<ref>_*`: capacity, covers, segment, discount, break-even, margin, cost, free slots, baselines), free slots in the plan window, materials, and up to 2 retrieved knowledge units. Verified calendar events only. `candidates_hash` covers all of it.
+2. **AI or rules**: `mode = rules` → rules; no provider → `ai_disconnected`; `consumeBudget` false → `ai_budget_exhausted`; any `PlannerAiError` → `ai_failed`. One budget unit per run.
+3. **AI wording** (`PlannerAiPort.run`, strict JSON `plannerOutput`, prompt `loom.planner.monthly` (tier strong) / `loom.planner.weekly` (tier standard), registered in `prompt_versions` with `model_tier`). Input = redacted aggregates only (no names, contacts or customer ids). The cache key = digest(business, prompt, version, candidates hash, snapshot hash, period, round); `runAi` also filters by tenant and model.
+4. **Read tools** (optional, `src/loom/planner/tools.ts`): the model may return up to 3 `tool_requests` once — `get_metric(metric_key, grain_ref = business | offering_ref:O<n>)`, `get_segment_size(conditions on O<n> offerings / last visit)`, `get_capacity(offering_ref, window)`. Answered in code from this business's context only (no SQL), segments under 5 customers withheld; results are citable as `tr_<n>`.
+5. **Validator v2** (§11) → one bounded re-ask with `validation_errors` → per-item fallback to rules wording (`validation.rules_fallback`), plan head kept only when valid.
+6. **Plan assembly** (`buildPlanDraft`, same function for AI and rules): goals, computed baseline, actions (role, schedule inside the period, owner role, budget from computed costs or a validated AI assumption, operational capacity/inventory checks and prerequisites, highlighted offerings with real free slots, sample times and materials for weekly plans, success metrics, evidence + knowledge refs), budget trimmed to the business budget (a weekly plan gets a quarter of the monthly budget), limitations (unconfirmed setup, exploratory data, "targets are goals"), visible notes (e.g. «الذكاء الاصطناعي غير متصل؛ هذه خطة بالقواعد.»). Promotional actions with no free slot are left out with a note.
+7. **Store** (`storeVersion`): `PlanStorePort.saveVersion` appends a version (creates the plan if needed; a weekly plan without a monthly plan gets an automatic rules monthly draft as parent), then `loom.plan_actions`, card wording (`opportunities.wording`) and knowledge citations.
+
+Rules fallback (T9) produces exactly the same `PlanDraft` with the engine's bilingual card text; previous versions and the approved version are never touched. The deterministic parts (numbers, budgets, checks, slots) are always computed in code — the model only words.
+
+## 11. Validator v2 (§6.10)
+
+`validatePlannerOutput(output, ValidationContext)` (pure) rejects per item (card / initiative) or the whole plan:
+
+| Check | Code | Effect |
+|---|---|---|
+| every number in text is declared with an allowed ref (`ev_*`, `cf_*`, `tr_*`) whose value matches (raw, rounded, ×100 %, ÷100 money), or tagged `assumption` (shown on the card) | `unsupported_number`, `unknown_reference`, `reference_value_mismatch` | reject item (T14) |
+| proposed spend + computed costs ≤ business budget | `budget_overflow` | reject plan head; rules budget kept |
+| `checks_acknowledged` = computed capacity / inventory / margin | `checks_inconsistent` | reject item |
+| `no_discounts` (discount words), discount % above the cap, excluded offering names, tone banned words | `discount_not_allowed`, `discount_over_cap`, `excluded_offering`, `banned_word` | reject item |
+| health / therapeutic claims: `HEALTH_CLAIM_PATTERNS` (Arabic + English) + the sector pack's `forbiddenClaims` | `health_claim` | reject item |
+| promotional item on a blocked offering or with 0 free slots in the window | `full_slot_promotion` | reject item |
+| ISO dates only from verified events or inside the plan period; unknown `event_ref` and knowledge refs are dropped (flag) | `unverified_date` | reject item / drop |
+| `review_at` | — | `ensureReviewAt` defaults to today + 14 |
+
+`validatePlanDraft(draft, { prefs })` re-checks the final plan (AI or rules): budget, discount actions under `no_discounts`, promotional actions on blocked capacity or zero-slot highlights, checks present.
+
+## 12. Plans, plan actions and revisions (§11.2, T10)
+
+Plans and versions stay in LUMA (`marketing_plans` / `plan_versions`, rendered in the business locale by `toPlanContent` in the host port); Loom stores the structured actions in `loom.plan_actions` per version and the full draft in `planner_runs.result.draft`.
+
+**Contract for phase 5's change aggregator:**
+
+```ts
+import { proposePlanRevision } from '@/loom';
+await proposePlanRevision(businessId, planId,
+  { ar: 'نفدت مادة السيروم', en: 'The serum ran out' },            // reason (Localized or string)
+  [{ kind: 'pause_action', action_ref: 'la_1', note: { ar: '…', en: '…' } }],  // PlanRevisionChange[]
+  { trigger: 'change', actorId: null });
+// → { status: 'proposed', plan_id, version_id, version, approved_version_id, run_id }
+//   | { status: 'skipped', reason: 'plan_closed' | 'no_effect' }
+```
+
+Changes: `pause_action`, `remove_action`, `reschedule_action`, `add_requirement`, `pause_opportunity` (every action of an opportunity). The function reads the latest version's actions, applies the changes, and appends a NEW version (`change_note = "revision: <reason>"`, `validation.status = revision_proposed`, a `planner_runs` row of kind `revision` with the reason). `approved_version_id` never changes; the plan shows «تعديل بانتظار الاعتماد» and the home page lists it under «بانتظار قرارك» with its reason. Plans without Loom actions (legacy/manual) raise `not_a_loom_plan`. The host ports must be registered (`import '@/server/loom-host/planner-port'`; the job index does it).
+
+## 13. Knowledge layer (§9)
+
+- **Library:** `src/loom/knowledge/units/<id>.json` (schema `knowledgeUnitSchema`: id, version, title, applies_to {sectors, detectors, interventions, channels}, guidance, when_not_to_use, common_mistakes, measurement {primary, design}, examples {good, bad}, source {type, ref, reviewed_at}, owner) listed in `units.ts`. 19 beauty units cover every beauty detector (+ `capacity_prerequisite`) and every intervention of the pack (unit-tested); one retail unit exists to prove sector isolation. Changing a unit ⇒ bump its `version` (a new row; old rows stay).
+- **Sync:** `syncKnowledgeLibrary()` mirrors the library into `loom.knowledge_units` (system scope, insert-only) on first retrieval.
+- **Retrieval:** `retrieveKnowledge(trx, { sector, detector, intervention, channels, text })` — hard filter in SQL (`sectors @> [sector]` and detector OR intervention in scope) and again in code, then lexical ranking (intervention match, channel overlap, token overlap; generic units last). No unit outside the sector is ever returned. pgvector is not used. Units older than 12 months are flagged `needs_review` (never deleted).
+- **Citations:** every card and plan action that uses a unit writes `loom.knowledge_citations` (unit, version, opportunity, plan action, planner run, `used_by`). Cards show them as «مرجع المنهجية» (`GET /loom/opportunities/{id}` → `knowledge`).
+- **Platform view:** `/platform/loom` lists the units read-only (`GET /api/v1/platform/loom/knowledge`).
+
+## 14. Decision ladder and initiatives (phase 5, §10.1–§10.2)
 
 - **Ladder:** `loom.decision_history` stores each stage as its own append-only row: `viewed` (once per person per 12 h, usage only), `reacted` (like / dislike, also stored in `loom.feedback`; **never** read by measurement or ranking), `decided` (`approve | edit_approve | study | defer | dismiss | reopen`, categorised reason, `counts_as_idea_failure`), `scheduled` (conversion), `executed`, `completed` (window closed), `measured`. `decide()` writes the `decided` row in the same transaction as the status change; `opportunity_events` keeps the lifecycle history as before.
 - **Reasons:** `capacity_staffing`, `capacity_inventory`, `budget`, `timing` are not idea failures (T13) and resurface when the constraint clears: capacity / inventory when the re-run check passes (phase 2), `budget` when the explicit `pref.monthly_budget_minor` fact changed after the decision, `timing` after 30 days. The event is `reopened` with `capacity_available | inventory_available | budget_available | timing_elapsed`; the API returns `resurfaced` and the card shows «عادت للظهور لأن القيد زال». `brand_fit` writes an **inferred** fact `brand.avoid_intervention:<intervention_id>` with `needs_review = true`; it changes nothing until the owner confirms it with `PATCH profile { "brand.avoid_intervention:<id>": true }`, after which `profile.prefs.avoided_interventions` makes the selector skip that intervention.
 - **Initiative record:** the convert endpoint (after LUMA's ActionPort ran) calls `createInitiative` in the conversion transaction: one row per `(opportunity, artifact_kind, artifact_ref)` with `baseline` (the latest analysis' metric values for the business and the subject offerings, `success_metrics`, `data_version`, `analysis_id`), `original_proposal` (the card), `user_edits` (diff of the `edit_approve` edits), `approved_version` (card with edits), `goal_metrics` (by category), window, `measurement_design` (`holdout` for campaign drafts, `pre_post_with_control` otherwise). Baseline and proposal are frozen by trigger. `execution`, `results`, `external_factors`, `measurement_quality`, `learnings` are filled later.
 
-## 11. Measurement (§10.3)
+## 15. Measurement (§10.3)
 
 `measureInitiative(input)` is pure; `measureBusiness(businessId)` (job `loom.measure`, hourly fan-out `loom.measurement`, dedupe per business and hour) runs it:
 
@@ -165,7 +252,7 @@ Phase 5: `tests/unit/loom-memory.test.ts` (measurement: MIN_GROUP 30 boundary, q
 
 `loom_export.campaign_groups` (0730) adds the holdout conversions core lacked: per campaign and group (`target` / `holdout`) members, converters, completed bookings net of refunds, cancellations and refunds of bookings created inside the attribution window — the definition of `GET campaigns/{id}/results`.
 
-## 12. Change aggregator (§13)
+## 16. Change aggregator (§13)
 
 | Type (`scope`) | Host source | Threshold | Re-runs |
 |---|---|---|---|
@@ -181,7 +268,7 @@ Phase 5: `tests/unit/loom-memory.test.ts` (measurement: MIN_GROUP 30 boundary, q
 
 **Host surface added in LUMA:** `src/server/infra/domain-events.ts` (`emitDomainEvent` / `onDomainEvent`), one call each in `commerce/stock.ts` (`moveStock`), `hr/requests.ts` (`finalizeLeave`), `catalog/service.ts` (`updateService`, `decidePriceProposal`).
 
-## 13. UI
+## 17. UI
 
 - «النتائج» tab (`src/ui/marketing/LoomResults.tsx`, `LoomResults`): initiatives with status, artifact, window, what was executed (and a manual execution form), measurement design and quality badge with its meaning, metric table (before / during / control / estimate), attributed vs incremental, guardrails, limitations, external factors, learnings.
 - **Home embed for the planner:** `<LoomResultsSummary onViewAll={…} />` from `src/ui/marketing/LoomResults.tsx` (data: `GET /loom/results` → `{ counts, latest[≤5], alerts[≤5] }`) renders «نتائج المبادرات» and «تنبيهات جوهرية» (processed change signals with re-checks and proposed plan revisions). `<QualityBadge quality>` and `<DecisionHistory ladder>` are exported too.
