@@ -9,6 +9,7 @@ import { decide, DecisionError, markConverted, type DecisionInput } from '../opp
 import { loadFacts, loadGoals, replaceGoals, resolveProfile, validateExplicit, writeFact } from '../profile/facts';
 import { readPlatformSettings } from '../settings/platform';
 import { render, type LoomLocale } from '../util/text';
+import { createInitiativeFor, opportunityMemory, resurfacedMap } from './memory';
 import type { goalsInput, opportunityListQuery, preferencesInput, setupInput } from './schemas';
 
 /**
@@ -131,7 +132,9 @@ export async function getAnalysis(c: Pick<Ctx, 'businessId' | 'locale'>, id: str
   return analysisView(a, c.locale);
 }
 
-const rowView = (o: { id: string; business_id: string; card: unknown; status: string; display_bucket: string | null; evidence_strength: string | null; decision_reason: string | null; decided_at: Date | null; deferred_until: string | null; detector_id: string; conversion: unknown; updated_at: Date }, locale: LoomLocale) => ({
+const rowView = (o: { id: string; business_id: string; card: unknown; status: string; display_bucket: string | null; evidence_strength: string | null; decision_reason: string | null; decided_at: Date | null; deferred_until: string | null; detector_id: string; conversion: unknown; updated_at: Date }, locale: LoomLocale, resurfaced: { reason: string; at: Date } | null = null) => ({
+  // «عادت للظهور لأن القيد زال»: re-offered after a capacity / inventory / budget / timing rejection (§10.1, T13).
+  resurfaced,
   card: renderCard(o, locale), details: cardDetails(o, locale), status: o.status, bucket: o.display_bucket, evidence_strength: o.evidence_strength, detector_id: o.detector_id,
   decision: o.decided_at ? { reason: o.decision_reason, at: o.decided_at, deferred_until: o.deferred_until } : null, conversion: o.conversion, updated_at: o.updated_at,
 });
@@ -144,11 +147,12 @@ export async function listOpportunities(c: Pick<Ctx, 'businessId' | 'locale'>, q
     if (q.category) qb = qb.where('category', '=', q.category);
     if (q.bucket) qb = qb.where('display_bucket', '=', q.bucket);
     const rows = await qb.orderBy('priority_rank', 'asc').orderBy('updated_at', 'desc').limit(100).execute();
-    return rows.map((o) => rowView(o, c.locale));
+    const back = await resurfacedMap(trx, c.businessId, rows.map((o) => o.id));
+    return rows.map((o) => rowView(o, c.locale, back.get(o.id) ?? null));
   });
 }
 
-export async function getOpportunity(c: Pick<Ctx, 'businessId' | 'locale'>, id: string) {
+export async function getOpportunity(c: Pick<Ctx, 'businessId' | 'locale'> & { actor?: AuditActor }, id: string) {
   return withTenant(c.businessId, async (trx) => {
     const o = await trx.selectFrom('loom.opportunities').selectAll().where('business_id', '=', c.businessId).where('id', '=', id).executeTakeFirst();
     if (!o) throw Errors.notFound('opportunity');
@@ -156,8 +160,11 @@ export async function getOpportunity(c: Pick<Ctx, 'businessId' | 'locale'>, id: 
     const evidence = refs.length ? await trx.selectFrom('loom.opportunity_evidence').selectAll().where('business_id', '=', c.businessId).where('id', 'in', refs).execute() : [];
     const checks = await trx.selectFrom('loom.opportunity_checks').select(['check_type', 'status', 'details', 'created_at']).where('business_id', '=', c.businessId).where('opportunity_id', '=', id).orderBy('created_at', 'desc').limit(8).execute();
     const events = await trx.selectFrom('loom.opportunity_events').select(['event', 'from_status', 'to_status', 'reason', 'note', 'counts_as_idea_failure', 'created_at']).where('business_id', '=', c.businessId).where('opportunity_id', '=', id).orderBy('created_at').execute();
+    const back = await resurfacedMap(trx, c.businessId, [o.id]);
     return {
-      ...rowView(o, c.locale),
+      ...rowView(o, c.locale, back.get(o.id) ?? null),
+      // Phase 5: decision ladder (each stage), the caller's like/dislike (taste only) and initiatives.
+      ...(await opportunityMemory(trx, c.businessId, id, c.actor?.userId ?? null)),
       evidence: evidence.map((e) => ({ id: e.id, metric_key: e.metric_key, grain_ref: e.grain_ref, value: e.value, n: e.n, label: render(e.label as { ar: string; en: string }, c.locale), grade: e.grade })),
       checks: Object.values(Object.fromEntries(checks.reverse().map((x) => [x.check_type, { type: x.check_type, status: x.status, details: x.details }]))),
       events,
@@ -183,6 +190,8 @@ export async function recordConversion(c: Ctx, id: string, conversion: { target:
   try {
     await withTenant(c.businessId, async (trx) => {
       await markConverted(trx, c.businessId, id, conversion, c.actor.userId);
+      // §10.2: the initiative record (frozen baseline + original proposal) and the `scheduled` stage.
+      await createInitiativeFor(trx, c.businessId, id, conversion, c.actor.userId);
       await audit(trx, c.actor, 'loom.opportunity_converted', { tenantId: c.businessId, targetType: 'loom_opportunity', targetId: id, data: conversion });
     });
   } catch (e) {

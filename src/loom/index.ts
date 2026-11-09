@@ -23,7 +23,7 @@ export { unitEconomics, breakEven, priceIncreaseScenarios, type UnitEconomics } 
 export { selectIntervention } from './interventions/selector';
 export { rank, evidenceStrength, FACTOR_LABEL } from './ranking/rank';
 export { runEngine, fingerprintOf, type AssessedOpportunity } from './opportunities/engine';
-export { persistOpportunities, decide, markConverted, type DecisionInput } from './opportunities/store';
+export { persistOpportunities, decide, markConverted, type DecisionInput, type DecisionEdits, type ConstraintState } from './opportunities/store';
 export { renderCard } from './opportunities/render';
 export { resolveProfile, setupStatus, SETUP_ITEMS, GOAL_KINDS, EXPLICIT_FACTS, competitorPriceKey, type ResolvedProfile, type ProfileFact, type Goal } from './profile/facts';
 export { getPlatformSettings, updatePlatformSettings, platformSettingsPatch, platformSettingsSchema, PLATFORM_DEFAULTS, DEFAULT_RANKING_WEIGHTS, RANKING_FACTORS, type LoomPlatformSettings, type RankingWeights } from './settings/platform';
@@ -31,4 +31,13 @@ export { beautyPack, sectorPack } from './sector/beauty';
 export type { SectorPack, InterventionDef, InterventionId } from './sector/types';
 export { analyzeNow, requestAnalysis, runAnalysis, ensureConnection, ANALYSIS_JOB } from './analysis/run';
 export * as loomApi from './api/service';
+export * as loomMemory from './api/memory';
+// Phase 5: memory, measurement and the change aggregator (docs/LOOM_CORE.md §10–§12).
+export { recordLadder, recordView, recordReaction, inferBrandFit, brandFitKey, LADDER_STAGES, REACTIONS, type LadderStage, type Reaction } from './memory/ladder';
+export { createInitiative, recordExecution, applyEdits, designFor, goalMetricsFor, ARTIFACT_KINDS, GOAL_METRICS, GUARDRAILS, MEASUREMENT_QUALITIES, INITIATIVE_STATUSES, type ArtifactKind, type GoalMetric, type MeasurementQuality } from './memory/initiatives';
+export { measureInitiative, MIN_GROUP_FOR_INCREMENTAL, NOT_CAUSAL, type MeasureInput, type Outcome, type ExternalFactor, type CampaignGroups } from './memory/measure';
+export { measureBusiness, scheduleMeasurements, MEASURE_JOB } from './memory/outcomes';
+export { recordChange, loomEngaged, processChanges, scheduleDueChanges, eventThreshold, windowOccupancy, leaveShrink, CHANGE_RULES, CHANGE_TYPES, CHANGES_JOB, CHANGE_TOPIC, type ChangeInput, type ChangeType, type ProcessSummary } from './memory/changes';
+export { setPlanRevisionPort, planRevisionPort, type PlanRevisionPort, type PlanRevisionChange, type PlanRevisionReason, type ApprovedPlanRef, type PlanRevisionResult } from './contracts/plan-revision';
+export type { CampaignGroupStats, CampaignGroupStat } from './contracts/connector';
 export * from './api/schemas';

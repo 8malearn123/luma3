@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { DECISION_REASONS, OPPORTUNITY_CATEGORIES, OPPORTUNITY_STATUSES } from '../contracts/opportunity';
+import { CHANNELS, DECISION_REASONS, OPPORTUNITY_CATEGORIES, OPPORTUNITY_STATUSES } from '../contracts/opportunity';
 import { EXPLICIT_FACTS, GOAL_KINDS } from '../profile/facts';
 
 /** Loom API v1 request schemas (shared by the routes and the UI). */
@@ -42,7 +42,15 @@ export const opportunityListQuery = z.object({
 }).strict();
 
 export const decisionInput = z.discriminatedUnion('action', [
-  z.object({ action: z.literal('approve'), note: z.string().trim().max(1000).optional() }).strict(),
+  z.object({
+    action: z.literal('approve'), note: z.string().trim().max(1000).optional(),
+    /** Edit + approve (§10.1): the edits are kept as a diff on the initiative record. */
+    edits: z.object({
+      description: z.string().trim().min(1).max(1500).optional(),
+      channel: z.array(z.enum(CHANNELS)).min(1).max(4).optional(),
+      period: z.object({ from: isoDate, to: isoDate }).strict().refine((p) => p.to >= p.from, { message: 'to before from' }).optional(),
+    }).strict().optional(),
+  }).strict(),
   z.object({ action: z.literal('study'), note: z.string().trim().max(1000).optional() }).strict(),
   z.object({ action: z.literal('defer'), reason: z.enum(DECISION_REASONS), until: isoDate, note: z.string().trim().max(1000).optional() }).strict(),
   z.object({ action: z.literal('dismiss'), reason: z.enum(DECISION_REASONS), note: z.string().trim().max(1000).optional() }).strict()
@@ -56,3 +64,29 @@ export const convertInput = z.discriminatedUnion('target', [
   z.object({ target: z.literal('price_proposal'), proposed_price_minor: z.number().int().min(0).max(100_000_000) }).strict(),
 ]);
 export type ConvertInput = z.infer<typeof convertInput>;
+
+// ── Phase 5: memory and measurement ─────────────────────────────────────────
+/** POST opportunities/{id}/feedback — `viewed` (usage) or a like/dislike reaction (taste, never an outcome). */
+export const feedbackInput = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('viewed') }).strict(),
+  z.object({ kind: z.literal('reaction'), reaction: z.enum(['like', 'dislike', 'none']) }).strict(),
+]);
+
+export const initiativeListQuery = z.object({
+  status: z.enum(['scheduled', 'executing', 'completed', 'measured', 'closed', 'cancelled']).optional(),
+}).strict();
+
+/** POST initiatives/{id}/executions — what was actually done (manual entry). */
+export const executionInput = z.object({
+  executed_from: isoDate,
+  executed_to: isoDate,
+  audience_size: z.number().int().min(0).max(10_000_000).nullable().optional(),
+  channel: z.enum(CHANNELS).nullable().optional(),
+  actual_cost_minor: z.number().int().min(0).max(1_000_000_000).nullable().optional(),
+  note: z.string().trim().max(1000).nullable().optional(),
+}).strict().refine((v) => v.executed_to >= v.executed_from, { message: 'executed_to before executed_from', path: ['executed_to'] });
+
+export const decisionsQuery = z.object({
+  opportunity_id: z.string().uuid().optional(),
+  initiative_id: z.string().uuid().optional(),
+}).strict();

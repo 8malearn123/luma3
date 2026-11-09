@@ -1,4 +1,4 @@
-# Loom Marketing Core (phases 1–2)
+# Loom Marketing Core (phases 1–2, 5)
 
 > Spec: [LOOM_MARKETING_ARCHITECTURE.md](LOOM_MARKETING_ARCHITECTURE.md) (§4–§8, §14, §15, §20). This file documents what is built, the contracts later phases build on, and how to extend them.
 
@@ -31,6 +31,12 @@ Canonical records are **not stored**. Each analysis pulls every canonical entity
 | `opportunities` | one row per fingerprint: status, bilingual card (`CardContent`), rank, bucket, decision, conversions, subject + reserved volume | updatable |
 | `opportunity_evidence`, `opportunity_checks`, `opportunity_events` | evidence rows (`ev_…` ids cited by cards), check results per analysis, lifecycle history | append-only |
 | `loom_settings` | platform settings (`platform.<key>` → JSON) with versions | system scope only |
+| `decision_history` (0730) | §10.1 decision ladder: one row per stage per opportunity / initiative | append-only |
+| `feedback` (0730) | like / dislike reactions (taste, never an outcome) | append-only |
+| `initiatives` (0730) | §10.2 initiative record; `baseline`, `baseline_data_version`, `baseline_analysis_id`, `original_proposal` and the artifact link are frozen by trigger `loom.freeze_initiative` | updatable (frozen columns), never deleted |
+| `initiative_executions` (0730) | what was executed (connector once per initiative, or manual) | append-only |
+| `outcomes` (0730) | measured results, one per initiative window (`unique (initiative_id, window_to)`) | append-only |
+| `change_signals` (0730) | §13 change aggregator, one pending row per `(business, type, scope)` | updatable |
 
 Every business table has `business_id` (= LUMA tenant id) with RLS `app.tenant_visible(business_id)`. `apply_conventions()` covers schema `public` only, so **a migration adding a `loom` table must enable RLS, add the `business_isolation` policy, grant the app role and, if append-only, add the `append_only` trigger and revoke update/delete** (see `0700_loom_core.sql`). Tests truncate schema `loom` in `tests/setup/global-setup.ts`.
 
@@ -53,6 +59,10 @@ Every business table has `business_id` (= LUMA tenant id) with RLS `app.tenant_v
 | Profile: `ProfileFact`, `resolveProfile(facts, goals, platformWeights)` → `ResolvedProfile { goals, prefs, competitor_prices, setup }`, `EXPLICIT_FACTS`, `SETUP_ITEMS`, `GOAL_KINDS` | `src/loom/profile/facts.ts` | |
 | Settings: `getPlatformSettings()`, `updatePlatformSettings(actor, patch)`, `platformSettingsSchema`, `PLATFORM_DEFAULTS`, `RankingWeights` | `src/loom/settings/platform.ts` | |
 | Pipeline: `requestAnalysis(businessId, …)`, `runAnalysis(id, businessId, { now })`, `analyzeNow(businessId)`, job kind `loom.analysis` | `src/loom/analysis/run.ts`, `src/loom/jobs.ts` | |
+| Memory (phase 5): `recordLadder`, `recordView`, `recordReaction`, `inferBrandFit`, `LADDER_STAGES`; `createInitiative`, `recordExecution`, `applyEdits`, `goalMetricsFor`; `measureInitiative` (pure), `MIN_GROUP_FOR_INCREMENTAL`, `NOT_CAUSAL`; `measureBusiness`, `MEASURE_JOB` | `src/loom/memory/{ladder,initiatives,measure,outcomes}.ts` | see §10–§11 |
+| Change aggregator: `recordChange`, `eventThreshold`, `processChanges`, `scheduleDueChanges`, `CHANGE_RULES`, `CHANGE_TOPIC`, `CHANGES_JOB`, `loomEngaged` | `src/loom/memory/changes.ts` | see §12 |
+| PlanRevisionPort: `PlanRevisionPort { approvedPlans(businessId, planIds), proposePlanRevision(businessId, planId, reason, changes) }`, `setPlanRevisionPort()` | `src/loom/contracts/plan-revision.ts` | host adapter `src/server/loom-host/plan-revisions.ts` |
+| Connector (optional, phase 5): `LoomConnector.campaignGroups?(conn, campaignId)` → `CampaignGroupStats` | `src/loom/contracts/connector.ts` | LUMA: `loom_export.campaign_groups` |
 | API service: `loomApi.*` and request schemas (`goalsInput`, `preferencesInput`, `setupInput`, `decisionInput`, `convertInput`, `opportunityListQuery`, `profilePatchInput`) | `src/loom/api/*` | host-agnostic: `{ businessId, actor, locale }` |
 
 ### 3.1 Analysis pipeline (rules path)
@@ -87,7 +97,7 @@ Reads only `loom_export.*` inside `withTenant(business_id)`. Views are `security
 
 **Business setup checklist (`GET/PUT /loom/setup`, tab «إعداد لووم»):** goals, monthly budget, discount policy (`no_discounts` / max discount), excluded and growth offerings, content tone, ranking weights (accept the platform default or customise, each ≤ .5, sum = 1), shared-training consent (owner only, default false). Each item shows «مطلوب» until an explicit fact confirms it. Analyses still run; every card lists the unconfirmed items in `limitations` and says when the platform default weights were used.
 
-## 5. API v1 (phases 1–2)
+## 5. API v1 (phases 1–2, 5)
 
 All under `/api/v1/t/{slug}/loom`, plan feature `feature.marketing_ai`. Capability mapping (`src/server/loom-host/access.ts`): `loom.view` → `marketing.view | marketing.manage`, `loom.manage` → `marketing.manage`, `loom.connections.manage` → `business.manage`.
 
@@ -102,6 +112,12 @@ All under `/api/v1/t/{slug}/loom`, plan feature `feature.marketing_ai`. Capabili
 | `POST opportunities/{id}/convert` `{ target: plan_action | campaign_draft(channel?) | price_proposal(proposed_price_minor) }` | manage (+ `feature.campaigns` / `catalog.edit`) | executed by LUMA's ActionPort |
 | `GET connections` | `business.manage` | status, last sync, health, manifest |
 | `GET/PUT /api/v1/platform/loom/settings` | `platform.loom.manage` (+ step-up for PUT) | |
+| `POST opportunities/{id}/feedback` `{ kind: viewed } \| { kind: reaction, reaction: like \| dislike \| none }` | view | phase 5 ladder stages `viewed` / `reacted` |
+| `GET initiatives?status=` · `GET initiatives/{id}` · `GET initiatives/{id}/outcome` | view | phase 5 |
+| `POST initiatives/{id}/executions` `{ executed_from, executed_to, channel?, audience_size?, actual_cost_minor?, note? }` | manage | manual execution entry |
+| `GET results` · `GET decisions?opportunity_id=&initiative_id=` · `GET changes` | view | home summary, ladder, change signals |
+
+`POST opportunities/{id}/decision` with `approve` also accepts `edits: { description?, channel?, period? }` (edit + approve); `GET opportunities[/{id}]` adds `resurfaced: { reason, at } | null`, and the detail adds `ladder`, `reaction` and `initiatives`.
 
 ## 6. Lifecycle
 
@@ -120,4 +136,53 @@ The plans/recommendations pipeline (`src/server/domains/marketing/*`, `ai_jobs`)
 
 ## 9. Tests
 
-`tests/unit/loom-{architecture,engine,economics,connector,metrics-quality,ranking}.test.ts` (pure, synthetic datasets in `tests/helpers/loom-dataset.ts`) and `tests/integration/loom-{core,api,settings}.test.ts` (DB, fixtures in `tests/helpers/loom-core.ts`). §20 coverage on the rules path: T1, T2, T3, T4, T5, T6, T7, T8, T11, T12, T13, T15 (T9, T10, T14 belong to phases 3 and 5).
+`tests/unit/loom-{architecture,engine,economics,connector,metrics-quality,ranking}.test.ts` (pure, synthetic datasets in `tests/helpers/loom-dataset.ts`) and `tests/integration/loom-{core,api,settings}.test.ts` (DB, fixtures in `tests/helpers/loom-core.ts`). §20 coverage on the rules path: T1, T2, T3, T4, T5, T6, T7, T8, T11, T12, T13, T15 (T9, T14 belong to phase 3).
+
+Phase 5: `tests/unit/loom-memory.test.ts` (measurement: MIN_GROUP 30 boundary, quasi, observational + diff-in-diff, guardrails; thresholds; window occupancy; edits diff; revision content) and `tests/integration/loom-memory-{ladder,changes,measure}.test.ts`: ladder stages append-only, reactions stored apart, edit + approve diff, frozen baseline, brand_fit inference + confirmation, T13 ladder + resurfacing (capacity, budget), **T10** (stock movement → outbox → signal → revision version, approved untouched, idempotent), leave > 20 %, thresholds / aggregation / cool-down / no duplicate pending signal, isolation, observational and insufficient measurement, campaign holdout insufficient (< 30) and experimental (30/30).
+
+## 10. Decision ladder and initiatives (phase 5, §10.1–§10.2)
+
+- **Ladder:** `loom.decision_history` stores each stage as its own append-only row: `viewed` (once per person per 12 h, usage only), `reacted` (like / dislike, also stored in `loom.feedback`; **never** read by measurement or ranking), `decided` (`approve | edit_approve | study | defer | dismiss | reopen`, categorised reason, `counts_as_idea_failure`), `scheduled` (conversion), `executed`, `completed` (window closed), `measured`. `decide()` writes the `decided` row in the same transaction as the status change; `opportunity_events` keeps the lifecycle history as before.
+- **Reasons:** `capacity_staffing`, `capacity_inventory`, `budget`, `timing` are not idea failures (T13) and resurface when the constraint clears: capacity / inventory when the re-run check passes (phase 2), `budget` when the explicit `pref.monthly_budget_minor` fact changed after the decision, `timing` after 30 days. The event is `reopened` with `capacity_available | inventory_available | budget_available | timing_elapsed`; the API returns `resurfaced` and the card shows «عادت للظهور لأن القيد زال». `brand_fit` writes an **inferred** fact `brand.avoid_intervention:<intervention_id>` with `needs_review = true`; it changes nothing until the owner confirms it with `PATCH profile { "brand.avoid_intervention:<id>": true }`, after which `profile.prefs.avoided_interventions` makes the selector skip that intervention.
+- **Initiative record:** the convert endpoint (after LUMA's ActionPort ran) calls `createInitiative` in the conversion transaction: one row per `(opportunity, artifact_kind, artifact_ref)` with `baseline` (the latest analysis' metric values for the business and the subject offerings, `success_metrics`, `data_version`, `analysis_id`), `original_proposal` (the card), `user_edits` (diff of the `edit_approve` edits), `approved_version` (card with edits), `goal_metrics` (by category), window, `measurement_design` (`holdout` for campaign drafts, `pre_post_with_control` otherwise). Baseline and proposal are frozen by trigger. `execution`, `results`, `external_factors`, `measurement_quality`, `learnings` are filled later.
+
+## 11. Measurement (§10.3)
+
+`measureInitiative(input)` is pure; `measureBusiness(businessId)` (job `loom.measure`, hourly fan-out `loom.measurement`, dedupe per business and hour) runs it:
+
+1. **Execution:** a campaign initiative whose LUMA campaign has `started_at` gets a connector execution (dates = start … start + attribution window − 1, audience, channel) once; other initiatives need `POST initiatives/{id}/executions`. The window follows the execution.
+2. **Completed → measured** once the window has closed (`window_to < today`): outcome row (unique per window), initiative `measured`, opportunity `measured`, ladder rows. Re-running is a no-op.
+3. **Quality:**
+   | Quality | When |
+   |---|---|
+   | `experimental` (`causal = true`) | campaign with a randomised holdout and **≥ 30 members in each group** (`MIN_GROUP_FOR_INCREMENTAL`, same as LUMA campaigns): incremental conversion lift and net from `loom_export.campaign_groups` |
+   | `quasi` | the same, but a contaminating external factor (stockout / price change / capacity cut on the offering, another campaign) happened in the window |
+   | `observational` | not partitionable (plan items, price proposals, content): pre-period of the same length vs the window, control = the other active services, difference-in-differences estimate; always labelled «إشارة محدودة لا علاقة سببية» |
+   | `insufficient` | a group below 30 (attributed only, incremental withheld), campaign not sent, no data in either period, or no execution recorded |
+4. **Metrics per goal:** completed bookings, contribution margin (null when costs are incomplete), CAC (actual cost ÷ new customers), repeat rate, reactivation (> 90 days gap), period occupancy (quiet-period fill), cross-sell transactions. **Guardrails:** cancellation/no-show rate (+10 pp with ≥ 3), refunds (> 1.5× pre), occupancy overload (> 90 %), rating drop (≥ 0.5, or ≥ 0.3 with overload).
+5. **External factors:** processed change signals (inventory / margin / capacity) on the initiative's offerings during the window, other campaigns started in the window, owner-verified calendar events.
+6. A measured campaign records a `campaign_result` change signal; processing it writes the inferred fact `learning.initiative:<id>` (the learning the planner can cite).
+
+`loom_export.campaign_groups` (0730) adds the holdout conversions core lacked: per campaign and group (`target` / `holdout`) members, converters, completed bookings net of refunds, cancellations and refunds of bookings created inside the attribution window — the definition of `GET campaigns/{id}/results`.
+
+## 12. Change aggregator (§13)
+
+| Type (`scope`) | Host source | Threshold | Re-runs |
+|---|---|---|---|
+| `inventory` (`item:<id>`) | `moveStock` → domain event `stock.moved` | available ≤ reorder level (or ≤ 0) **and** the item is in the recipe of a promoted offering | inventory check |
+| `occupancy` (`offering:<id>`) | outbox `booking.confirmed` | occupancy of qualified staff > 90 % inside a promoted window (∩ 14-day horizon) | capacity check, `pause_promotion` |
+| `capacity` (`staff:<id>`) | `finalizeLeave` → domain event `leave.approved` | the leave removes > 20 % of the qualified staff's scheduled time in a promoted window | capacity check |
+| `margin` (`offering:<id>`) | `updateService` / `decidePriceProposal` → `service.economics_changed` | unit margin (price − recorded cost) moves > 10 % | margin check |
+| `campaign_result` (`initiative:<id>`) | measurement job | measured | learning fact |
+
+*Promoted* = initiatives `scheduled`/`executing` with a window not yet over, plus accepted / converted / executed opportunities; open opportunities on the same offering are re-checked too. Flow: the host listener (`src/server/loom-host/changes.ts`, imported by `boot.ts`) enqueues the outbox topic `loom.change` in the domain transaction, only for businesses with a Loom connection → `recordChange()` drops events under their threshold, **aggregates** repeats into the single pending signal of the key (partial unique index), and counts events during the **cool-down** after processing as `suppressed` (no new signal) → the periodic `loom.change_aggregation` (5 min) schedules `loom.changes` per business with due signals (`due_at = first_seen + cool-down`, 30 min) → `processChanges()` loads the dataset once, claims each signal with `SKIP LOCKED`, re-runs only the affected checks (no analysis, no model), updates the card's check, appends `opportunity_checks` and a `reassessed` event (`change:<type>`), and marks the signal `processed`, `not_relevant` or `below_threshold`.
+
+**Plan revisions (T10):** when an affected initiative is a `plan_action` whose re-check is no longer ok (or its window is full), the PlanRevisionPort is asked for the approved plans among those plans and proposes a revision for each: the LUMA default (`src/server/loom-host/plan-revisions.ts`) appends an unapproved `plan_versions` row from the approved content with the matching activities annotated (`capacity_note`), the reason appended to `limitations`, `change_note = loom_revision:<type>:<signal>` and `validation.loom_revision`. The approved version and `approved_version_id` never change. **Swap point after phase 3 merges:** register an adapter that calls the planner's `proposePlanRevision(businessId, planId, reason, changes)` with `setPlanRevisionPort()` in `src/server/loom-host/changes.ts` (or replace `lumaPlanRevisions`); nothing in `src/loom` changes.
+
+**Host surface added in LUMA:** `src/server/infra/domain-events.ts` (`emitDomainEvent` / `onDomainEvent`), one call each in `commerce/stock.ts` (`moveStock`), `hr/requests.ts` (`finalizeLeave`), `catalog/service.ts` (`updateService`, `decidePriceProposal`).
+
+## 13. UI
+
+- «النتائج» tab (`src/ui/marketing/LoomResults.tsx`, `LoomResults`): initiatives with status, artifact, window, what was executed (and a manual execution form), measurement design and quality badge with its meaning, metric table (before / during / control / estimate), attributed vs incremental, guardrails, limitations, external factors, learnings.
+- **Home embed for the planner:** `<LoomResultsSummary onViewAll={…} />` from `src/ui/marketing/LoomResults.tsx` (data: `GET /loom/results` → `{ counts, latest[≤5], alerts[≤5] }`) renders «نتائج المبادرات» and «تنبيهات جوهرية» (processed change signals with re-checks and proposed plan revisions). `<QualityBadge quality>` and `<DecisionHistory ladder>` are exported too.
+- Opportunity card: decision history (ladder), like / dislike (labelled as taste, not outcome), `viewed` on opening details, «عادت للظهور لأن القيد زال» badge.

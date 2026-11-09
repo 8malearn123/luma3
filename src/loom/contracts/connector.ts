@@ -40,4 +40,13 @@ export interface LoomConnector {
   /** Incremental pull with an opaque cursor; records are canonical (already normalised). */
   pull(conn: ConnectionRef, entity: CanonicalEntity, cursor: string | null, limit: number): Promise<PullResult>;
   verifyWebhook?(req: Request): Promise<SourceEvent[]>;
+  /**
+   * Optional (phase 5 measurement): target / holdout groups of a campaign with
+   * their conversions inside the attribution window. Aggregates only. A
+   * connector without it makes campaign initiatives `insufficient`.
+   */
+  campaignGroups?(conn: ConnectionRef, campaignId: string): Promise<CampaignGroupStats | null>;
 }
+
+export type CampaignGroupStat = { members: number; converters: number; bookings: number; net_minor: number; cancelled: number; refunded_minor: number };
+export type CampaignGroupStats = { campaign_id: string; window_days: number; started_at: number | null; target: CampaignGroupStat | null; holdout: CampaignGroupStat | null };

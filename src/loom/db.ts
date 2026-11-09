@@ -7,4 +7,4 @@ export { sql, withSystem, withTenant, type Tx } from '@/server/db/client';
 export { audit, type AuditActor } from '@/server/infra/audit';
 export { AppError, Errors } from '@/server/http/errors';
 export { schedule } from '@/server/infra/outbox';
-export { registerJob, registerPeriodic } from '@/server/jobs/registry';
+export { registerJob, registerOutbox, registerPeriodic } from '@/server/jobs/registry';
