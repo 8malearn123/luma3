@@ -55,7 +55,8 @@ test('reception sees a new booking in the salon dashboard', async ({ page, baseU
   await demoSignIn(page, ACCOUNTS.customer);
   await page.goto('/s/noura-salon/booking');
   await page.getByRole('button', { name: /Cut & style/ }).first().click();
-  await page.getByRole('tab').nth(5).click();
+  // A bookable day other than the one the first journey uses (that one takes the last).
+  await page.locator('[role="tab"]:not([disabled])').nth(1).click();
   await timeButton(page).click();
   await page.getByRole('button', { name: /Reserve this time/ }).click();
   await page.waitForURL(/\/checkout\/booking\//);
