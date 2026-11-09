@@ -1,5 +1,7 @@
 # AI, Loom Marketing and analytics
 
+> Target product concept and architecture for Loom Marketing (gap analysis, canonical model, engines, API, phases): [LOOM_MARKETING_ARCHITECTURE.md](LOOM_MARKETING_ARCHITECTURE.md).
+
 | File | Role |
 |---|---|
 | `src/server/infra/ai/{index,openai,types}.ts` | Provider adapter, `runAi`, status, cost estimate |
