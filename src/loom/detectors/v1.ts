@@ -4,6 +4,7 @@ import { slowMovers } from '../metrics/v1';
 import { L, median, pct, type Localized } from '../util/text';
 import { addDays } from '../util/time';
 import type { DetectContext, Detector, EvidenceItem, OpportunityCandidate } from './types';
+import { demandForecastFor } from '../models/attach';
 
 /**
  * v1 detectors (§6.4). Each is deterministic and reads only the dataset,
@@ -57,6 +58,10 @@ export const quietCapacity: Detector = {
       .sort((a, b) => completed(c, b.id) - completed(c, a.id) || a.id.localeCompare(b.id))[0];
     const dur = (offer?.duration_min ?? 60) + (offer?.buffer_min ?? 0);
     const names = quiet.map((s) => slotName(s.key));
+    // Phase 6 (optional): the expected demand of the offering over the next two weeks, labelled with its source.
+    const fc = offer && c.forecasts?.length ? demandForecastFor(c.forecasts, offer.id, c.ctx.today, addDays(c.ctx.today, 13)) : null;
+    const fcNote = fc ? [L(`التوقع (${fc.row.source === 'model' ? `نموذج الإصدار ${fc.row.version}` : 'خط أساس'}) لطلب ${offer!.name.ar} خلال أسبوعين: ${fc.value} (بين ${fc.low} و${fc.high})؛ توقع وليس هدفًا.`,
+      `Expected demand for ${offer!.name.en} over two weeks (${fc.row.source === 'model' ? `model version ${fc.row.version}` : 'baseline'}): ${fc.value} (${fc.low}–${fc.high}); a forecast, not a goal.`)] : [];
     return [base(c, {
       detector_id: 'quiet_capacity', category: 'quiet_capacity', subject_key: `slots:${keys.join(',')}`, subject: { offering_ids: offer ? [offer.id] : [], slots: keys },
       title: L('ملء الفترات الهادئة', 'Fill quiet periods'),
@@ -69,6 +74,7 @@ export const quietCapacity: Detector = {
       success_metrics: keys.map((k) => { const o = c.metrics.value('capacity.occupancy', `slot:${k}`); return { metric_key: `capacity.occupancy@slot:${k}`, baseline: o, target: o === null ? null : Math.min(0.9, Math.round((o + p.uplift_pp!) * 100) / 100) }; }),
       measurement_design: 'holdout', sample: { n: Math.round(quiet.reduce((m, s) => m + s.available_min, 0) / 60), min: 12 }, promotional: true,
       limitations: [L('الإشغال محسوب من الجداول والحجوزات المسجلة في لوما فقط.', 'Occupancy uses only the schedules and bookings recorded in LUMA.')],
+      ...(fcNote.length ? { assumptions: fcNote } : {}),
       meta: { slots: keys, free_minutes: freeNext },
     })];
   },

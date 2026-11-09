@@ -1517,6 +1517,27 @@ export interface LoomFeedback {
   reaction: string;
 }
 
+export interface LoomForecasts {
+  algorithm: string;
+  analysis_id: string | null;
+  batch_id: string;
+  business_id: string;
+  created_at: Generated<Timestamp>;
+  data_version: string | null;
+  horizon_from: string;
+  horizon_to: string;
+  id: Generated<string>;
+  interval_high: number;
+  interval_low: number;
+  model_kind: string;
+  model_version_id: string | null;
+  source: string;
+  subject: Generated<Json>;
+  subject_key: string;
+  unit: string;
+  value: number;
+}
+
 export interface LoomImportFiles {
   applied_at: Timestamp | null;
   business_id: string;
@@ -1686,6 +1707,60 @@ export interface LoomMetricValues {
   period_to: string | null;
   status: string;
   value: number | null;
+}
+
+export interface LoomModelEvents {
+  actor_id: string | null;
+  business_id: string | null;
+  created_at: Generated<Timestamp>;
+  data: Generated<Json>;
+  event: string;
+  from_status: string | null;
+  id: Generated<string>;
+  model_version_id: string;
+  reason: string | null;
+  to_status: string | null;
+}
+
+export interface LoomModelTrainingRuns {
+  actor_id: string | null;
+  business_id: string | null;
+  created_at: Generated<Timestamp>;
+  data_version: string | null;
+  eligibility: Generated<Json>;
+  id: Generated<string>;
+  sector: string | null;
+  status: string;
+  summary: Generated<Json>;
+  trigger: Generated<string>;
+}
+
+export interface LoomModelVersions {
+  algorithm: string;
+  business_id: string | null;
+  created_at: Generated<Timestamp>;
+  created_by: string | null;
+  data_hash: string;
+  data_version: string | null;
+  gate: Json;
+  id: Generated<string>;
+  metrics: Json;
+  model_kind: string;
+  params: Json;
+  promoted_at: Timestamp | null;
+  promoted_by: string | null;
+  retired_at: Timestamp | null;
+  retired_reason: string | null;
+  sector: string | null;
+  shadow_from: Timestamp | null;
+  shadow_result: Json | null;
+  shadow_until: Timestamp | null;
+  split_at: string;
+  status: Generated<string>;
+  test_to: string;
+  train_from: string;
+  train_to: string;
+  version: number;
 }
 
 export interface LoomOfficialSourceState {
@@ -1892,6 +1967,22 @@ export interface LoomPlatformCalendarEvents {
   verification_note: string | null;
   verified_at: Timestamp | null;
   verified_by: string | null;
+}
+
+export interface LoomShadowPredictions {
+  business_id: string;
+  created_at: Generated<Timestamp>;
+  id: Generated<string>;
+  model_kind: string;
+  model_version_id: string;
+  period_from: string;
+  period_to: string;
+  reference_algorithm: string;
+  reference_source: string;
+  reference_value: number;
+  reference_version_id: string | null;
+  shadow_value: number;
+  subject_key: string;
 }
 
 export interface LoomSignalClusters {
@@ -3922,6 +4013,7 @@ export interface DB {
   "loom.decision_history": LoomDecisionHistory;
   "loom.entity_links": LoomEntityLinks;
   "loom.feedback": LoomFeedback;
+  "loom.forecasts": LoomForecasts;
   "loom.import_files": LoomImportFiles;
   "loom.ingest_events": LoomIngestEvents;
   "loom.initiative_executions": LoomInitiativeExecutions;
@@ -3932,6 +4024,9 @@ export interface DB {
   "loom.market_observations": LoomMarketObservations;
   "loom.metric_definitions": LoomMetricDefinitions;
   "loom.metric_values": LoomMetricValues;
+  "loom.model_events": LoomModelEvents;
+  "loom.model_training_runs": LoomModelTrainingRuns;
+  "loom.model_versions": LoomModelVersions;
   "loom.official_source_state": LoomOfficialSourceState;
   "loom.opportunities": LoomOpportunities;
   "loom.opportunity_checks": LoomOpportunityChecks;
@@ -3942,6 +4037,7 @@ export interface DB {
   "loom.plan_actions": LoomPlanActions;
   "loom.planner_runs": LoomPlannerRuns;
   "loom.platform_calendar_events": LoomPlatformCalendarEvents;
+  "loom.shadow_predictions": LoomShadowPredictions;
   "loom.signal_clusters": LoomSignalClusters;
   "loom.signal_sources": LoomSignalSources;
   "loom.signals": LoomSignals;

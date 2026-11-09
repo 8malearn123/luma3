@@ -12,6 +12,7 @@ import { Card, PageHeader } from '../../components/layout';
 import { useToast } from '../../components/toast';
 import { useStepUp } from '../stepup';
 import { LoomKnowledgeList } from './LoomKnowledgeList';
+import { LoomSectorModels } from './LoomSectorModels';
 
 const FACTORS = ['goal_fit', 'evidence', 'impact', 'feasibility', 'cost_effort', 'timing', 'risk'] as const;
 const PACKS = ['beauty', 'retail', 'restaurant', 'professional_services'] as const;
@@ -20,7 +21,15 @@ type Source = { id: string; name: string; url: string; region: string; kind: str
 type Settings = {
   default_ranking_weights: Record<string, number>; cost_completeness_threshold: number;
   learned_model_thresholds: { min_days: number; min_completed_transactions: number }; event_sources: Source[]; enabled_sector_packs: string[];
+  learned_models: LearnedModels;
 };
+type LearnedModels = {
+  enabled: boolean; auto_promote: boolean; promotion_margin: Record<'demand_forecast' | 'return_probability' | 'intervention_response', number>;
+  guardrail_tolerance: number; shadow_days: number; retrain_days: number; min_measured_outcomes: number; sector_models: boolean;
+};
+const MODEL_KINDS = ['demand_forecast', 'return_probability', 'intervention_response'] as const;
+const pctIn = (v: string, max: number) => Math.max(0, Math.min(max, Math.round(Number(v) || 0))) / 100;
+const intIn = (v: string, min: number, max: number) => Math.max(min, Math.min(max, Math.round(Number(v) || 0)));
 
 /** /platform/loom — the platform defaults that replace Loom's open decisions (§21). */
 export function LoomSettingsPage() {
@@ -80,6 +89,24 @@ export function LoomSettingsPage() {
           </div>
         </Card>
       </div>
+      <Card title={<span className="inline-flex items-center gap-2">{t('loom_models.admin.title')} <Badge tone="warn">{t('loom_models.experimental')}</Badge></span>} actions={tag('learned_models')}>
+        <div className="flex flex-wrap gap-4">
+          <Checkbox label={t('loom_models.admin.enabled')} checked={s.learned_models.enabled} onChange={(v) => set({ learned_models: { ...s.learned_models, enabled: v } })} />
+          <Checkbox label={t('loom_models.admin.auto_promote')} checked={s.learned_models.auto_promote} onChange={(v) => set({ learned_models: { ...s.learned_models, auto_promote: v } })} />
+          <Checkbox label={t('loom_models.admin.sector_models')} checked={s.learned_models.sector_models} onChange={(v) => set({ learned_models: { ...s.learned_models, sector_models: v } })} />
+        </div>
+        <p className="mt-3 text-xs font-medium text-ink-muted">{t('loom_models.admin.margins')}</p>
+        <div className="mt-1 grid grid-cols-1 gap-3 sm:grid-cols-3">
+          {MODEL_KINDS.map((k) => <Field key={k} label={t(`loom_models.kind.${k}`)}>{(p) => <Input {...p} type="number" dir="ltr" min={0} max={50} value={Math.round(s.learned_models.promotion_margin[k] * 100)} onChange={(e) => set({ learned_models: { ...s.learned_models, promotion_margin: { ...s.learned_models.promotion_margin, [k]: pctIn(e.target.value, 50) } } })} />}</Field>)}
+        </div>
+        <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <Field label={t('loom_models.admin.tolerance')}>{(p) => <Input {...p} type="number" dir="ltr" min={0} max={50} value={Math.round(s.learned_models.guardrail_tolerance * 100)} onChange={(e) => set({ learned_models: { ...s.learned_models, guardrail_tolerance: pctIn(e.target.value, 50) } })} />}</Field>
+          <Field label={t('loom_models.admin.shadow_days')}>{(p) => <Input {...p} type="number" dir="ltr" min={1} max={90} value={s.learned_models.shadow_days} onChange={(e) => set({ learned_models: { ...s.learned_models, shadow_days: intIn(e.target.value, 1, 90) } })} />}</Field>
+          <Field label={t('loom_models.admin.retrain_days')}>{(p) => <Input {...p} type="number" dir="ltr" min={1} max={90} value={s.learned_models.retrain_days} onChange={(e) => set({ learned_models: { ...s.learned_models, retrain_days: intIn(e.target.value, 1, 90) } })} />}</Field>
+          <Field label={t('loom_models.admin.min_outcomes')}>{(p) => <Input {...p} type="number" dir="ltr" min={10} max={10000} value={s.learned_models.min_measured_outcomes} onChange={(e) => set({ learned_models: { ...s.learned_models, min_measured_outcomes: intIn(e.target.value, 10, 10000) } })} />}</Field>
+        </div>
+      </Card>
+      <LoomSectorModels />
       <Card title={t('loom.admin.packs')} actions={tag('enabled_sector_packs')}>
         <div className="flex flex-wrap gap-4">
           {PACKS.map((k) => <Checkbox key={k} label={t(`loom.admin.pack.${k}`)} checked={s.enabled_sector_packs.includes(k)} onChange={(v) => set({ enabled_sector_packs: v ? [...s.enabled_sector_packs, k] : s.enabled_sector_packs.filter((x) => x !== k) })} />)}

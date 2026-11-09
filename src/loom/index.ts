@@ -74,3 +74,18 @@ export { retrieveKnowledge, recordCitations, syncKnowledgeLibrary, resetKnowledg
 export * as loomPlannerApi from './api/planner';
 export { planRequestInput, commentInput } from './api/planner';
 export * from './radar';
+
+// ── Phase 6: learned models (docs/LOOM_CORE.md §24) ──
+export * from './models/types';
+export { eligibility, temporalSplit, assertNoLeakage, promotionGate, shadowDecision, wape, mae, absBias, brier, logLoss, ece, type Eligibility } from './models/governance';
+export { demandData, seasonalNaive, movingAverage, baselinePredict, fitDemand, predictDemand, evaluateDemand, trainDemand, forecastDemand, DEMAND_ALGORITHM, DEMAND_BASELINES, DEMAND_TEST_DAYS, type DemandData, type DemandParams } from './models/demand';
+export { returnData, examplesAt, featuresAt, fitBaseline as fitReturnBaseline, fitReturn, predictReturn, evaluateReturn, returnSplit, trainReturn, forecastReturns, RETURN_ALGORITHM, RETURN_BASELINE, RETURN_HORIZON_DAYS, type ReturnParams } from './models/returns';
+export { fitResponseBaseline, trainResponse, forecastResponses, responseSplit, RESPONSE_ALGORITHM, RESPONSE_BASELINE, type ResponseObs } from './models/response';
+export { aggregateBusiness, trainSector, SECTOR_ALGORITHM, MIN_CONTRIBUTORS, type AggregateCell } from './models/sector';
+export { attachForecasts, demandForecastFor, splitSuccessMetrics } from './models/attach';
+export { latestForecasts, type ModelVersion } from './models/store';
+export { trainBusiness, evaluateShadows, refreshForecasts, promoteVersion, rollback as rollbackModel, trainSectorModel, consentingBusinesses, scheduleModelWork, promoteSectorVersion, rollbackSector, TRAIN_JOB, SHADOW_JOB, FORECAST_JOB, SECTOR_TRAIN_JOB, DEMAND_HORIZON_DAYS, type DatasetLoader, type TrainSummary } from './models/service';
+export { fitGlm, fitRidge, solveSpd } from './models/math';
+export * as loomModels from './api/models';
+export { consentInput, rollbackInput, versionsQuery, platformModelsInput } from './api/models';
+export { learnedModelsSchema, LEARNED_MODEL_DEFAULTS, type LearnedModelSettings } from './settings/platform';

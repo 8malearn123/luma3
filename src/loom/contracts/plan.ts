@@ -1,4 +1,4 @@
-import type { ActionKind, CapacityStatus, Channel, InventoryStatus } from './opportunity';
+import type { ActionKind, CapacityStatus, Channel, InventoryStatus, SuccessMetric } from './opportunity';
 import type { Localized } from '../util/text';
 
 /**
@@ -46,7 +46,7 @@ export type PlanAction = {
     requirements: Localized[];
   };
   highlighted: HighlightedOffering[];
-  success_metrics: Array<{ metric_key: string; baseline: number | null; target: number | null; target_kind: 'proposed_goal' | 'model_forecast' }>;
+  success_metrics: SuccessMetric[];
   evidence_refs: string[];
   knowledge_refs: string[];
   /** Set on actions changed by a revision proposal. */
