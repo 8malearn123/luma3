@@ -37,6 +37,7 @@ const DOMAIN_OF: Record<OpportunityCategory, QualityDomain> = {
   quiet_capacity: 'capacity', high_satisfaction_low_demand: 'reviews', lapsed_cohort: 'customers', unserved_demand: 'demand', conversion_friction: 'demand',
   cross_sell_affinity: 'sales', slow_mover_bundle: 'inventory', margin_leak: 'economics', missing_cost_blocker: 'economics', offering_presentation: 'demand',
   loyalty_over_discount: 'sales', capacity_prerequisite: 'capacity', campaign_learning: 'campaigns',
+  stockout_risk: 'inventory',
 };
 const MARGIN_DEPENDENT: OpportunityCategory[] = ['margin_leak', 'slow_mover_bundle', 'cross_sell_affinity'];
 const ONGOING: OpportunityCategory[] = ['missing_cost_blocker', 'margin_leak', 'conversion_friction', 'offering_presentation', 'campaign_learning', 'loyalty_over_discount'];

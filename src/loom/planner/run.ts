@@ -1,3 +1,4 @@
+import { emitLoomEvent } from '../webhooks/outgoing';
 import { schedule, sql, withSystem, withTenant } from '../db';
 import { loomHost, PlannerAiError, type LoomHost, type PlannerAiResult } from '../contracts/host';
 import { wordingBasis } from '../opportunities/render';
@@ -133,6 +134,8 @@ async function autoMonthly(businessId: string, runId: string, date: string, now?
 export async function storeVersion(businessId: string, draft: PlanDraft, o: {
   runId: string; planId: string | null; parentPlanId: string | null; aiRunId: string | null; createdBy: string | null; changeNote: string | null; validation: Record<string, unknown>;
   cards?: { opps: PlanOpp[]; wording: Map<string, Wording>; usedBy: 'planner_ai' | 'rules'; aiRunId: string | null };
+  /** Outgoing webhook emitted in the same transaction (phase 7). */
+  event?: 'plan.ready' | 'plan.revision_proposed'; reason?: Localized;
 }) {
   const host = loomHost();
   const saved = await host.plans.saveVersion(businessId, { draft, planId: o.planId, parentPlanId: o.parentPlanId, aiRunId: o.aiRunId, validation: o.validation, changeNote: o.changeNote, createdBy: o.createdBy });
@@ -160,6 +163,9 @@ export async function storeVersion(businessId: string, draft: PlanDraft, o: {
       }
     }
     await recordCitations(trx, businessId, cites);
+    await emitLoomEvent(trx, businessId, o.event ?? 'plan.ready', saved.version_id, {
+      plan_id: saved.plan_id, version_id: saved.version_id, kind: draft.kind, source: draft.source, period: draft.period, actions: draft.actions.length, ...(o.reason ? { reason: o.reason } : {}),
+    });
   });
   return saved;
 }
@@ -186,6 +192,7 @@ export function validationContextOf(pc: PlanningContext, toolResults: ToolResult
     computed_spend_minor: computedSpend,
     forbiddenClaims: pc.pack.validation.forbiddenClaims,
     verifiedEvents: pc.events,
+    awarenessOnlyRefs: new Set(pc.events.filter((e) => e.awareness_only).map((e) => e.ref)),
     knowledgeRefs: new Set(pc.opps.flatMap((o) => o.knowledge.map((k) => knowledgeRef(k.unit)))),
   };
 }

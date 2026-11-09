@@ -5,11 +5,19 @@ import { MEASURE_JOB, measureBusiness, scheduleMeasurements } from './memory/out
 import { failStuckPlannerRuns, PLAN_JOB, runPlannerRun } from './planner/run';
 import { importDueOfficialSources } from './radar/calendar';
 import { sweepSources } from './radar/sources';
+import { jobBusiness } from './hosts';
+import { DELIVERY_JOB, deliverWebhook } from './webhooks/outgoing';
 
 /** Loom background work: the analysis job (one per loom.analyses row) and a sweeper for stuck runs. */
 registerJob(ANALYSIS_JOB, async (payload, ctx) => {
-  if (!ctx.tenantId) throw new Error('loom analysis requires a business');
-  const r = await runAnalysis(String(payload.analysis_id), ctx.tenantId);
+  // LUMA tenants carry the tenant id; external businesses carry a verified business_id (hosts.ts).
+  const businessId = await jobBusiness(ctx.tenantId, payload);
+  const r = await runAnalysis(String(payload.analysis_id), businessId);
+  if (!r && !ctx.tenantId) {
+    // External businesses are scheduled in system scope, possibly before the analysis row committed: retry until visible.
+    const row = await withTenant(businessId, (trx) => trx.selectFrom('loom.analyses').select('status').where('id', '=', String(payload.analysis_id)).executeTakeFirst());
+    if (!row) throw new Error('analysis not visible yet');
+  }
   return r ? { status: r.status } : { skipped: true };
 });
 
@@ -41,3 +49,5 @@ registerJob(PLAN_JOB, async (payload, ctx) => {
 registerPeriodic({ name: 'loom.stuck_planner_runs', everySec: 900, run: failStuckPlannerRuns });
 /** Radar (phase 4): official calendars (daily per source, with backoff) and business sources (6 h, with backoff), dedupe, re-cluster, stale marking. */
 registerPeriodic({ name: 'loom.radar_sweep', everySec: 900, run: async () => { await importDueOfficialSources(); await sweepSources(); } });
+/** Outgoing webhook delivery (signed POST, retried with the framework's backoff). */
+registerJob(DELIVERY_JOB, async (payload, ctx) => deliverWebhook(await jobBusiness(ctx.tenantId, payload), String(payload.delivery_id), ctx.attempt));

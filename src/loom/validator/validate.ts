@@ -1,3 +1,4 @@
+import { checkAwarenessRule } from '../radar/awareness';
 import type { CapacityStatus, InventoryStatus, MarginStatus } from '../contracts/opportunity';
 import type { PlanDraft } from '../contracts/plan';
 import type { NumberDecl, PlannerCard, PlannerInitiative, PlannerOutput } from '../planner/schema';
@@ -44,11 +45,13 @@ export type ValidationContext = {
   forbiddenClaims: RegExp[];
   verifiedEvents: Array<{ ref: string; starts_on: string; ends_on: string }>;
   knowledgeRefs: Set<string>;
+  /** Phase 4: event refs that are awareness-only (health days): no discount coupling, no therapeutic claims. */
+  awarenessOnlyRefs?: Set<string>;
 };
 
 export type ValidationError = { item: string; code: ValidationCode; detail?: string };
 export type ValidationCode = 'unsupported_number' | 'unknown_reference' | 'reference_value_mismatch' | 'budget_overflow' | 'checks_inconsistent' | 'discount_not_allowed'
-  | 'discount_over_cap' | 'excluded_offering' | 'banned_word' | 'health_claim' | 'full_slot_promotion' | 'unverified_date' | 'unknown_opportunity' | 'missing_checks';
+  | 'discount_over_cap' | 'excluded_offering' | 'banned_word' | 'health_claim' | 'full_slot_promotion' | 'unverified_date' | 'unknown_opportunity' | 'missing_checks' | 'awareness_violation';
 
 export type ValidationResult = {
   cards: Map<string, PlannerCard>;
@@ -146,6 +149,10 @@ export function validatePlannerOutput(out: PlannerOutput, ctx: ValidationContext
     const t = checkText(c.opportunity_ref, textsOf([c.title, c.why_now, c.action_description, c.draft_content]), c.numbers, ctx, { promotional: it.promotional, freeSlots: it.free_slots });
     e.push(...t.errors);
     if (it.promotional && it.checks.capacity === 'blocked') e.push({ item: c.opportunity_ref, code: 'full_slot_promotion' });
+    if (c.event_ref && ctx.awarenessOnlyRefs?.has(c.event_ref)) {
+      const aw = checkAwarenessRule({ awareness_only: true, text: textsOf([c.title, c.why_now, c.action_description, c.draft_content]), framing: 'awareness_only' }, { validation: { forbiddenClaims: ctx.forbiddenClaims, awarenessOnlyTopics: [] } });
+      for (const v of aw.violations) e.push({ item: c.opportunity_ref, code: 'awareness_violation', detail: v });
+    }
     if (e.length) errors.push(...e);
     else { cards.set(c.opportunity_ref, c); if (t.assumptions.length) assumptions.set(c.opportunity_ref, t.assumptions); }
   }

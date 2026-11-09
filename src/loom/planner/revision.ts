@@ -87,6 +87,7 @@ export async function proposePlanRevision(businessId: string, planId: string, re
   const stored = await storeVersion(businessId, draft, {
     runId: run.id, planId, parentPlanId: null, aiRunId: null, createdBy: opts.actorId ?? null, changeNote: `revision: ${why.en}`.slice(0, 500),
     validation: { status: 'revision_proposed', reason: why, changes, base_version_id: plan.current_version_id, planner: RULES_PLANNER_VERSION },
+    event: 'plan.revision_proposed', reason: why,
   });
   await withTenant(businessId, (trx) => trx.updateTable('loom.planner_runs').set({
     status: 'succeeded', finished_at: new Date(), plan_version_id: stored.version_id, result: JSON.stringify({ draft, version: stored.version, applied, changes }),

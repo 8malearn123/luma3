@@ -4,7 +4,9 @@ import type { Localized } from '../util/text';
 /** §11.1 opportunity card contract (loom.opportunity.v1) and §6.5 lifecycle. */
 export const OPPORTUNITY_CATEGORIES = ['quiet_capacity', 'high_satisfaction_low_demand', 'lapsed_cohort', 'unserved_demand', 'conversion_friction',
   'cross_sell_affinity', 'slow_mover_bundle', 'margin_leak', 'missing_cost_blocker', 'offering_presentation', 'loyalty_over_discount',
-  'capacity_prerequisite', 'campaign_learning'] as const;
+  'capacity_prerequisite', 'campaign_learning',
+  // phase 7 (retail pack)
+  'stockout_risk'] as const;
 export type OpportunityCategory = (typeof OPPORTUNITY_CATEGORIES)[number];
 
 export const ACTION_KINDS = ['content', 'package', 'value_add', 'reminder', 'open_slots', 'booking_ux', 'loyalty', 'limited_discount', 'price_review', 'staffing', 'restock'] as const;

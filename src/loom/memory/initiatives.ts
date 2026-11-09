@@ -37,6 +37,7 @@ const BY_CATEGORY: Record<OpportunityCategory, GoalMetric[]> = {
   loyalty_over_discount: ['repeat', 'contribution_margin'],
   capacity_prerequisite: ['completed_bookings'],
   campaign_learning: ['completed_bookings', 'contribution_margin'],
+  stockout_risk: ['completed_bookings', 'contribution_margin'],
 };
 export const goalMetricsFor = (category: OpportunityCategory): GoalMetric[] => BY_CATEGORY[category] ?? ['completed_bookings'];
 

@@ -19,6 +19,8 @@ import { consumeMaterialsForBookingItem, markOrderPaid, releaseCouponRedemption 
 import { onEventPaymentCaptured, onEventPaymentFailed, onEventRefunded } from './domains/events/service';
 // Loom: LUMA change events → Loom change signals, and the default plan-revision adapter.
 import './loom-host/changes';
+// Loom host ports (SSRF-safe HTTP, encrypted secrets).
+import './loom-host/runtime';
 
 const g = globalThis as unknown as { __lumaBooted?: boolean };
 if (!g.__lumaBooted) {

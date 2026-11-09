@@ -1,4 +1,4 @@
-import { proposePlanRevision as plannerRevision, type ApprovedPlanRef, type PlanRevisionChange, type PlanRevisionPort, type PlanRevisionReason, type PlanRevisionResult } from '@/loom';
+import { emitLoomEvent, proposePlanRevision as plannerRevision, type ApprovedPlanRef, type PlanRevisionChange, type PlanRevisionPort, type PlanRevisionReason, type PlanRevisionResult } from '@/loom';
 import type { PlanRevisionChange as PlannerChange } from '@/loom/contracts/plan';
 import './planner-port';
 import { withTenant } from '../db/client';
@@ -86,6 +86,7 @@ export const lumaPlanRevisions: PlanRevisionPort = {
         content, source: 'rules', createdBy: null, changeNote: `loom_revision:${reason.code}:${reason.signal_id}`.slice(0, 200),
         validation: { loom_revision: { reason, changes: changes.map((c) => ({ opportunity_id: c.opportunity_id, initiative_id: c.initiative_id, check: c.check, status: c.status, action: c.action })) } },
       });
+      await emitLoomEvent(trx, businessId, 'plan.revision_proposed', v.id, { plan_id: planId, version_id: v.id, version: v.version, reason: reason.text, source: 'annotation' });
       return { plan_id: planId, version_id: v.id, version: v.version };
     });
   },

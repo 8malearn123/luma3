@@ -111,7 +111,7 @@ Reads only `loom_export.*` inside `withTenant(business_id)`. Views are `security
 
 **Business setup checklist (`GET/PUT /loom/setup`, tab «إعداد لووم»):** goals, monthly budget, discount policy (`no_discounts` / max discount), excluded and growth offerings, content tone, ranking weights (accept the platform default or customise, each ≤ .5, sum = 1), shared-training consent (owner only, default false). Each item shows «مطلوب» until an explicit fact confirms it. Analyses still run; every card lists the unconfirmed items in `limitations` and says when the platform default weights were used.
 
-## 5. API v1 (phases 1–3, 5)
+## 5. API v1
 
 All under `/api/v1/t/{slug}/loom`, plan feature `feature.marketing_ai`. Capability mapping (`src/server/loom-host/access.ts`): `loom.view` → `marketing.view | marketing.manage`, `loom.manage` → `marketing.manage`, `loom.connections.manage` → `business.manage`.
 
@@ -354,3 +354,105 @@ Owner adds observations manually or from a link (fetched through the port; page 
 | `GET/POST /api/v1/platform/loom/calendar` (`{ target: starter | sources, source_id? }`) · `PATCH …/calendar/{id}` (`verify(note, dates?) | withdraw | restore`) | `platform.loom.manage` (+ step-up for writes, audited `loom.calendar_event_reviewed`) |
 
 UI: the «الرادار» tab (`src/ui/marketing/LoomTrends.tsx`: signals by cluster, calendar, market, sources) and `/platform/loom` (`LoomCalendarAdmin`). The old `/marketing/trends` routes and `trend_*` tables still serve the plans pipeline's `trend_assessment`.
+
+---
+
+# Phase 7 — connectors, external businesses, sector packs, webhooks
+
+Migration `0750_loom_connectors`. Everything below is host-agnostic Loom code (`src/loom/**`); the LUMA glue is `src/server/loom-host/{runtime,connection-ops}.ts` and the routes listed in §19.6.
+
+## 19. Generic connectors
+
+### 19.1 Staged connectors
+
+CSV and REST sources are not queryable at analysis time, so they are **staged**: a sync (or an inbound webhook) maps source rows and stores them in `loom.canonical_records`; the connector's `pull()` then assembles canonical records from that store (`src/loom/connectors/generic/staged.ts`). This is the one exception to "canonical records are not stored" (§2): the LUMA connector still reads `loom_export.*` live.
+
+| Piece | File | |
+|---|---|---|
+| Templates (one per entity: offerings, offering_requirements, inventory_items, resources, capacity_windows, transactions + transaction_lines, cost_facts, demand_signals, reviews, customers) | `generic/templates.ts` | fields, types, required, defaults, bilingual docs, example; `GET …/connections/templates` serves them with an example CSV |
+| CSV parser | `generic/csv-parse.ts` | RFC 4180, BOM, CRLF, 50 000 rows |
+| Mapping step | `generic/mapping.ts` | `Mapping { timezone, currency, money_unit, columns[entity][field] = source column, status_map[source status] = canonical, revenue_basis { amounts_include_tax, subtract_refunds, total_is_after_discount } }` stored in `source_mappings` (entity `*`, mirrored on `transactions` with the textual revenue basis) |
+| Store | `generic/store.ts` | dedupe key `(connection, entity, source_id)`; unchanged `source_version` is not rewritten; deletions are **tombstones** (`deleted_at`); `entity_links` for suspected duplicates (customers with the same hashed contact `dup_key` → 0.9, offerings with the same normalised name and kind → 0.5), status `suggested` until a human confirms/rejects — **never merged automatically** |
+| CSV connector `csv_import` | `generic/csv.ts` | each upload = full state of its entity; the cursor per entity is the last applied **file version** (`connections.cursors`); rows may carry `_op=delete` |
+| REST connector `rest` | `generic/rest.ts` | `restConfigSchema { base_url (https), health_path, paths[entity], items_field, pagination none / cursor / page, auth none / bearer / header, max_pages }`; every request through the host HTTP port (§13); a partial pull (page limit) never tombstones |
+| Sync + review | `generic/sync.ts` | `syncConnection()`, `reviewSnapshot()`, `ingestWebhook()` |
+| Lifecycle service | `generic/service.ts` (`loomConnections`) | create / list / get / update / putMapping / upload / action(test, sync, pause, resume) / review / decideLink / templates |
+
+Normalisation: money `major` → ×100 (minor units), `minor` as is; date-times with `Z`/offset are absolute, local ones are read in the mapping timezone; transaction statuses through `status_map` (canonical names are accepted as is; an unmapped status keeps the row **out** of the dataset and blocks review); net revenue = (total, or gross − discount) − tax (if amounts include it) − refunds (if subtracted), split over lines pro rata (`splitNet`); consistency as in the LUMA connector. Derived when the source omits them: `inventory.sold_90d` and customer `visits/first_seen/last_seen` from fulfilled transactions, `resources.skills` → skill requirements, the offering's recorded `cost` → material cost fact. Privacy: customer and transaction files refuse contact-like columns (`PII_COLUMN`: name, phone, email, address, national id…); customers are pseudonymous ids only.
+
+### 19.2 Lifecycle and the review gate (§16 rule)
+
+`review_status`: `not_required` (LUMA) · `pending_mapping` → `pending_review` → `approved` | `rejected`.
+
+1. **Create** (`pending_mapping`). REST: the auth secret and a generated **ingest secret** are sealed through the secrets port; the ingest secret is returned **once**.
+2. **Mapping** (`PUT …/mapping`). Changing the mapping (or the REST config) of a reviewed connection sends it back to `pending_mapping` and re-applies files.
+3. **Upload / test**. Uploads are validated against the template + mapping (missing columns, types, enums, PII columns, unmapped statuses); invalid content is not kept.
+4. **Sync now** → staging → **first-snapshot review**: the dataset is built through the connector exactly as an analysis would, the quality gate (with the business's sector-pack quality model) runs on it, and blockers are listed: `no_active_offerings`, `no_transactions`, `unmapped_statuses`, `quality_insufficient`, `inconsistent_transactions` (> 20 %). No blockers ⇒ `pending_review`.
+5. **Confirmation** by the owner (`business.manage`) or the platform owner (external businesses): `approve` only from `pending_review`. The first approved connection becomes the business's **primary source** (`primary_source`, one per business).
+6. Analyses (`analysisConnection()` in `analysis/run.ts`) read the primary source only if it is approved and not paused; otherwise they end `failed` / `connection_review_required`. LUMA tenants without a primary source keep the LUMA connection; external businesses have no default.
+
+Status, last sync, last error, health (`action test`), record counts (live / tombstoned per entity), sync runs (`sync_runs.kind = sync | ingest | analysis`), files, links and the review are returned by `GET …/connections/{id}`. **No view contains a secret** (only `has_secret`, `has_ingest_secret`).
+
+### 19.3 Inbound webhooks
+
+`POST /api/v1/loom/ingest/{connection}` (REST connections). Headers `X-Loom-Signature: t=<unix>,v1=<hex HMAC-SHA256(ingest secret, "<t>.<raw body>")>` and `X-Loom-Event-Id`. Body `{ "events": [{ "entity": "<template entity>", "op": "upsert" | "delete", "data": { <source row> } }] }` (≤ 1000 events, ≤ 1 MB). The path id is resolved in system scope only to find the business and secret; after `RestConnector.verifyWebhook()` (constant-time compare, ±300 s replay window) everything runs in `withTenant(business)`. Idempotent by event id (`loom.ingest_events`, append-only): a repeat returns `200 { duplicate: true }`; new events `202`; bad / missing signature or stale timestamp `401`; unknown connection `404`; paused `409`; no mapping `409 mapping_required`. Events are incremental (no tombstones except explicit deletes).
+
+### 19.4 Contract change (additive)
+
+`LoomConnector.verifyWebhook?(req, ctx?: WebhookContext)` — `WebhookContext = { conn, secret, now?, toleranceSec? }`; `SourceEvent` gained optional `data` and `event_id`.
+
+### 19.5 Tests
+
+`tests/unit/loom-connectors.test.ts` (parser, templates, normalisation, revenue basis, signatures, retail pack), `tests/integration/loom-connectors-csv.test.ts` (validation, mapping, status normalisation, revenue basis, dedupe/tombstones/links, review gate, external business E2E with the retail pack, isolation), `…-rest.test.ts` (REST through the safe fetcher incl. blocked hosts and DNS rebinding, secrets, ingest valid/invalid/replay/idempotent, outgoing signing/retry/log, LUMA tenant routes), `…-extraction.test.ts` (§14).
+
+### 19.6 API
+
+Tenant (`/api/v1/t/{slug}/loom`, `loom.connections.manage` → `business.manage`, plan feature `feature.marketing_ai`):
+
+| Method & path | |
+|---|---|
+| `GET connections` · `POST connections` `{ kind: csv_import \| rest, name, config?, secret? }` | list (status, review, last sync, errors, counts, health, manifest) · create (`ingest_secret` once) |
+| `GET connections/templates` | import templates |
+| `GET connections/{id}` · `PATCH` `{ name?, config?, secret?, rotate_ingest_secret? }` · `POST` `{ action: test \| sync \| pause \| resume }` | detail · update · lifecycle |
+| `POST\|PUT connections/{id}/mapping` · `POST connections/{id}/files` `{ entity, filename, content }` · `POST connections/{id}/review` `{ decision, note?, primary? }` · `POST connections/{id}/links` `{ link_id, status }` | mapping step · CSV upload · first-snapshot confirmation · duplicate decision |
+| `GET webhooks` · `POST webhooks` `{ url, events[] }` · `DELETE webhooks/{id}` | outgoing endpoints + delivery log (signing secret once) |
+| `GET sector-pack` (`loom.view`) · `PUT sector-pack` `{ sector_pack }` | pack, vocabulary, enabled packs |
+
+Platform (`/api/v1/platform/loom/businesses`, `platform.loom.manage`, MFA; create needs step-up): `GET`/`POST` businesses · `GET`/`PATCH`/`POST {action:'analyze'}` `businesses/{b}` · the same connection, mapping/files/review/links and webhook routes under `businesses/{b}/…` · `GET businesses/{b}/opportunities`.
+
+Inbound: `POST /api/v1/loom/ingest/{connection}` (signature only, no session).
+
+## 20. Businesses outside LUMA
+
+`loom.businesses (id, host 'luma' | 'external', name, sector_pack, timezone, currency, city, locale, status)` with RLS on `id`. An **external business** is a Loom-only business: no row in `tenants` or any LUMA table. Its `id` is its RLS scope id — `withTenant(id)` sets `app.tenant_id`, and every `loom.*` policy (`app.tenant_visible(business_id)`) isolates it exactly like a tenant (no loom table has a foreign key to `tenants`).
+
+Host tables that reference `tenants` are avoided (`src/loom/hosts.ts`):
+
+| Need | LUMA tenant | External business |
+|---|---|---|
+| Audit (`loomAudit`) | `audit_logs` (tenant id) | `loom.audit_events` (append-only, secrets redacted) + platform action in `audit_logs` (tenant null) |
+| Jobs (`scheduleForBusiness`) | `job_runs.tenant_id` | system-scope job with `business_id` in the payload; handlers verify it with `jobBusiness()` (must be an active external business) and retry until the scheduling transaction is visible |
+
+Managed by the platform owner in `/platform/loom` («منشآت خارج لوما»): create (enabled packs only), connect (CSV / REST / webhooks), review the first snapshot, analyze, read opportunities and data quality, outgoing webhooks. `startExternalAnalysis()` uses the same pipeline; the review gate is enforced by the analysis itself.
+
+**Not built (self-serve):** sign-in for external users (an identity provider or API keys per external business mapped to `loom.view / loom.manage / loom.connections.manage`), per-business API tokens for `loomApi` over HTTP, billing/usage limits, and decisions/conversions for external businesses (their `ActionPort` belongs to their own system — the outgoing webhooks are the hand-off; `loomApi.decideOpportunity` audits into `audit_logs` and is LUMA-only for now).
+
+## 21. Sector packs
+
+Registry `src/loom/sector/packs.ts` (importing it registers every pack and the retail detectors): `beauty` (1.0.0), `retail` (1.0.0), `restaurant` (0.1.0 **skeleton**: vocabulary, capacity model, generic detectors only). `SectorPack` gained optional `label`, `metrics.overrides` (stricter `min_sample` → `applyMetricOverrides`), `quality.core` (the domains that decide `overall` with sales → `applyPackQuality`; retail: sales + inventory instead of staff schedules) and `params`.
+
+**Retail** — capacity = sellable inventory + order preparation (`staff`/`generic` free minutes ÷ `prep_min_per_order`) + delivery (`vehicle` free minutes ÷ `delivery_min_per_order`), `orderCapacity()`; unknown when no windows exist (stated in the card, never assumed). Metrics `retail.order_capacity_next14`, `retail.basket_size`, `retail.units_sold_90d`. Detectors (`src/loom/sector/retail.ts`, pure): `retail_slow_mover_bundle` (slow mover + best-selling product with a positive known margin), `stockout_risk` (new category; cover < `cover_days_below` or at the reorder level → `restock`), `reorder_before_promotion` (a verified calendar event within `horizon_days` and best sellers that will not cover `event_uplift` × demand → `capacity_prerequisite` / `restock`; the event never creates a promotion by itself), `basket_cross_sell` (product pairs in the same basket, lift ≥ `min_lift`, ≥ `min_co_baskets`) plus the generic margin, missing-cost, presentation, conversion, loyalty and campaign detectors. Interventions reuse the engine's ids with retail wording. Vocabulary ar/en (منتج، طلب، فرع…).
+
+Selection: LUMA tenants `GET/PUT /loom/sector-pack` (writes `loom.businesses`), external businesses at creation/PATCH; only packs in `platform.enabled_sector_packs`. `runAnalysis` uses the chosen pack (else the connector's sector) and refuses a disabled one. The UI shows the pack's vocabulary (tab «الربط والبيانات»).
+
+Category `stockout_risk` was added to `OPPORTUNITY_CATEGORIES`; the DB check on `opportunities.category` is now a format check (validity is enforced in code) so packs can add categories without migrations racing over one CHECK list.
+
+## 22. Host ports and outgoing webhooks
+
+**Ports** (`src/loom/runtime.ts`): `configureLoomRuntime({ http, secrets })`. Loom never opens sockets itself; unconfigured ports fail closed. LUMA (`src/server/loom-host/runtime.ts`, loaded by `boot.ts`) wires `http` to the SSRF-safe fetcher (`safeFetch` now also takes `method: 'POST'`, `body`, `headers`; POSTs never follow redirects) and `secrets` to AES-256-GCM (`encryptSecret`/`decryptSecret`).
+
+**Outgoing webhooks** (`src/loom/webhooks/outgoing.ts`): `loom.webhook_endpoints` (https URL, events, sealed secret, ≤ 5 active) and `loom.webhook_deliveries` (the delivery log: status pending / delivered / failed, attempts, last HTTP status, last error, times). `emitLoomEvent(trx, businessId, type, key, data)` — types `plan.ready`, `opportunity.created`, `plan.revision_proposed`, `outcome.measured`; event id = hash(type, key), idempotent per endpoint. Each delivery is a job `loom.webhook_delivery` (6 attempts, the jobs framework's exponential backoff); requests are signed exactly like inbound ones (`X-Loom-Signature`, `X-Loom-Event-Id`, `X-Loom-Event-Type`). `opportunity.created` is emitted by `runAnalysis` for opportunities first detected by the analysis. **For phases 3 and 5:** call `emitLoomEvent(trx, businessId, 'plan.ready' | 'plan.revision_proposed', planVersionId, {...})` and `'outcome.measured'` inside the transaction that commits the plan version / outcome. Events only: approving a plan or an opportunity never sends a campaign.
+
+## 23. Extraction readiness
+
+See [LOOM_EXTRACTION.md](LOOM_EXTRACTION.md). `tests/integration/loom-connectors-extraction.test.ts` revokes the runtime role's access to schema `public` and runs CSV sync → review → approval → analysis → opportunities for an external business: the pipeline touches no LUMA table.

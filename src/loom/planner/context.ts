@@ -1,3 +1,4 @@
+import { timingContextFor } from '../radar/timing';
 import { DateTime } from 'luxon';
 import { sql, withSystem, withTenant, type Tx } from '../db';
 import { ensureConnection } from '../analysis/run';
@@ -59,7 +60,7 @@ export type PlanningContext = {
   ctx: MetricContext;
   opps: PlanOpp[];
   metrics: Map<string, number | null>;
-  events: Array<{ ref: string; title: string; starts_on: string; ends_on: string }>;
+  events: Array<{ ref: string; title: string; starts_on: string; ends_on: string; awareness_only?: boolean }>;
   candidates_hash: string;
 };
 
@@ -169,7 +170,16 @@ export async function loadPlanningContext(businessId: string, opts: { kind: Plan
       });
     }
     const horizon = addDays(period.to, 30);
-    const events = ds.calendar.filter((e) => e.verified && e.ends_on >= period.from && e.starts_on <= horizon).map((e) => ({ ref: `calendar:${e.id}`, title: e.title, starts_on: e.starts_on, ends_on: e.ends_on }));
+    const events: PlanningContext['events'] = ds.calendar.filter((e) => e.verified && e.ends_on >= period.from && e.starts_on <= horizon).map((e) => ({ ref: `calendar:${e.id}`, title: e.title, starts_on: e.starts_on, ends_on: e.ends_on }));
+    // Phase 4 radar: verified platform events adopted for (or attached to) the chosen opportunities. Unverified dates never reach the planner (T8).
+    for (const o of opps) {
+      const tc = await timingContextFor(businessId, { id: o.id, period }, { now: opts.now });
+      for (const e of tc.events) {
+        if (e.origin !== 'platform_calendar' || !e.usable_for_dates || events.some((x) => x.ref === e.ref)) continue;
+        events.push({ ref: e.ref, // Imported titles are untrusted external text: only the curated ones reach the model prompt.
+          title: e.title_is_untrusted ? e.kind : ds.business.locale === 'en' ? e.title.en : e.title.ar, starts_on: e.starts_on, ends_on: e.ends_on, awareness_only: e.framing === 'awareness_only' });
+      }
+    }
     const candidates_hash = stableHash({
       kind: opts.kind, period, opps: opps.map((o) => ({ id: o.id, card: o.card, status: o.status, free: o.free_slots, k: o.knowledge.map((x) => `${x.unit.id}@${x.unit.version}`) })),
       prefs: profile.prefs, goals: profile.goals.map((g) => g.kind), events,

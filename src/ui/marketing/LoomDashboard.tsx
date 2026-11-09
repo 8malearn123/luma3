@@ -19,10 +19,11 @@ import { LoomOpportunities } from './LoomOpportunities';
 import { LoomSetup } from './LoomSetup';
 import { LoomResults } from './LoomResults';
 import { LoomHome } from './LoomHome';
+import { LoomConnections } from './LoomConnections';
 
-type Tab = 'home' | 'summary' | 'opportunities' | 'results' | 'plans' | 'recommendations' | 'trends' | 'campaigns' | 'setup' | 'preferences' | 'jobs';
+type Tab = 'home' | 'summary' | 'opportunities' | 'results' | 'plans' | 'recommendations' | 'trends' | 'campaigns' | 'setup' | 'connections' | 'preferences' | 'jobs';
 /** Visible tabs. Phase 3: «الرئيسية» (Loom home) replaces the summary; the legacy rules recommendations are reachable only by URL (?tab=recommendations, ?tab=summary) and are deprecated. */
-const TABS: Tab[] = ['home', 'opportunities', 'results', 'plans', 'trends', 'campaigns', 'setup', 'preferences', 'jobs'];
+const TABS: Tab[] = ['home', 'opportunities', 'results', 'plans', 'trends', 'campaigns', 'setup', 'connections', 'preferences', 'jobs'];
 const LEGACY_TABS: Tab[] = ['summary', 'recommendations'];
 
 export function LoomDashboard({ initialTab }: { initialTab?: string }) {
@@ -41,7 +42,7 @@ export function LoomDashboard({ initialTab }: { initialTab?: string }) {
       <PageHeader title={t('marketing.title')} subtitle={t('marketing.subtitle')} />
       <Tabs value={tab} onChange={change} items={TABS.map((v) => ({ value: v, label: t(`marketing.tabs.${v}`) }))} />
       {LEGACY_TABS.includes(tab) ? <Alert tone="warn" className="mb-3">{t('loomp.legacy_notice')} <Button size="sm" variant="outline" className="ms-2" onClick={() => change('opportunities')}>{t('marketing.tabs.opportunities')}</Button></Alert> : null}
-      {tab === 'home' ? <LoomHome onNavigate={change} /> : tab === 'summary' ? <Summary onNavigate={change} /> : tab === 'opportunities' ? <LoomOpportunities onSetup={() => change('setup')} /> : tab === 'setup' ? <LoomSetup /> : tab === 'results' ? <LoomResults /> : tab === 'plans' ? <LoomPlans /> : tab === 'recommendations' ? <LoomRecommendations />
+      {tab === 'home' ? <LoomHome onNavigate={change} /> : tab === 'summary' ? <Summary onNavigate={change} /> : tab === 'opportunities' ? <LoomOpportunities onSetup={() => change('setup')} /> : tab === 'setup' ? <LoomSetup /> : tab === 'connections' ? <LoomConnections /> : tab === 'results' ? <LoomResults /> : tab === 'plans' ? <LoomPlans /> : tab === 'recommendations' ? <LoomRecommendations />
         : tab === 'trends' ? <LoomTrends /> : tab === 'campaigns' ? <LoomCampaigns /> : tab === 'preferences' ? <Preferences /> : <Jobs />}
     </div>
   );

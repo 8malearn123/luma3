@@ -1081,6 +1081,33 @@ export interface LoomAnalyses {
   trigger: Generated<string>;
 }
 
+export interface LoomAuditEvents {
+  action: string;
+  actor_kind: string;
+  actor_user_id: string | null;
+  business_id: string;
+  created_at: Generated<Timestamp>;
+  data: Generated<Json>;
+  id: Generated<string>;
+  target_id: string | null;
+  target_type: string | null;
+}
+
+export interface LoomBusinesses {
+  city: string | null;
+  created_at: Generated<Timestamp>;
+  created_by: string | null;
+  currency: Generated<string>;
+  host: string;
+  id: Generated<string>;
+  locale: Generated<string>;
+  name: string;
+  sector_pack: Generated<string>;
+  status: Generated<string>;
+  timezone: Generated<string>;
+  updated_at: Generated<Timestamp>;
+}
+
 export interface LoomBusinessGoals {
   business_id: string;
   created_at: Generated<Timestamp>;
@@ -1119,6 +1146,20 @@ export interface LoomCalendarChoices {
   event_id: string;
 }
 
+export interface LoomCanonicalRecords {
+  business_id: string;
+  connection_id: string;
+  data: Json;
+  deleted_at: Timestamp | null;
+  entity: string;
+  first_seen_at: Generated<Timestamp>;
+  id: Generated<string>;
+  origin: Generated<string>;
+  source_id: string;
+  source_version: string;
+  updated_at: Generated<Timestamp>;
+}
+
 export interface LoomChangeSignals {
   business_id: string;
   cooldown_until: Timestamp | null;
@@ -1143,10 +1184,21 @@ export interface LoomConnections {
   business_id: string;
   config: Generated<Json>;
   created_at: Generated<Timestamp>;
+  cursors: Generated<Json>;
+  health: Generated<Json>;
   id: Generated<string>;
+  ingest_secret_enc: string | null;
   kind: string;
   last_error: string | null;
   last_sync_at: Timestamp | null;
+  name: Generated<string>;
+  primary_source: Generated<boolean>;
+  record_counts: Generated<Json>;
+  review: Generated<Json>;
+  review_status: Generated<string>;
+  reviewed_at: Timestamp | null;
+  reviewed_by: string | null;
+  secret_enc: string | null;
   status: Generated<string>;
   updated_at: Generated<Timestamp>;
 }
@@ -1174,6 +1226,20 @@ export interface LoomDecisionHistory {
   opportunity_id: string | null;
   reason: string | null;
   stage: string;
+}
+
+export interface LoomEntityLinks {
+  business_id: string;
+  confidence: number;
+  connection_id: string;
+  created_at: Generated<Timestamp>;
+  entity: string;
+  id: Generated<string>;
+  reason: string;
+  source_id_a: string;
+  source_id_b: string;
+  status: Generated<string>;
+  updated_at: Generated<Timestamp>;
 }
 
 export interface LoomExportBookedIntervals {
@@ -1449,6 +1515,35 @@ export interface LoomFeedback {
   id: Generated<string>;
   opportunity_id: string;
   reaction: string;
+}
+
+export interface LoomImportFiles {
+  applied_at: Timestamp | null;
+  business_id: string;
+  connection_id: string;
+  content: string;
+  created_at: Generated<Timestamp>;
+  entity: string;
+  errors: Generated<Json>;
+  filename: string;
+  header: Generated<Json>;
+  id: Generated<string>;
+  row_count: Generated<number>;
+  sha256: string;
+  status: string;
+  uploaded_by: string | null;
+  version: number;
+}
+
+export interface LoomIngestEvents {
+  business_id: string;
+  connection_id: string;
+  event_id: string;
+  id: Generated<string>;
+  received_at: Generated<Timestamp>;
+  records: Generated<number>;
+  result: Generated<Json>;
+  signed_at: Timestamp;
 }
 
 export interface LoomInitiativeExecutions {
@@ -1889,6 +1984,7 @@ export interface LoomSyncRuns {
   error: string | null;
   finished_at: Generated<Timestamp>;
   id: Generated<string>;
+  kind: Generated<string>;
   started_at: Timestamp;
   status: string;
 }
@@ -1905,6 +2001,35 @@ export interface LoomTimingAttachments {
   plan_ref: string | null;
   ref_id: string;
   ref_kind: string;
+}
+
+export interface LoomWebhookDeliveries {
+  attempts: Generated<number>;
+  business_id: string;
+  created_at: Generated<Timestamp>;
+  delivered_at: Timestamp | null;
+  endpoint_id: string;
+  event_id: string;
+  event_type: string;
+  id: Generated<string>;
+  last_attempt_at: Timestamp | null;
+  last_error: string | null;
+  last_status: number | null;
+  payload: Json;
+  status: Generated<string>;
+}
+
+export interface LoomWebhookEndpoints {
+  active: Generated<boolean>;
+  business_id: string;
+  created_at: Generated<Timestamp>;
+  created_by: string | null;
+  description: string | null;
+  events: string[];
+  id: Generated<string>;
+  secret_enc: string;
+  updated_at: Generated<Timestamp>;
+  url: string;
 }
 
 export interface LoyaltyAccounts {
@@ -3785,14 +3910,20 @@ export interface DB {
   "loom_export.transaction_lines": LoomExportTransactionLines;
   "loom_export.transactions": LoomExportTransactions;
   "loom.analyses": LoomAnalyses;
+  "loom.audit_events": LoomAuditEvents;
   "loom.business_goals": LoomBusinessGoals;
   "loom.business_profile_facts": LoomBusinessProfileFacts;
+  "loom.businesses": LoomBusinesses;
   "loom.calendar_choices": LoomCalendarChoices;
+  "loom.canonical_records": LoomCanonicalRecords;
   "loom.change_signals": LoomChangeSignals;
   "loom.connections": LoomConnections;
   "loom.data_quality_checks": LoomDataQualityChecks;
   "loom.decision_history": LoomDecisionHistory;
+  "loom.entity_links": LoomEntityLinks;
   "loom.feedback": LoomFeedback;
+  "loom.import_files": LoomImportFiles;
+  "loom.ingest_events": LoomIngestEvents;
   "loom.initiative_executions": LoomInitiativeExecutions;
   "loom.initiatives": LoomInitiatives;
   "loom.knowledge_citations": LoomKnowledgeCitations;
@@ -3817,6 +3948,8 @@ export interface DB {
   "loom.source_mappings": LoomSourceMappings;
   "loom.sync_runs": LoomSyncRuns;
   "loom.timing_attachments": LoomTimingAttachments;
+  "loom.webhook_deliveries": LoomWebhookDeliveries;
+  "loom.webhook_endpoints": LoomWebhookEndpoints;
   loyalty_accounts: LoyaltyAccounts;
   loyalty_programs: LoyaltyPrograms;
   marketing_calendar_events: MarketingCalendarEvents;

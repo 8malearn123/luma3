@@ -31,7 +31,16 @@ export type ConnectionHealth = { status: 'ok' | 'degraded' | 'down'; checked_at:
 export type PulledRecord = { op: 'upsert' | 'delete'; source_id: string; source_version: string; data: unknown };
 export type PullResult = { records: PulledRecord[]; next_cursor: string | null };
 
-export type SourceEvent = { entity: CanonicalEntity; source_id: string; op: 'upsert' | 'delete'; at: string };
+export type SourceEvent = {
+  entity: CanonicalEntity | (string & {}); source_id: string; op: 'upsert' | 'delete'; at: string;
+  /** Raw source row (staged connectors map it with the connection's mapping). */
+  data?: unknown;
+  /** Idempotency key of the delivery that carried the event. */
+  event_id?: string;
+};
+
+/** What a connector needs to verify an inbound webhook: the connection and its ingest secret (server-side only). */
+export type WebhookContext = { conn: ConnectionRef; secret: string; now?: Date; toleranceSec?: number };
 
 export interface LoomConnector {
   readonly kind: 'luma' | 'csv_import' | 'rest' | (string & {});
@@ -39,7 +48,8 @@ export interface LoomConnector {
   healthcheck(conn: ConnectionRef): Promise<ConnectionHealth>;
   /** Incremental pull with an opaque cursor; records are canonical (already normalised). */
   pull(conn: ConnectionRef, entity: CanonicalEntity, cursor: string | null, limit: number): Promise<PullResult>;
-  verifyWebhook?(req: Request): Promise<SourceEvent[]>;
+  /** Verifies an inbound webhook (signature, replay window) and returns its events. Throws on an invalid request. */
+  verifyWebhook?(req: Request, ctx?: WebhookContext): Promise<SourceEvent[]>;
   /**
    * Optional (phase 5 measurement): target / holdout groups of a campaign with
    * their conversions inside the attribution window. Aggregates only. A

@@ -1,3 +1,4 @@
+import { emitLoomEvent } from '../webhooks/outgoing';
 import { schedule, withSystem, withTenant } from '../db';
 import { ensureConnection } from '../analysis/run';
 import { connectorFor } from '../connectors/registry';
@@ -93,6 +94,7 @@ export async function measureBusiness(businessId: string, opts: { now?: Date } =
         status: 'measured', measured_at: now, measurement_quality: outcome.quality, external_factors: JSON.stringify(outcome.external_factors), learnings: JSON.stringify(outcome.learnings),
         results: JSON.stringify({ outcome_id: row.id, design: outcome.design, quality: outcome.quality, causal: outcome.causal, primary: outcome.primary, guardrails: outcome.guardrails, attributed: outcome.attributed, incremental: outcome.incremental, limitations: outcome.limitations, periods: outcome.periods }),
       }).where('id', '=', init.id).execute();
+      await emitLoomEvent(trx, businessId, 'outcome.measured', row.id, { initiative_id: init.id, opportunity_id: init.opportunity_id, window: { from: windowFrom, to: windowTo }, quality: outcome.quality, causal: outcome.causal, primary: outcome.primary, guardrails: outcome.guardrails });
       await recordLadder(trx, businessId, { opportunity_id: init.opportunity_id, initiative_id: init.id, stage: 'measured', action: outcome.quality, data: { outcome_id: row.id, causal: outcome.causal } });
       const opp = await trx.selectFrom('loom.opportunities').select('status').where('id', '=', init.opportunity_id).executeTakeFirstOrThrow();
       if (['accepted', 'converted', 'executed'].includes(opp.status)) {
