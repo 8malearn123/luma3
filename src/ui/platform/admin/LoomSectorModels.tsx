@@ -35,7 +35,7 @@ export function LoomSectorModels() {
   const total = d.business_versions.reduce((s: number, b: { n: number }) => s + b.n, 0);
   return (
     <Card title={t('loom_models.admin.sector_title')} actions={<Button size="sm" variant="outline" loading={busy === 'train'} onClick={() => run('train', { action: 'train_sector', sector: 'beauty' })}>{t('loom_models.admin.train_sector')}</Button>}>
-      <p className="mb-2 text-xs text-ink-muted">{t('loom_models.consent.explain')}</p>
+      <p className="mb-2 text-xs text-ink-muted">{t('loom_models.admin.sector_explain')}</p>
       <p className="mb-2 text-xs">{t('loom_models.admin.business_versions', { n: total })}</p>
       {!d.versions.length ? <EmptyState title={t('loom_models.admin.sector_empty')} /> : (
         <ul className="flex flex-col gap-2 text-sm">

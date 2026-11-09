@@ -150,7 +150,7 @@ export function LoomHome({ onNavigate }: { onNavigate: (tab: 'opportunities' | '
         {d.plan.this_week.length ? <LoomPlanActionList actions={d.plan.this_week} compact /> : <p className="text-sm text-ink-muted">{t('loomp.home.week_empty')}</p>}
       </Card>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div>
         <Card title={t('loomp.home.alerts')}>
           {d.alerts.length ? (
             <ul className="flex flex-col gap-2 text-sm">
