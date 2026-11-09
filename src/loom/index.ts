@@ -32,3 +32,18 @@ export type { SectorPack, InterventionDef, InterventionId } from './sector/types
 export { analyzeNow, requestAnalysis, runAnalysis, ensureConnection, ANALYSIS_JOB } from './analysis/run';
 export * as loomApi from './api/service';
 export * from './api/schemas';
+
+// ── Phase 3: planner, validator v2, plans, knowledge (docs/LOOM_CORE.md §10–§13) ──
+export * from './contracts/plan';
+export { registerLoomHost, loomHost, hasLoomHost, PlannerAiError, type LoomHost, type PlannerAiPort, type PlanStorePort, type PlannerAiCall, type PlannerAiResult, type PlannerPrompt, type HostPlanRef, type ModelTier } from './contracts/host';
+export { generatePlanNow, requestPlan, runPlannerRun, PLAN_JOB, RULES_PLANNER_VERSION, validationContextOf } from './planner/run';
+export { proposePlanRevision, applyRevision, type RevisionResult } from './planner/revision';
+export { loadPlanningContext, freeSlots, type PlanningContext, type PlanOpp } from './planner/context';
+export { plannerOutput, type PlannerOutput, type PlannerCard } from './planner/schema';
+export { plannerPrompt } from './planner/prompt';
+export { runTools, MAX_TOOL_CALLS, type ToolResult } from './planner/tools';
+export { validatePlannerOutput, validatePlanDraft, checkText, ensureReviewAt, HEALTH_CLAIM_PATTERNS, type ValidationContext, type ValidationError, type ValidationCode } from './validator/validate';
+export { knowledgeLibrary, rankUnits, knowledgeUnitSchema, isStale, type KnowledgeUnit, type KnowledgeQuery } from './knowledge/library';
+export { retrieveKnowledge, recordCitations, syncKnowledgeLibrary, resetKnowledgeSync, listKnowledgeUnits, knowledgeTitles } from './knowledge/store';
+export * as loomPlannerApi from './api/planner';
+export { planRequestInput, commentInput } from './api/planner';

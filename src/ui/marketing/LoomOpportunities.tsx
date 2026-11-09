@@ -159,6 +159,17 @@ function OpportunityCard({ o }: { o: any }) {
               </ul>
             )}
           </div>
+          {c.draft_content ? <Detail label={t('loomp.card.draft')} value={c.draft_content.text} /> : null}
+          <div className="sm:col-span-2">
+            <p className="text-xs font-medium text-ink-muted">{t('loomp.card.methodology')}</p>
+            {detail.data?.knowledge?.length ? (
+              <ul className="mt-1 flex flex-col gap-1 text-xs">
+                {detail.data.knowledge.map((k: any) => <li key={k.ref}><span dir="auto">{k.title}</span> <span className="text-ink-muted" dir="ltr">({k.ref} · {k.source?.reviewed_at})</span></li>)}
+              </ul>
+            ) : <p className="text-xs text-ink-muted">{t('loomp.card.no_methodology')}</p>}
+            {o.details.wording ? <p className="mt-1 text-xs text-ink-muted">{t(`loomp.card.wording_${o.details.wording.source}`)}</p> : null}
+          </div>
+          <OpportunityNotes id={c.opportunity_id} notes={detail.data?.comments ?? []} canManage={canManage} />
           <p className="text-xs text-ink-muted sm:col-span-2">{t('loom.card.review_at', { date: formatDate(c.review_at, { locale, tz: access.timezone }) })}</p>
         </div>
       ) : null}
@@ -198,6 +209,30 @@ function OpportunityCard({ o }: { o: any }) {
         </div>
       ) : null}
     </li>
+  );
+}
+
+function OpportunityNotes({ id, notes, canManage }: { id: string; notes: any[]; canManage: boolean }) {
+  const { t, locale } = useI18n();
+  const access = useAccess();
+  const { act, busy } = useAct();
+  const [body, setBody] = useState('');
+  return (
+    <div className="sm:col-span-2">
+      <p className="text-xs font-medium text-ink-muted">{t('loomp.card.notes')}</p>
+      {notes.length ? (
+        <ul className="mt-1 flex flex-col gap-1 text-sm">
+          {notes.map((n) => <li key={n.id}><span className="text-xs text-ink-muted">{formatDateTime(n.created_at, { locale, tz: access.timezone })}</span> <span dir="auto">{n.body}</span></li>)}
+        </ul>
+      ) : <p className="text-xs text-ink-muted">{t('loomp.card.no_notes')}</p>}
+      {canManage ? (
+        <form className="mt-2 flex gap-2" onSubmit={async (e) => { e.preventDefault(); if (body.trim() && await act('note', `/loom/opportunities/${id}/comments`, { body: { body: body.trim() } })) setBody(''); }}>
+          <label className="sr-only" htmlFor={`note-${id}`}>{t('loomp.card.add_note')}</label>
+          <Input id={`note-${id}`} maxLength={2000} value={body} onChange={(e) => setBody(e.target.value)} />
+          <Button type="submit" size="sm" variant="outline" loading={busy === 'note'}>{t('loomp.card.add_note')}</Button>
+        </form>
+      ) : null}
+    </div>
   );
 }
 

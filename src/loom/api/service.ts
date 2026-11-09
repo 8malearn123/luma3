@@ -5,6 +5,7 @@ import type { Offering } from '../contracts/canonical';
 import { connectorFor } from '../connectors/registry';
 import type { DecisionReason } from '../contracts/opportunity';
 import { cardDetails, renderCard } from '../opportunities/render';
+import { knowledgeTitles } from '../knowledge/store';
 import { decide, DecisionError, markConverted, type DecisionInput } from '../opportunities/store';
 import { loadFacts, loadGoals, replaceGoals, resolveProfile, validateExplicit, writeFact } from '../profile/facts';
 import { readPlatformSettings } from '../settings/platform';
@@ -131,7 +132,7 @@ export async function getAnalysis(c: Pick<Ctx, 'businessId' | 'locale'>, id: str
   return analysisView(a, c.locale);
 }
 
-const rowView = (o: { id: string; business_id: string; card: unknown; status: string; display_bucket: string | null; evidence_strength: string | null; decision_reason: string | null; decided_at: Date | null; deferred_until: string | null; detector_id: string; conversion: unknown; updated_at: Date }, locale: LoomLocale) => ({
+const rowView = (o: { id: string; business_id: string; card: unknown; wording?: unknown; status: string; display_bucket: string | null; evidence_strength: string | null; decision_reason: string | null; decided_at: Date | null; deferred_until: string | null; detector_id: string; conversion: unknown; updated_at: Date }, locale: LoomLocale) => ({
   card: renderCard(o, locale), details: cardDetails(o, locale), status: o.status, bucket: o.display_bucket, evidence_strength: o.evidence_strength, detector_id: o.detector_id,
   decision: o.decided_at ? { reason: o.decision_reason, at: o.decided_at, deferred_until: o.deferred_until } : null, conversion: o.conversion, updated_at: o.updated_at,
 });
@@ -155,12 +156,18 @@ export async function getOpportunity(c: Pick<Ctx, 'businessId' | 'locale'>, id: 
     const refs = (o.card as { evidence_refs: string[] }).evidence_refs;
     const evidence = refs.length ? await trx.selectFrom('loom.opportunity_evidence').selectAll().where('business_id', '=', c.businessId).where('id', 'in', refs).execute() : [];
     const checks = await trx.selectFrom('loom.opportunity_checks').select(['check_type', 'status', 'details', 'created_at']).where('business_id', '=', c.businessId).where('opportunity_id', '=', id).orderBy('created_at', 'desc').limit(8).execute();
+    const cited = await trx.selectFrom('loom.knowledge_citations').select(['unit_id', 'unit_version']).distinct().where('business_id', '=', c.businessId).where('opportunity_id', '=', id).execute();
+    const comments = await trx.selectFrom('loom.opportunity_comments').select(['id', 'body', 'author_id', 'created_at']).where('business_id', '=', c.businessId).where('opportunity_id', '=', id).orderBy('created_at').execute();
     const events = await trx.selectFrom('loom.opportunity_events').select(['event', 'from_status', 'to_status', 'reason', 'note', 'counts_as_idea_failure', 'created_at']).where('business_id', '=', c.businessId).where('opportunity_id', '=', id).orderBy('created_at').execute();
     return {
       ...rowView(o, c.locale),
       evidence: evidence.map((e) => ({ id: e.id, metric_key: e.metric_key, grain_ref: e.grain_ref, value: e.value, n: e.n, label: render(e.label as { ar: string; en: string }, c.locale), grade: e.grade })),
       checks: Object.values(Object.fromEntries(checks.reverse().map((x) => [x.check_type, { type: x.check_type, status: x.status, details: x.details }]))),
       events,
+      // «مرجع المنهجية»: knowledge units cited by the card or its plan actions (phase 3).
+      knowledge: knowledgeTitles([...new Set([...renderCard(o, c.locale).knowledge_refs, ...cited.map((k) => `${k.unit_id}@${k.unit_version}`)])])
+        .map((k) => ({ ref: k.ref, title: render(k.title, c.locale), source: k.source, measurement: k.measurement.primary })),
+      comments,
     };
   });
 }

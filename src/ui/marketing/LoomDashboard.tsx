@@ -17,14 +17,17 @@ import { LoomTrends } from './LoomTrends';
 import { LoomCampaigns } from './LoomCampaigns';
 import { LoomOpportunities } from './LoomOpportunities';
 import { LoomSetup } from './LoomSetup';
+import { LoomHome } from './LoomHome';
 
-type Tab = 'summary' | 'opportunities' | 'plans' | 'recommendations' | 'trends' | 'campaigns' | 'setup' | 'preferences' | 'jobs';
-const TABS: Tab[] = ['summary', 'opportunities', 'plans', 'recommendations', 'trends', 'campaigns', 'setup', 'preferences', 'jobs'];
+type Tab = 'home' | 'summary' | 'opportunities' | 'plans' | 'recommendations' | 'trends' | 'campaigns' | 'setup' | 'preferences' | 'jobs';
+/** Visible tabs. Phase 3: «الرئيسية» (Loom home) replaces the summary; the legacy rules recommendations are reachable only by URL (?tab=recommendations, ?tab=summary) and are deprecated. */
+const TABS: Tab[] = ['home', 'opportunities', 'plans', 'trends', 'campaigns', 'setup', 'preferences', 'jobs'];
+const LEGACY_TABS: Tab[] = ['summary', 'recommendations'];
 
 export function LoomDashboard({ initialTab }: { initialTab?: string }) {
   const { t } = useI18n();
   const access = useAccess();
-  const [tab, setTab] = useState<Tab>(TABS.includes(initialTab as Tab) ? (initialTab as Tab) : 'summary');
+  const [tab, setTab] = useState<Tab>(TABS.includes(initialTab as Tab) || LEGACY_TABS.includes(initialTab as Tab) ? (initialTab as Tab) : 'home');
   if (!access.can('marketing.view', 'marketing.manage')) return <DeniedState />;
   const change = (v: Tab) => {
     setTab(v);
@@ -36,7 +39,8 @@ export function LoomDashboard({ initialTab }: { initialTab?: string }) {
     <div>
       <PageHeader title={t('marketing.title')} subtitle={t('marketing.subtitle')} />
       <Tabs value={tab} onChange={change} items={TABS.map((v) => ({ value: v, label: t(`marketing.tabs.${v}`) }))} />
-      {tab === 'summary' ? <Summary onNavigate={change} /> : tab === 'opportunities' ? <LoomOpportunities onSetup={() => change('setup')} /> : tab === 'setup' ? <LoomSetup /> : tab === 'plans' ? <LoomPlans /> : tab === 'recommendations' ? <LoomRecommendations />
+      {LEGACY_TABS.includes(tab) ? <Alert tone="warn" className="mb-3">{t('loomp.legacy_notice')} <Button size="sm" variant="outline" className="ms-2" onClick={() => change('opportunities')}>{t('marketing.tabs.opportunities')}</Button></Alert> : null}
+      {tab === 'home' ? <LoomHome onNavigate={change} /> : tab === 'summary' ? <Summary onNavigate={change} /> : tab === 'opportunities' ? <LoomOpportunities onSetup={() => change('setup')} /> : tab === 'setup' ? <LoomSetup /> : tab === 'plans' ? <LoomPlans /> : tab === 'recommendations' ? <LoomRecommendations />
         : tab === 'trends' ? <LoomTrends /> : tab === 'campaigns' ? <LoomCampaigns /> : tab === 'preferences' ? <Preferences /> : <Jobs />}
     </div>
   );

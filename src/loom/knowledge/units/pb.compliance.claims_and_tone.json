@@ -1,0 +1,83 @@
+{
+  "id": "pb.compliance.claims_and_tone",
+  "version": 1,
+  "title": {
+    "ar": "ادعاءات آمنة ونبرة متسقة",
+    "en": "Safe claims and consistent tone"
+  },
+  "applies_to": {
+    "sectors": [
+      "beauty"
+    ],
+    "detectors": [
+      "quiet_capacity",
+      "high_satisfaction_low_demand",
+      "lapsed_cohort",
+      "unserved_demand",
+      "conversion_friction",
+      "cross_sell_affinity",
+      "slow_mover_bundle",
+      "margin_leak",
+      "missing_cost_blocker",
+      "offering_presentation",
+      "loyalty_over_discount",
+      "capacity_prerequisite",
+      "campaign_learning"
+    ],
+    "interventions": [
+      "content_feature",
+      "improve_description",
+      "add_images",
+      "faq",
+      "targeted_reminder",
+      "reminder_due"
+    ],
+    "channels": [
+      "in_app",
+      "whatsapp",
+      "sms",
+      "email",
+      "instagram",
+      "storefront",
+      "in_store"
+    ]
+  },
+  "guidance": {
+    "ar": "محتوى التجميل يصف التجربة والنتيجة الشكلية دون ادعاءات علاجية أو صحية (علاج، شفاء، طبي، مضمون ١٠٠٪). التزمي بنبرة المنشأة وكلماتها المحظورة، والمناسبات الصحية توعوية فقط لا ترويجية.",
+    "en": "Beauty content describes the experience and the cosmetic result with no therapeutic or health claims (treats, cures, medical, 100% guaranteed). Follow the business tone and banned words; health observances are awareness-only, never promotional."
+  },
+  "when_not_to_use": {
+    "ar": "—",
+    "en": "—"
+  },
+  "common_mistakes": [
+    {
+      "ar": "استخدام مناسبة صحية للترويج بخصم",
+      "en": "Using a health observance for a discount promotion"
+    }
+  ],
+  "measurement": {
+    "primary": "quality.complaint_rate",
+    "design": "observational"
+  },
+  "examples": {
+    "good": [
+      {
+        "ar": "«بشرة أكثر نضارة بعد جلسة مريحة»",
+        "en": "“Fresher-looking skin after a relaxing session”"
+      }
+    ],
+    "bad": [
+      {
+        "ar": "«يعالج حب الشباب نهائيًا»",
+        "en": "“Cures acne for good”"
+      }
+    ]
+  },
+  "source": {
+    "type": "internal_review",
+    "ref": "Loom marketing methodology review, beauty pack v1",
+    "reviewed_at": "2026-11-01"
+  },
+  "owner": "loom.methodology"
+}

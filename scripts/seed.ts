@@ -276,6 +276,13 @@ async function main() {
     }
   });
   try { await analyzeNow(noura.tenantId, { trigger: 'seed', requestedBy: ownerId }); } catch (e) { console.warn(`[seed] loom analysis skipped: ${(e as Error).message}`); }
+  // Loom phase 3: knowledge library mirror + a rules-based monthly plan from the opportunities (no AI in the demo).
+  try {
+    await import('../src/server/loom-host/planner-port');
+    const { generatePlanNow, syncKnowledgeLibrary } = await import('../src/loom');
+    await syncKnowledgeLibrary();
+    await generatePlanNow(noura.tenantId, { kind: 'monthly', mode: 'rules', requestedBy: ownerId, trigger: 'seed' });
+  } catch (e) { console.warn(`[seed] loom plan skipped: ${(e as Error).message}`); }
 
   // A labelled example marketing plan (rules-based; no AI provider is connected in the demo).
   try { await createExamplePlan(access, actor, 'monthly'); } catch (e) { console.warn(`[seed] example plan skipped: ${(e as Error).message}`); }

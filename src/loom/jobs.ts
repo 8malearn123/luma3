@@ -1,5 +1,6 @@
 import { registerJob, registerPeriodic } from './db';
 import { ANALYSIS_JOB, failStuckAnalyses, runAnalysis } from './analysis/run';
+import { failStuckPlannerRuns, PLAN_JOB, runPlannerRun } from './planner/run';
 
 /** Loom background work: the analysis job (one per loom.analyses row) and a sweeper for stuck runs. */
 registerJob(ANALYSIS_JOB, async (payload, ctx) => {
@@ -9,3 +10,11 @@ registerJob(ANALYSIS_JOB, async (payload, ctx) => {
 });
 
 registerPeriodic({ name: 'loom.stuck_analyses', everySec: 900, run: failStuckAnalyses });
+
+/** Planner run (phase 3): one per loom.planner_runs row. Needs the host ports (registered by the host's job index). */
+registerJob(PLAN_JOB, async (payload, ctx) => {
+  if (!ctx.tenantId) throw new Error('loom plan requires a business');
+  const r = await runPlannerRun(String(payload.run_id), ctx.tenantId);
+  return r ? { status: r.status, source: r.source } : { skipped: true };
+});
+registerPeriodic({ name: 'loom.stuck_planner_runs', everySec: 900, run: failStuckPlannerRuns });

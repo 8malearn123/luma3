@@ -1,0 +1,62 @@
+{
+  "id": "pb.quiet_capacity.off_peak_package",
+  "version": 1,
+  "title": {
+    "ar": "باقة الأوقات الهادئة",
+    "en": "Off-peak package"
+  },
+  "applies_to": {
+    "sectors": [
+      "beauty"
+    ],
+    "detectors": [
+      "quiet_capacity"
+    ],
+    "interventions": [
+      "off_peak_package",
+      "value_add"
+    ],
+    "channels": [
+      "storefront",
+      "in_app"
+    ]
+  },
+  "guidance": {
+    "ar": "اجمعي خدمتين بهامش موجب في باقة متاحة فقط في الأوقات الهادئة، بالسعر الكامل أو مع ميزة غير نقدية صغيرة. تأكدي أن الأخصائية المؤهلة متاحة لكلتا الخدمتين.",
+    "en": "Combine two positive-margin services into a package bookable only at quiet times, at full price or with a small non-cash perk. Check that a qualified specialist can do both services."
+  },
+  "when_not_to_use": {
+    "ar": "لا تصلح إذا كانت إحدى الخدمتين بلا تكلفة مسجلة أو بهامش ضعيف.",
+    "en": "Not suitable when either service has no recorded cost or a thin margin."
+  },
+  "common_mistakes": [
+    {
+      "ar": "تسعير الباقة تحت التكلفة",
+      "en": "Pricing the package below cost"
+    }
+  ],
+  "measurement": {
+    "primary": "sales.completed_count",
+    "design": "pre_post_with_control"
+  },
+  "examples": {
+    "good": [
+      {
+        "ar": "باقة «صباح الثلاثاء»: قص وتصفيف مع ماسك شعر مجاني",
+        "en": "“Tuesday morning” package: cut and styling with a complimentary hair mask"
+      }
+    ],
+    "bad": [
+      {
+        "ar": "باقة دائمة بخصم ٥٠٪",
+        "en": "A permanent 50% off package"
+      }
+    ]
+  },
+  "source": {
+    "type": "internal_review",
+    "ref": "Loom marketing methodology review, beauty pack v1",
+    "reviewed_at": "2026-11-01"
+  },
+  "owner": "loom.methodology"
+}
