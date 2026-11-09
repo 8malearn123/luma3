@@ -1,4 +1,5 @@
 import { sql } from 'kysely';
+import { badgeOf } from '@/shared/badges';
 import { db, withTenant, type Tx } from '../../db/client';
 import { hashToken } from '../../auth/crypto';
 import { loadEntitlements } from '../../tenancy/access';
@@ -10,6 +11,7 @@ import {
 import { zBrand, NEUTRAL_BRAND } from '@/shared/builder/theme';
 import { DEFAULT_LAYOUT, zLayout } from '@/shared/builder/blocks';
 import { readDraftSnapshot, safeBlocks } from '../builder/drafts';
+import { loadStorefrontExtras } from '../portfolio/storefront';
 
 /**
  * Public storefront read model. Tenant scope comes from the published slug (or
@@ -89,13 +91,16 @@ async function assemble(trx: Tx, t: TenantRow, snapshot: SiteSnapshot, mode: Sto
   const visit = (list: PageBlock[]) => list.forEach((b) => {
     const p = b.props as Record<string, any>;
     addAsset(p.image_asset_id);
-    (p.items ?? []).forEach((i: any) => addAsset(i?.image_asset_id));
+    (p.items ?? []).forEach((i: any) => { addAsset(i?.image_asset_id); addAsset(i?.before_asset_id); addAsset(i?.after_asset_id); });
     if (b.children) visit(b.children);
   });
   snapshot.pages.forEach((p) => visit(p.blocks));
   live.services.forEach((s) => addAsset(s.image_asset_id));
   live.staff.forEach((s) => addAsset(s.photo_asset_id));
   live.products.forEach((p) => p.image_asset_ids.forEach(addAsset));
+  // Expert experience: before/after portfolio, Instagram section, event bookings.
+  const extras = await loadStorefrontExtras(trx, t.id, snapshot.pages.flatMap((p) => p.blocks), { all: mode === 'canvas' });
+  extras.assetIds.forEach(addAsset);
   const assets: Record<string, PublicAsset> = {};
   if (assetIds.size) {
     const rows = await trx.selectFrom('assets').select(['id', 'width', 'height', 'alt_ar', 'alt_en'])
@@ -118,6 +123,7 @@ async function assemble(trx: Tx, t: TenantRow, snapshot: SiteSnapshot, mode: Sto
     assets,
     policy: live.policy,
     features: { products: productsEnabled },
+    ...extras.data,
   };
 }
 
@@ -143,7 +149,7 @@ export async function loadLiveCatalog(trx: Tx, tenantId: string, opts: { product
   const visibleCats = new Set(cats.map((c) => c.id));
 
   const svcRows = await trx.selectFrom('services')
-    .select(['id', 'name_ar', 'name_en', 'description_ar', 'description_en', 'price_minor', 'price_display', 'duration_min', 'image_asset_id', 'category_id'])
+    .select(['id', 'name_ar', 'name_en', 'description_ar', 'description_en', 'price_minor', 'price_display', 'duration_min', 'image_asset_id', 'category_id', 'badge_kind', 'badge_text_ar', 'badge_text_en'])
     .where('tenant_id', '=', tenantId).where('archived_at', 'is', null).where('is_active', '=', true).where('is_visible', '=', true)
     .orderBy('sort').orderBy('created_at').execute();
   // Hiding a category hides its services publicly (they and their history remain).
@@ -163,6 +169,7 @@ export async function loadLiveCatalog(trx: Tx, tenantId: string, opts: { product
       price_minor: s.price_minor, price_display: s.price_display as PublicService['price_display'], duration_min: s.duration_min,
       image_asset_id: s.image_asset_id, category_id: s.category_id,
       staff_ids: qualified.filter((l) => publicStaff.has(l.staff_id)).map((l) => l.staff_id), bookable: qualified.length > 0,
+      badge: badgeOf(s),
     };
   });
   const svcIds = new Set(services.map((s) => s.id));

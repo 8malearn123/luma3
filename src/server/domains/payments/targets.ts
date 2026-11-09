@@ -14,8 +14,11 @@ export const paymentTargets: {
   order: { onCaptured: Captured; onFailed: Failed };
   giftCard: { onCaptured: Captured };
   membership: { onCaptured: Captured };
+  /** Event bookings (deposit / balance). Wired to domains/events in src/server/boot.ts. */
+  event: { onCaptured: Captured; onFailed: Failed; onRefunded: (trx: Tx, tenantId: string, targetId: string, refund: { refundId: string; amountMinor: number }) => Promise<{ completed: boolean }> };
 } = {
   order: { onCaptured: notWired('order'), onFailed: async () => undefined },
   giftCard: { onCaptured: notWired('gift_card') },
   membership: { onCaptured: notWired('membership') },
+  event: { onCaptured: notWired('event'), onFailed: async () => undefined, onRefunded: notWired('event') as never },
 };

@@ -52,74 +52,6 @@ export async function listExpenses(access: TenantAccess, from: string, to: strin
   return withTenant(access.tenantId, (trx) => trx.selectFrom('expenses').selectAll().where('incurred_on', '>=', from).where('incurred_on', '<=', to).orderBy('incurred_on', 'desc').limit(500).execute());
 }
 
-// ── Commission rules ────────────────────────────────────────────────────────
-export const commissionRuleInput = z.object({
-  staff_id: z.string().uuid().nullable().optional(),
-  service_id: z.string().uuid().nullable().optional(),
-  kind: z.enum(['percent', 'fixed']),
-  rate_bp: z.number().int().min(0).max(10000).optional(),
-  amount_minor: z.number().int().min(0).max(10_000_000).optional(),
-  effective_from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-  effective_to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
-}).strict().refine((v) => (v.kind === 'percent' ? v.rate_bp != null : v.amount_minor != null), 'Rate or amount required');
-
-export async function createCommissionRule(access: TenantAccess, actor: AuditActor, input: z.infer<typeof commissionRuleInput>) {
-  return withTenant(access.tenantId, async (trx) => {
-    const r = await trx.insertInto('commission_rules').values({
-      tenant_id: access.tenantId, staff_id: input.staff_id ?? null, service_id: input.service_id ?? null, kind: input.kind, rate_bp: input.rate_bp ?? null,
-      amount_minor: input.amount_minor ?? null, effective_from: input.effective_from ?? DateTime.now().toISODate()!, effective_to: input.effective_to ?? null, created_by: actor.userId,
-    }).returningAll().executeTakeFirstOrThrow();
-    await audit(trx, actor, 'finance.commission_rule_created', { tenantId: access.tenantId, targetType: 'commission_rule', targetId: r.id, data: input });
-    return r;
-  });
-}
-
-export async function listCommissionRules(access: TenantAccess) {
-  return withTenant(access.tenantId, (trx) => trx.selectFrom('commission_rules as r').leftJoin('staff_profiles as sp', 'sp.id', 'r.staff_id').leftJoin('services as s', 's.id', 'r.service_id')
-    .selectAll('r').select(['sp.display_name as staff_name', 's.name_ar as service_name_ar', 's.name_en as service_name_en']).orderBy('r.created_at', 'desc').execute());
-}
-
-/** Commission ledger rows in a period (earned + reversals), with what each was earned on. */
-export async function listCommissionEntries(access: TenantAccess, fromISO: string, toISO: string) {
-  const from = DateTime.fromISO(fromISO, { zone: access.timezone }).startOf('day').toJSDate();
-  const to = DateTime.fromISO(toISO, { zone: access.timezone }).endOf('day').toJSDate();
-  return withTenant(access.tenantId, (trx) => trx.selectFrom('commission_entries as e')
-    .innerJoin('staff_profiles as sp', 'sp.id', 'e.staff_id')
-    .innerJoin('booking_items as i', 'i.id', 'e.booking_item_id')
-    .innerJoin('bookings as b', 'b.id', 'i.booking_id')
-    .select(['e.id', 'e.kind', 'e.base_minor', 'e.amount_minor', 'e.reason', 'e.reverses_entry_id', 'e.rule_snapshot', 'e.created_at', 'e.staff_id', 'sp.display_name as staff_name',
-      'i.service_name_ar', 'i.service_name_en', 'b.id as booking_id', 'b.number as booking_number',
-      sql<boolean>`exists (select 1 from commission_entries x where x.reverses_entry_id = e.id)`.as('reversed')])
-    .where('e.created_at', '>=', from).where('e.created_at', '<=', to)
-    .orderBy('e.created_at', 'desc').limit(500).execute());
-}
-
-export async function deactivateCommissionRule(access: TenantAccess, actor: AuditActor, id: string) {
-  return withTenant(access.tenantId, async (trx) => {
-    const r = await trx.updateTable('commission_rules').set({ is_active: false, effective_to: DateTime.now().toISODate()! }).where('id', '=', id).returning('id').executeTakeFirst();
-    if (!r) throw Errors.notFound('commission_rule');
-    await audit(trx, actor, 'finance.commission_rule_deactivated', { tenantId: access.tenantId, targetType: 'commission_rule', targetId: id });
-    return r;
-  });
-}
-
-/** Explicit correction after a refund: an offsetting reversal entry, never an edit. */
-export async function reverseCommission(access: TenantAccess, actor: AuditActor, entryId: string, reason: string) {
-  return withTenant(access.tenantId, async (trx) => {
-    const e = await trx.selectFrom('commission_entries').selectAll().where('id', '=', entryId).where('kind', '=', 'earned').executeTakeFirst();
-    if (!e) throw Errors.notFound('commission_entry');
-    const prior = await trx.selectFrom('commission_entries').select('id').where('reverses_entry_id', '=', entryId).executeTakeFirst();
-    if (prior) throw Errors.conflict('already_reversed');
-    const r = await trx.insertInto('commission_entries').values({
-      tenant_id: access.tenantId, staff_id: e.staff_id, booking_item_id: e.booking_item_id, kind: 'reversal', base_minor: -e.base_minor, amount_minor: -e.amount_minor,
-      rule_snapshot: JSON.stringify(e.rule_snapshot), reason, reverses_entry_id: e.id, created_by: actor.userId,
-    }).returning('id').executeTakeFirstOrThrow();
-    await post(trx, access.tenantId, { type: 'commission_reversal', id: r.id }, [{ account: 'commissions_payable', debit: e.amount_minor }, { account: 'commissions_expense', credit: e.amount_minor }], { createdBy: actor.userId, memo: reason });
-    await audit(trx, actor, 'finance.commission_reversed', { tenantId: access.tenantId, targetType: 'commission_entry', targetId: entryId, data: { reason } });
-    return { id: r.id };
-  });
-}
-
 // ── Reports ─────────────────────────────────────────────────────────────────
 /**
  * Period report (business timezone). Each figure states its accounting basis.
@@ -151,7 +83,8 @@ export async function financeReport(access: TenantAccess, fromISO: string, toISO
     const orderDiscounts = await trx.selectFrom('orders').select([sql<number>`coalesce(sum(discount_minor),0)::bigint`.as('v')]).where('status', 'in', ['paid', 'preparing', 'ready', 'collected']).where('created_at', '>=', from).where('created_at', '<=', to).executeTakeFirstOrThrow();
     const expenses = await trx.selectFrom('expenses').select(['category', sql<number>`coalesce(sum(amount_minor),0)::bigint`.as('v')]).where('voided_at', 'is', null)
       .where('incurred_on', '>=', fromISO).where('incurred_on', '<=', toISO).groupBy('category').execute();
-    const commissions = await trx.selectFrom('commission_entries').select([sql<number>`coalesce(sum(amount_minor),0)::bigint`.as('v')]).where('created_at', '>=', from).where('created_at', '<=', to).executeTakeFirstOrThrow();
+    // Commission expense: posted when a payroll month closes (and, for history, by the retired per-booking engine).
+    const commissions = { v: -(await acct('commissions_expense')) };
     // Product cost: needs a unit cost on every sold line.
     const cogs = await trx.selectFrom('order_items as i').innerJoin('orders as o', 'o.id', 'i.order_id')
       .select([sql<number>`coalesce(sum(i.unit_cost_minor * i.quantity),0)::bigint`.as('v'), sql<number>`count(*) filter (where i.unit_cost_minor is null)::int`.as('missing')])
@@ -179,11 +112,13 @@ export async function financeReport(access: TenantAccess, fromISO: string, toISO
     const serviceRevenue = await acct('service_revenue');
     const productRevenue = await acct('product_revenue');
     const expenseTotal = expenses.reduce((a, e) => a + e.v, 0);
+    // Closed payroll months: base salaries + bonuses − deductions (tips pass through to staff).
+    const salaries = -(await acct('salaries_expense'));
     const missing: string[] = [];
     if (cogs.missing > 0) missing.push('product_unit_costs');
     if (materials.missing > 0) missing.push('material_unit_costs');
     if (servicesWithoutCost.n > 0 && materials.v === 0) missing.push('service_costs_or_recipes');
-    const profit = missing.length ? null : serviceRevenue + productRevenue - expenseTotal - cogs.v - Math.round(materials.v) - commissions.v;
+    const profit = missing.length ? null : serviceRevenue + productRevenue - expenseTotal - cogs.v - Math.round(materials.v) - commissions.v - salaries;
     return {
       period: { from: fromISO, to: toISO, timezone: tz },
       booking_value: { amount_minor: bookingValue.v, count: bookingValue.n, basis: 'Total of confirmed/attended/completed bookings starting in the period (not revenue).' },
@@ -199,9 +134,10 @@ export async function financeReport(access: TenantAccess, fromISO: string, toISO
       product_costs: { amount_minor: cogs.v, complete: cogs.missing === 0, missing_lines: cogs.missing },
       material_costs: { amount_minor: Math.round(materials.v), complete: materials.missing === 0 },
       commissions: { amount_minor: commissions.v },
+      salaries: { amount_minor: salaries, basis: 'Base salaries and bonuses minus deductions from closed payroll months. Tips are paid through to staff and are not an expense.' },
       profit: profit === null
         ? { status: 'costs_incomplete', missing, amount_minor: null }
-        : { status: 'computed', amount_minor: profit, formula: 'service sales + product sales − expenses − product costs − material costs − commissions' },
+        : { status: 'computed', amount_minor: profit, formula: 'service sales + product sales − expenses − product costs − material costs − commissions − salaries' },
       tax: {
         collected_minor: await acct('tax_payable'), note: 'Configured tax rules only; no tax or e-invoicing compliance is claimed.',
         configured: await trx.selectFrom('tenant_settings').select(['tax_label', 'tax_rate_bp', 'prices_include_tax']).where('tenant_id', '=', access.tenantId).executeTakeFirst() ?? null,

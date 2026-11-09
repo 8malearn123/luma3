@@ -17,6 +17,9 @@ import { useToast } from '../components/toast';
 import { useAccess } from '../shell/access-context';
 import { ImageUpload } from '../workspace/ImageUpload';
 import { BookingDrawer, type BookingDetail } from '../bookings/BookingDrawer';
+import { EarningsCard } from '../payroll/EarningsCard';
+import { MyHrCard, MyLatenessCard, MyRequestsCard } from '../hr/PortalCards';
+import { OwnBalanceNote } from '../hr/LeavePanels';
 import { BookingStatusBadge, parseRange, useBookingFmt, type BookingAction, type BookingRow } from '../bookings/common';
 
 type Schedule = {
@@ -63,7 +66,11 @@ export function StaffPortal() {
           <MySchedule staffId={access.staffProfileId} />
         </div>
         <div className="flex min-w-0 flex-col gap-4">
+          {access.can('payroll.view_own') ? <EarningsCard /> : null}
+          {access.can('hr.request') ? <MyHrCard /> : null}
           {access.can('attendance.own') ? <ClockCard /> : null}
+          {access.can('attendance.own') ? <MyLatenessCard /> : null}
+          {access.can('hr.request') ? <MyRequestsCard /> : null}
           {access.can('leave.request', 'schedule.manage') ? <LeaveCard staffId={access.staffProfileId} /> : null}
           <ProfileCard />
         </div>
@@ -268,7 +275,7 @@ function LeaveCard({ staffId }: { staffId: string }) {
   const start = DateTime.fromISO(from, { zone: tz }), end = DateTime.fromISO(to, { zone: tz });
   const invalid = !start.isValid || !end.isValid || end < start;
   const m = useApiMutation(() => api(access.api('/leave'), { body: { starts_at: start.startOf('day').toISO(), ends_at: end.plus({ days: 1 }).startOf('day').toISO(), leave_type: type, ...(reason.trim() ? { reason: reason.trim() } : {}) } }), {
-    invalidate: [['portal', access.slug, 'leave']],
+    invalidate: [['portal', access.slug, 'leave'], ['portal', access.slug, 'hr'], ['hr-requests', access.slug], ['hr-balances', access.slug]],
     onSuccess: () => { setReason(''); toast({ tone: 'ok', text: t('me_portal.leave_sent') }); },
   });
   const fmtDay = (iso: string) => DateTime.fromISO(iso, { zone: tz }).setLocale(locale).toFormat('d LLL yyyy');
@@ -284,9 +291,10 @@ function LeaveCard({ staffId }: { staffId: string }) {
           </div>
           <Field label={t('staff_portal.leave_type')}>{(p) => (
             <Select {...p} value={type} onChange={(e) => setType(e.target.value)}>
-              {(['annual', 'sick', 'personal', 'other'] as const).map((k) => <option key={k} value={k}>{t(`staff_portal.leave_types.${k}`)}</option>)}
+              {(['annual', 'sick', 'emergency', 'unpaid', 'personal', 'other'] as const).map((k) => <option key={k} value={k}>{t(`staff_portal.leave_types.${k}`)}</option>)}
             </Select>
           )}</Field>
+          {type === 'annual' ? <OwnBalanceNote /> : null}
           <Field label={t('fields.reason')} hint={t('fields.optional')}>{(p) => <Textarea {...p} rows={2} maxLength={500} value={reason} onChange={(e) => setReason(e.target.value)} />}</Field>
           <Button type="submit" loading={m.isPending} disabled={invalid} className="self-start">{t('actions.submit')}</Button>
         </form>

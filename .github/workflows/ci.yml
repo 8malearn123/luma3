@@ -23,7 +23,8 @@ env:
 jobs:
   checks:
     name: Typecheck, lint, unit + integration tests, build
-    runs-on: ubuntu-latest
+    # Pinned: Playwright 1.56 cannot install Chromium on ubuntu-latest (Ubuntu 26.04).
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     services:
       postgres:
@@ -63,7 +64,8 @@ jobs:
 
   e2e:
     name: Playwright end-to-end journeys
-    runs-on: ubuntu-latest
+    # Pinned: Playwright 1.56 cannot install Chromium on ubuntu-latest (Ubuntu 26.04).
+    runs-on: ubuntu-24.04
     needs: checks
     timeout-minutes: 30
     services:
@@ -105,7 +107,8 @@ jobs:
 
   demo:
     name: Demo deployment (embedded database, two instances)
-    runs-on: ubuntu-latest
+    # Pinned: Playwright 1.56 cannot install Chromium on ubuntu-latest (Ubuntu 26.04).
+    runs-on: ubuntu-24.04
     needs: checks
     timeout-minutes: 30
     steps:

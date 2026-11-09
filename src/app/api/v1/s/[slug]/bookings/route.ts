@@ -4,6 +4,8 @@ import { publicTenant } from '@/server/domains/storefront-public';
 import { holdInput } from '@/shared/schemas/booking';
 import { toItem } from '../availability/route';
 import { attachConversionSession, sessionFromRequest } from '@/server/domains/analytics/events';
+import { attributeMarketplaceBooking } from '@/server/domains/marketplace/attribution';
+import { recordAcquisition } from '@/server/domains/customers/acquisition';
 
 /** POST /api/v1/s/{slug}/bookings — hold the chosen itinerary for the signed-in, verified customer. */
 export const POST = route({
@@ -16,10 +18,18 @@ export const POST = route({
     const t = await publicTenant(params.slug!);
     const r = await createHold(t.id, {
       branchId: input.branch_id, items: input.items.map((i) => ({ ...toItem(i), staffId: i.staff_id, start: i.start })),
-      customer: { kind: 'user', user }, source: 'storefront', audience: 'public', customerNote: input.customer_note ?? null,
+      customer: { kind: 'user', user }, source: 'storefront', audience: 'public', customerNote: input.customer_note ?? null, couponCode: input.coupon_code ?? null,
       idempotencyKey: idempotencyKey!, actor: { ...actor, kind: 'customer' },
     });
-    if (r.status === 201) await attachConversionSession(t.id, 'bookings', (r.body as { booking_id: string }).booking_id, sessionFromRequest(req));
+    if (r.status === 201) {
+      const bookingId = (r.body as { booking_id: string }).booking_id;
+      await attachConversionSession(t.id, 'bookings', bookingId, sessionFromRequest(req));
+      // سوق لوما: tag the booking when this session arrived from /discover (commission applies only then).
+      await attributeMarketplaceBooking(t.id, bookingId, sessionFromRequest(req));
+      // First-touch «كيف عرفتِ عنا؟» inference from the storefront session (a marketplace booking counts as «سوق لوما»).
+      const acq = await recordAcquisition(t.id, { bookingId }, sessionFromRequest(req));
+      return { status: r.status, data: { ...(r.body as object), acquisition_question: acq?.needs_question ?? false } };
+    }
     return { status: r.status, data: r.body };
   },
 });

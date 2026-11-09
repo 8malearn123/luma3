@@ -38,7 +38,9 @@ Source of truth: `db/migrations/*.sql`. Generated TypeScript types: `src/server/
 | 0008_policy | incidents, evidence, incident reviews, policy rules/decisions, appeals |
 | 0009_marketing_ai_analytics | analytics events, metrics, Loom plans/versions/recommendations, segments, campaigns, suppression, trends, AI jobs/runs |
 | 0010–0024 | hardening, null-tenant inserts, reference plans, settings confirmation, asset lookup, notification reads, booking revisions, sandbox provider, group/waitlist columns, loyalty/gift columns, finance documents, platform notifications, conversion sessions, conventions fix, platform evidence access |
+| 0620_marketplace | سوق لوما: listings, verification + private documents, favourites, marketplace visits, `bookings.channel`, payment platform fee, commission ledger, `app.marketplace_directory()` (see `docs/MARKETPLACE.md`) |
 | 0100–0500 | builder publishing + starter templates, commerce operations, policy/customer lifecycle, marketing/analytics extensions, platform admin (MFA, versions, test invoices) |
+| 0630_platform_admin_ext | approved plan prices (data), founding seats and promotions on `subscriptions`, `plan_promotions`, `platform_settings`, `tenant_approvals`, `referrers` (RLS; marketers have no tenant), `referrals`, `referral_withdrawals`, `referral_ledger` (**append-only**), `settlement_statements` (RLS); see [PLATFORM_ADMIN.md](PLATFORM_ADMIN.md) |
 
 ## Tables by domain
 
@@ -164,7 +166,9 @@ It also has CHECK exactly one of `staff_id` / `resource_id`, CHECK `state <> 'he
 | `payouts` | Provider payouts | **defined but not used by application code** |
 | `financial_entries` | Double-entry journal | **append-only**; CHECK each line is debit xor credit; account CHECK (19 accounts); **deferred constraint trigger `financial_entries_balanced`**: at commit, every `entry_group_id` must sum debit − credit = 0 |
 | `expenses` | Expenses | CHECK voided expenses need a `void_reason` |
-| `commission_rules`, `commission_entries` | Commissions | partial unique **one `earned` entry per booking item**; entries **append-only** (reversals are new rows) |
+| `commission_rules`, `commission_entries` | Retired per-booking commission engine (history only; see 0600) | entries **append-only** |
+| `commission_policies`, `staff_pay_profiles`, `payroll_entries`, `payroll_runs`, `payroll_slips`, `payroll_slip_payments`, `payroll_settled_items` | Payroll (0600, [PAYROLL.md](PAYROLL.md)) | one run per month; runs, slips, payments and settled items **append-only**; settled-item primary key = nothing is paid twice |
+| `hr_settings`, `leave_ledger`, `hr_request_types`, `hr_requests`, `hr_request_actions`, `payroll_deduction_suggestions`, `booking_reroutes`, `staff_files`, `staff_documents`, `staff_commission_overrides` | HR (0610, [HR.md](HR.md)) | ledger, request history and reroute log **append-only**; one suggestion per dedupe key; staff file owner-only |
 | `invoices`, `invoice_items` | Receipts, invoices, credit notes | **append-only**; `unique (tenant_id, number)`; partial uniques: one receipt per payment, one invoice per booking, one invoice per order |
 | `finance_exports` | CSV export jobs | status CHECK |
 

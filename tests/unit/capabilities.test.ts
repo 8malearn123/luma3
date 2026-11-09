@@ -59,3 +59,18 @@ describe('capability model (permissions matrix)', () => {
     expect(supportCapabilities('write').has('costs.view')).toBe(false);
   });
 });
+
+describe('payroll capabilities', () => {
+  it('owner and finance run payroll; managers only by delegation; everyone sees only their own earnings', () => {
+    expect(effectiveCapabilities('owner').has('payroll.manage')).toBe(true);
+    expect(effectiveCapabilities('finance').has('payroll.manage')).toBe(true);
+    expect(effectiveCapabilities('manager').has('payroll.view')).toBe(false);
+    expect(effectiveCapabilities('manager', ['payroll.view', 'payroll.manage']).has('payroll.manage')).toBe(true);
+    for (const role of ['specialist', 'receptionist'] as const) {
+      expect(effectiveCapabilities(role).has('payroll.view_own')).toBe(true);
+      expect(effectiveCapabilities(role).has('payroll.view')).toBe(false);
+      expect(invalidGrants(role, ['payroll.manage'])).toEqual(['payroll.manage']);
+    }
+    expect(supportCapabilities('write').has('payroll.view')).toBe(false);
+  });
+});

@@ -21,6 +21,15 @@ export const holdInput = z.object({
   branch_id: z.string().uuid().nullable().optional(),
   items: z.array(requestedItem.extend({ staff_id: z.string().uuid(), start: z.string().datetime({ offset: true }) })).min(1).max(6),
   customer_note: z.string().trim().max(500).optional(),
+  /** Booking coupon (scope services/all). Validated and redeemed server-side; the discount applies before the deposit. */
+  coupon_code: z.string().trim().min(3).max(40).optional(),
+}).strict();
+
+/** Coupon preview on the booking page: the server prices the chosen itinerary (prices never come from the browser). */
+export const bookingCouponPreviewInput = z.object({
+  branch_id: z.string().uuid().nullable().optional(),
+  code: z.string().trim().min(3).max(40),
+  items: z.array(requestedItem.extend({ staff_id: z.string().uuid() })).min(1).max(6),
 }).strict();
 
 export const staffBookingInput = holdInput.extend({
@@ -62,7 +71,7 @@ export const listBookingsQuery = z.object({
   to: z.string().datetime({ offset: true }).optional(),
   status: z.string().max(200).optional(),
   staff_id: z.string().uuid().optional(),
-  branch_id: z.string().uuid().optional(),
+  branch_id: z.union([z.string().uuid(), z.literal('all')]).optional(),
   customer_id: z.string().uuid().optional(),
   q: z.string().max(80).optional(),
   limit: z.coerce.number().int().min(1).max(100).default(50),

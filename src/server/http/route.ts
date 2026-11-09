@@ -13,6 +13,7 @@ import { enforce } from '../infra/rate-limit';
 import { AppError, Errors, fromPgError } from './errors';
 import type { PlanFeatureKey } from '@/shared/plans';
 import { requireSafeRuntimeRole } from '../db/role-guard';
+import { requireDashboardsOpen } from '../domains/platform/settings';
 
 type AuthMode = 'public' | 'optional' | 'user' | 'tenant' | 'platform';
 
@@ -166,6 +167,8 @@ export function route<S extends z.ZodTypeAny | undefined = undefined, A extends 
         const slug = params.tenantSlug;
         if (!slug || !user) throw Errors.notFound('business');
         tenant = await resolveTenantAccess(user, slug);
+        // Platform maintenance mode locks business dashboards only (storefront/booking routes are not tenant routes).
+        await requireDashboardsOpen(tenant);
         if (def.capability) requireCapability(tenant, def.capability);
         if (def.feature) requireFeature(tenant, def.feature);
         if (MUTATING.has(req.method) && !def.allowReadOnly) requireWritable(tenant);
@@ -234,11 +237,12 @@ export function decodeCursor<T>(c: string | undefined): T | null {
   }
 }
 
-export function sessionCookie(token: string, expires: Date): { name: string; value: string; options: CookieOptions } {
+/** `expires: null` sets a browser-session cookie (no Expires/Max-Age), used when «تذكريني» is off. */
+export function sessionCookie(token: string, expires: Date | null): { name: string; value: string; options: CookieOptions } {
   return {
     name: SESSION_COOKIE,
     value: token,
-    options: { httpOnly: true, secure: env().isDeployed, sameSite: 'lax', path: '/', expires },
+    options: { httpOnly: true, secure: env().isDeployed, sameSite: 'lax', path: '/', ...(expires ? { expires } : {}) },
   };
 }
 

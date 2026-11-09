@@ -6,13 +6,14 @@ import { useI18n } from '@/i18n/client';
 import { api, ApiError } from '../api';
 import { useErrorMessage } from '../hooks';
 import { Button } from '../components/button';
-import { Field, FormErrorSummary, Input } from '../components/form';
+import { Field, FormErrorSummary, Input, Select } from '../components/form';
+import { HEARD_FROM } from '@/shared/acquisition';
 import { AuthCard, DeliveryNotice } from './AuthCard';
 
 export function RegisterForm({ next }: { next: string }) {
   const { t, locale } = useI18n();
   const msg = useErrorMessage();
-  const [form, setForm] = useState({ display_name: '', identifier: '', password: '' });
+  const [form, setForm] = useState({ display_name: '', identifier: '', password: '', heard_from: '' });
   const [stage, setStage] = useState<'form' | 'verify'>('form');
   const [delivery, setDelivery] = useState<{ status: string; dev_code?: string } | null>(null);
   const [code, setCode] = useState('');
@@ -22,7 +23,7 @@ export function RegisterForm({ next }: { next: string }) {
   async function submit(e: React.FormEvent) {
     e.preventDefault(); setBusy(true); setError(null);
     try {
-      const r = await api<{ delivery: { status: string; dev_code?: string } }>('/api/v1/auth/register', { body: { ...form, locale } });
+      const r = await api<{ delivery: { status: string; dev_code?: string } }>('/api/v1/auth/register', { body: { ...form, heard_from: form.heard_from || undefined, locale } });
       setDelivery(r.delivery); setStage('verify');
     } catch (err) { setError(err); } finally { setBusy(false); }
   }
@@ -66,6 +67,14 @@ export function RegisterForm({ next }: { next: string }) {
         </Field>
         <Field label={t('fields.password')} hint={t('auth.password_hint')} required>
           {(p) => <Input {...p} type="password" autoComplete="new-password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />}
+        </Field>
+        <Field label={t('customer.acquisition.question')} hint={t('customer.acquisition.optional')}>
+          {(p) => (
+            <Select {...p} value={form.heard_from} onChange={(e) => setForm({ ...form, heard_from: e.target.value })}>
+              <option value="">{t('customer.acquisition.choose')}</option>
+              {HEARD_FROM.map((v) => <option key={v} value={v}>{t(`customer.acquisition.source.${v}`)}</option>)}
+            </Select>
+          )}
         </Field>
         <Button type="submit" loading={busy} size="lg">{t('auth.register_cta')}</Button>
       </form>

@@ -16,13 +16,15 @@ import { ScheduleTab } from './ScheduleTab';
 import { LeaveTab } from './LeaveTab';
 import { AttendanceTab } from './AttendanceTab';
 import { MembersTab } from './MembersTab';
+import { RequestsTab } from '../hr/RequestsTab';
+import { StaffFilesTab } from '../hr/StaffFilesTab';
 
 export type StaffRow = {
   id: string; display_name: string; display_name_en: string | null; title_ar: string | null; title_en: string | null; bio_ar: string | null; bio_en: string | null;
   photo_asset_id: string | null; is_public: boolean; is_active: boolean; branch_ids: string[]; service_ids: string[]; has_login: boolean;
 };
 
-const TABS = ['staff', 'schedule', 'leave', 'attendance', 'members'] as const;
+const TABS = ['staff', 'schedule', 'leave', 'requests', 'attendance', 'files', 'members'] as const;
 type Tab = (typeof TABS)[number];
 
 /** Which team endpoints this person can read (the server enforces regardless). */
@@ -36,6 +38,8 @@ export function useTeamCaps() {
     leave: access.can('leave.approve', 'schedule.manage', 'leave.request'),
     attendance: access.can('attendance.manage') || (access.can('attendance.own') && !!access.staffProfileId),
     members: access.can('team.manage'),
+    requests: access.can('hr.configure', 'leave.approve', 'schedule.manage') || (access.can('hr.request') && !!access.staffProfileId),
+    files: access.can('staff_file.manage'),
   };
 }
 
@@ -69,9 +73,10 @@ function TeamPageInner() {
     <div>
       <PageHeader title={t('team_ui.title')} subtitle={t('catalog_team.team.subtitle')}
         actions={tab === 'staff' && caps.editStaff ? <Button icon={<Plus className="size-4" />} onClick={() => setParams({ staff: 'new' })}>{t('team_ui.new_staff')}</Button> : null} />
-      <Tabs value={tab} onChange={(v) => setParams({ tab: v, staff: null, sched: null, invite: null })} items={visible.map((v) => ({
+      <Tabs value={tab} onChange={(v) => setParams({ tab: v, staff: null, sched: null, invite: null, request: null, file: null, reroute: null })} items={visible.map((v) => ({
         value: v,
-        label: v === 'staff' ? t('team_ui.staff') : v === 'schedule' ? t('team_ui.schedule') : v === 'leave' ? t('team_ui.leave') : v === 'attendance' ? t('catalog_team.attendance.tab') : t('catalog_team.members.tab'),
+        label: v === 'staff' ? t('team_ui.staff') : v === 'schedule' ? t('team_ui.schedule') : v === 'leave' ? t('team_ui.leave') : v === 'attendance' ? t('catalog_team.attendance.tab')
+          : v === 'requests' ? t('hr.tabs.requests') : v === 'files' ? t('hr.tabs.files') : t('catalog_team.members.tab'),
       }))} />
 
       {tab === 'staff' ? (
@@ -112,6 +117,8 @@ function TeamPageInner() {
       ) : null}
       {tab === 'schedule' ? <ScheduleTab staff={staff.data ?? []} staffLoading={staff.isLoading} initialStaffId={sp.get('sched')} /> : null}
       {tab === 'leave' ? <LeaveTab staff={staff.data ?? []} /> : null}
+      {tab === 'requests' ? <RequestsTab staff={staff.data ?? []} openId={sp.get('request')} onOpen={(id) => setParams({ request: id })} /> : null}
+      {tab === 'files' ? <StaffFilesTab openId={sp.get('file')} onOpen={(id) => setParams({ file: id })} /> : null}
       {tab === 'attendance' ? <AttendanceTab staff={staff.data ?? []} /> : null}
       {tab === 'members' ? <MembersTab staff={staff.data ?? []} inviteFor={sp.get('invite')} onInviteHandled={() => setParams({ invite: null })} /> : null}
 

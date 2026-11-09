@@ -59,6 +59,12 @@ Legend: ✓ = role default, D = delegable to that role (the "if delegated" colum
 | `leave.approve` | ✓ | ✓ |  |  |  |  |  |
 | `attendance.own` | ✓ | ✓ | ✓ | ✓ | ✓ |  |  |
 | `attendance.manage` | ✓ | ✓ |  |  |  |  |  |
+| `payroll.view` | ✓ | D |  |  | ✓ |  |  |
+| `payroll.manage` | ✓ | D |  |  | ✓ |  |  |
+| `payroll.view_own` (self-scoped) | ✓ | ✓ | ✓ | ✓ | ✓ |  |  |
+| `hr.request` (self-scoped) | ✓ | ✓ | ✓ | ✓ | ✓ |  |  |
+| `hr.configure` | ✓ | D |  |  |  |  |  |
+| `staff_file.manage` (owner-only) | ✓ |  |  |  |  |  |  |
 | `incidents.submit` | ✓ | D | D | D | D |  |  |
 | `incidents.review` | ✓ | D |  |  |  |  |  |
 | `marketing.view` | ✓ | ✓ |  |  |  | ✓ | ✓ |
@@ -76,14 +82,23 @@ Delegable allowlists, verbatim from `ROLE_DELEGABLE`:
 | Role | Delegable capabilities |
 |---|---|
 | owner | none (already has everything) |
-| manager | `subscription.view`, `team.manage`, `staff.edit`, `catalog.edit`, `costs.view`, `builder.edit`, `builder.publish`, `finance.view`, `finance.export`, `refunds.approve`, `payments.configure`, `incidents.submit`, `incidents.review`, `marketing.manage`, `campaigns.approve`, `audit.view` |
+| manager | `subscription.view`, `team.manage`, `staff.edit`, `catalog.edit`, `costs.view`, `builder.edit`, `builder.publish`, `finance.view`, `finance.export`, `refunds.approve`, `payments.configure`, `payroll.view`, `payroll.manage`, `hr.configure`, `incidents.submit`, `incidents.review`, `marketing.manage`, `campaigns.approve`, `audit.view` |
 | receptionist | `incidents.submit`, `builder.edit`, `refunds.request`, `analytics.view`, `loyalty.manage` |
 | specialist | `incidents.submit`, `customers.view` |
 | finance | `subscription.view`, `analytics.view`, `incidents.submit` |
 
 ### Owner-only capabilities
 
-`business.manage` and `subscription.manage` (`OWNER_ONLY`). They are never added by delegation, even if a grant array contains them, and `invalidGrants()` rejects them.
+`business.manage`, `subscription.manage` and `staff_file.manage` (`OWNER_ONLY`). They are never added by delegation, even if a grant array contains them, and `invalidGrants()` rejects them.
+
+### HR (see [HR.md](HR.md))
+
+- `hr.request` (every role, self-scoped): submit requests for her own linked staff profile and cancel them while pending; read her own balance, own non-sensitive file fields (`GET /me/hr`) and own late/absent flags. Holders of `schedule.manage` may submit on behalf of a staff member.
+- Approving a request step is decided by **role**, not capability: a member whose role is the role of the current step (never on her own request), or the owner at any step (her approval is final). Members only see requests whose chain contains their role, plus their own; `hr.configure` and the owner see all.
+- `hr.configure`: request types, approval chains, custom fields, HR settings (grace minutes, balance policy, attendance deductions) and leave balance adjustments.
+- `staff_file.manage` (owner only, not delegable, not in support grants): staff files, ID reveal (audited), private documents (viewing audited), expiry alerts go to owners only.
+- Lateness/absence/unpaid-leave deduction suggestions: read with `payroll.view`, decide and scan with `payroll.manage`. Per-staff commission overrides: read `payroll.view`, write `payroll.manage`.
+- Booking reroutes after an approved leave: `bookings.manage`.
 
 ### Role assignment
 
@@ -118,6 +133,19 @@ Changing a member (`PATCH /api/v1/t/{slug}/members/{id}`) requires `team.manage`
 | `platform.ai_usage.view` | ✓ |  |  | ✓ |
 | `platform.revenue.view` | ✓ |  |  |  |
 | `platform.support.access` | ✓ | ✓ |  |  |
+| `platform.marketplace.review` | ✓ | ✓ |  |  |
+| `platform.marketplace.manage` | ✓ |  |  |  |
+| `platform.analytics.view` (analytics + reports) | ✓ |  |  |  |
+| `platform.activity.view` (platform-wide bookings/payments, read-only, no customer data) | ✓ | ✓ |  |  |
+| `platform.feed.view` (live activity feed + bell) | ✓ | ✓ |  | ✓ |
+| `platform.settlements.manage` | ✓ |  |  |  |
+| `platform.referrals.manage` (marketers, rewards, withdrawals) | ✓ |  |  |  |
+| `platform.settings.manage` (maintenance, sign-ups, approvals switch, founding, referral defaults) | ✓ |  |  |  |
+
+`platform.marketplace.review` covers the سوق لوما queues (join requests, verification files and documents — every document view is audited), the commission ledger and reading marketplace settings. `platform.marketplace.manage` sets a business's commission rate and the marketplace settings (both with step-up). On the tenant side, the marketplace listing and verification documents need `business.manage` (owner only) and «عمولة سوق لوما» needs `finance.view`. See `docs/MARKETPLACE.md`.
+
+Phase-2 endpoints and rules: [PLATFORM_ADMIN.md](PLATFORM_ADMIN.md). Promotions use `platform.plans.manage`; approving new businesses uses `platform.tenants.manage` (the queue is readable with `platform.tenants.view`). The business «الإحالة» screen (`/app/{slug}/referrals`) needs the owner-only `business.manage`; a withdrawal request also needs step-up.
+
 
 Every `/api/v1/platform/**` handler is built with `platformRoute()`. A caller with **no** platform role gets **404**, not 403, so the platform API does not reveal that it exists. A missing specific capability also returns 404. `GET /api/v1/platform/overview` and the MFA/me endpoints need only some platform role. Platform roles grant no tenant capabilities.
 
@@ -132,6 +160,7 @@ Every `/api/v1/platform/**` handler is built with `platformRoute()`. A caller wi
 5. Rate limit.
 6. Tenant routes (`/api/v1/t/{tenantSlug}/…`): `resolveTenantAccess()` uses only the caller's **own** membership or an active support grant. Unknown slugs and slugs the caller is not a member of both return the same 404. Then the `capability` check (any-of), the plan `feature` check, and the read-only workspace check for mutations (unless `allowReadOnly`).
 7. Platform routes: platform capability, then MFA (`requirePlatformMfa`), then step-up.
+   Tenant routes additionally return 503 `maintenance` while platform maintenance mode is on (support grants excepted); see [PLATFORM_ADMIN.md](PLATFORM_ADMIN.md#7-platform-settings-platformsettings-platformsettingsmanage).
 8. `Idempotency-Key` presence where `idempotency: 'required'`.
 9. Zod input validation.
 
@@ -160,8 +189,8 @@ Endpoints declared with `stepUp: true`:
 
 | Scope | Endpoints |
 |---|---|
-| Tenant | `POST finance/exports`; `POST gift-cards/{id}/void`; `PATCH members/{id}`; `POST payment-accounts`, `DELETE payment-accounts/{id}`; `POST policies/decisions`, `POST policies/decisions/{id}/end`; `POST policies/appeals/{id}/resolve`; `POST policies/incidents/{id}/escalate` |
-| Platform | `POST mfa/enroll`, `POST mfa/disable`; `PUT plans/{id}`; `POST invoices/{id}`; `POST subscriptions/{id}/actions`, `POST subscriptions/{id}/invoices`; `POST support-grants`; `POST tenants/{id}/status`; `POST users/{id}/status`, `POST users/{id}/roles`, `POST users/{id}/mfa-reset`; `POST policies/decisions`, `POST policies/decisions/{id}/end`, `POST policies/appeals/{id}/resolve`, `POST policies/escalations/{id}/dismiss`, `POST policies/rules`, `PATCH policies/rules/{id}` |
+| Tenant | `POST referrals/withdrawals`; `POST finance/exports`; `POST gift-cards/{id}/void`; `PATCH members/{id}`; `POST payment-accounts`, `DELETE payment-accounts/{id}`; `POST policies/decisions`, `POST policies/decisions/{id}/end`; `POST policies/appeals/{id}/resolve`; `POST policies/incidents/{id}/escalate` |
+| Platform | `PUT settings`; `POST promotions`, `PATCH promotions/{id}`; `POST approvals/{id}`; `POST settlements/{id}/settle`; `PATCH referrals/{id}`, `POST referrals/{id}/adjust`, `POST withdrawals/{id}`; `POST mfa/enroll`, `POST mfa/disable`; `PUT plans/{id}`; `POST invoices/{id}`; `POST subscriptions/{id}/actions`, `POST subscriptions/{id}/invoices`; `POST support-grants`; `POST tenants/{id}/status`; `PUT marketplace/settings`, `PUT marketplace/tenants/{id}/commission`; `POST users/{id}/status`, `POST users/{id}/roles`, `POST users/{id}/mfa-reset`; `POST policies/decisions`, `POST policies/decisions/{id}/end`, `POST policies/appeals/{id}/resolve`, `POST policies/escalations/{id}/dismiss`, `POST policies/rules`, `PATCH policies/rules/{id}` |
 
 ## Admin MFA (TOTP)
 
@@ -175,7 +204,7 @@ Implementation: `src/server/domains/platform/mfa.ts`, `totp.ts`, `mfa-state.ts` 
 
 ## Plan feature and limit gating
 
-Plan data lives in `plans` and `plan_features` (seeded by `0012`, editable by the platform owner in `/platform/plans`). The keys the server enforces are in `src/shared/plans.ts`. **Prices are `NULL` ("pricing not configured") and every plan has `price_is_test = true`. The limits below are test values, not approved final values.**
+Plan data lives in `plans` and `plan_features` (seeded by `0012`, editable by the platform owner in `/platform/plans`). The keys the server enforces are in `src/shared/plans.ts`. **Prices (since 0630, approved): Sanaa 199, Wahaj 399, Fareed 799 SAR/month VAT-inclusive; yearly = two months free; founding-customer and promotion discounts are described in [PLATFORM_ADMIN.md](PLATFORM_ADMIN.md). There is no monthly booking limit. The feature limits below are still test values.**
 
 Entitlements come from the tenant's current subscription (`loadEntitlements`). A workspace is **read-only** when there is no subscription, or when it is `expired`, `cancelled` or `paused`, or `past_due` past `grace_until`, or when the tenant is suspended. Data stays readable; mutations return 403 `read_only`. Subscription endpoints use `allowReadOnly` so the owner can still change plan.
 

@@ -174,6 +174,8 @@ export const couponInput = z.object({
 
 export const couponPatch = z.object({
   is_active: z.boolean().optional(),
+  /** Scope chosen by the owner: services (bookings), products (orders) or all. */
+  applies_to: z.enum(['all', 'services', 'products']).optional(),
   ends_at: z.string().datetime({ offset: true }).nullable().optional(),
   max_redemptions: z.number().int().min(1).max(1_000_000).nullable().optional(),
   min_subtotal_minor: money.optional(),

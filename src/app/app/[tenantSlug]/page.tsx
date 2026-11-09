@@ -6,9 +6,16 @@ import { hasCapability } from '@/server/tenancy/access';
 import { formatDate } from '@/shared/format';
 import { withTenant } from '@/server/db/client';
 import { OverviewWidgets } from '@/ui/workspace/OverviewWidgets';
+import { BusinessOverview } from '@/ui/business/BusinessOverview';
 
 export const metadata = { title: 'Overview' };
 
+/**
+ * Workspace overview: KPIs, 7-day charts, next appointments, staff today,
+ * reviews, plan nudge and the store QR (business or independent-expert
+ * variant, capability-gated, branch-aware). The readiness checklist stays on
+ * top for businesses that are not ready yet; quick links remain at the bottom.
+ */
 export default async function Overview({ params }: { params: Promise<{ tenantSlug: string }> }) {
   const { tenantSlug } = await params;
   const { access } = await requireTenantPage(tenantSlug);
@@ -31,7 +38,11 @@ export default async function Overview({ params }: { params: Promise<{ tenantSlu
           {access.status === 'onboarding' ? <Link href={`/app/${tenantSlug}/onboarding`} className="mt-3 inline-block rounded-lg bg-luma-700 px-4 py-2 text-sm text-white">{t('nav.onboarding')}</Link> : null}
         </section>
       ) : null}
-      <OverviewWidgets />
+      <BusinessOverview />
+      <section aria-label={t('business.overview.quick_links')}>
+        <h2 className="mb-2 text-sm font-semibold text-ink-muted">{t('business.overview.quick_links')}</h2>
+        <OverviewWidgets />
+      </section>
     </div>
   );
 }

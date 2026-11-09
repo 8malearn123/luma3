@@ -206,7 +206,7 @@ const ar = {
     },
     display: { title: 'تنسيق الوقت', time_format: 'عرض الوقت', hint: 'يغيّر طريقة العرض فقط؛ المواعيد المحفوظة لا تتغير.' },
     legal: {
-      title: 'البيانات القانونية والضريبة', no_compliance: 'هذه إعدادات للعرض والحساب فقط. لا تدّعي لوما الامتثال لأنظمة الضريبة أو الفوترة الإلكترونية.',
+      title: 'البيانات القانونية والضريبة', no_compliance: 'عند إدخال الرقم الضريبي تصدر الإيصالات والفواتير كفاتورة ضريبية مبسطة مع رمز QR وفق المرحلة الأولى من الفوترة الإلكترونية. لا تدّعي لوما الامتثال للمرحلة الثانية (الربط والتكامل).',
       legal_name: 'الاسم القانوني', tax_number: 'الرقم الضريبي', address: 'العنوان الرسمي', tax_rules: 'قواعد الضريبة',
       tax_rate: 'نسبة الضريبة', tax_rate_hint: 'مثال: 15 لنسبة ١٥٪. اتركيها 0 إن لم تنطبق.', tax_label: 'تسمية الضريبة', tax_label_hint: 'مثال: ضريبة القيمة المضافة',
       prices_include_tax: 'الأسعار المعروضة شاملة الضريبة', tax_explain: 'كيف تُحسب: {example}',
@@ -458,7 +458,7 @@ const en: Shape<typeof ar> = {
     },
     display: { title: 'Time format', time_format: 'Show times as', hint: 'Changes display only; stored appointment times never change.' },
     legal: {
-      title: 'Legal & tax', no_compliance: 'These settings are for display and calculation only. LUMA does not claim compliance with tax or e-invoicing regulations.',
+      title: 'Legal & tax', no_compliance: 'With a VAT number, receipts and invoices are issued as simplified tax invoices with a phase-1 e-invoicing QR code. LUMA does not claim phase-2 (integration) compliance.',
       legal_name: 'Legal name', tax_number: 'Tax number', address: 'Registered address', tax_rules: 'Tax rules',
       tax_rate: 'Tax rate', tax_rate_hint: 'e.g. 15 for 15%. Leave 0 if not applicable.', tax_label: 'Tax label', tax_label_hint: 'e.g. VAT',
       prices_include_tax: 'Displayed prices include tax', tax_explain: 'How it is calculated: {example}',

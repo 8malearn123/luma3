@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { useI18n } from '@/i18n/client';
 import { useApiQuery } from '../hooks';
+import { BranchFinanceCard, type BranchFinance } from '../business/BranchFinanceCard';
 import { Alert, Badge, ErrorState, LoadingState } from '../components/feedback';
 import { Card } from '../components/layout';
 import { BarList } from '../analytics/charts';
@@ -26,6 +27,7 @@ export type Report = {
   product_costs: Amount & { complete: boolean; missing_lines: number };
   material_costs: Amount & { complete: boolean };
   commissions: Amount;
+  salaries?: Amount;
   profit: { status: 'computed' | 'costs_incomplete'; amount_minor: number | null; missing?: string[] };
   tax: { collected_minor: number; configured: { tax_label: string | null; tax_rate_bp: number; prices_include_tax: boolean } | null };
   daily: Array<{ date: string; collections_minor: number; expenses_minor: number }>;
@@ -71,6 +73,7 @@ export function OverviewTab() {
             </div>
           ) : null}
 
+          <BranchFinanceCard data={(r as { branch?: BranchFinance }).branch} />
           <section aria-label={t('fe.overview.summary')} className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
             <Tile label={t('finance.service_sales')} value={money(r.completed_service_sales.amount_minor)} hint={t('fe.basis.service_sales')} />
             <Tile label={t('finance.product_sales')} value={money(r.product_sales.amount_minor)} hint={t('fe.basis.product_sales')} />
@@ -81,6 +84,7 @@ export function OverviewTab() {
             <Tile label={t('finance.refunds_done')} value={money(r.refunds.completed_minor)} hint={r.refunds.pending_minor ? t('fe.overview.refunds_pending', { amount: money(r.refunds.pending_minor) }) : undefined} tone={r.refunds.pending_minor ? 'warn' : undefined} />
             <Tile label={t('finance.expenses')} value={money(r.expenses.total_minor)} hint={t('fe.basis.expenses')} />
             <Tile label={t('finance.commissions')} value={money(r.commissions.amount_minor)} hint={t('fe.basis.commissions')} />
+            <Tile label={t('payroll.report.salaries')} value={money(r.salaries?.amount_minor ?? 0)} hint={t('payroll.report.salaries_basis')} />
             <Tile label={t('finance.product_costs')} value={money(r.product_costs.amount_minor)} tone={r.product_costs.complete ? undefined : 'warn'}
               badge={r.product_costs.complete ? null : <Badge tone="warn">{t('fe.overview.incomplete')}</Badge>} hint={r.product_costs.complete ? undefined : t('fe.overview.missing_lines', { n: r.product_costs.missing_lines })} />
             <Tile label={t('finance.material_costs')} value={money(r.material_costs.amount_minor)} tone={r.material_costs.complete ? undefined : 'warn'}

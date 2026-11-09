@@ -45,6 +45,9 @@ const schema = z.object({
   OPENAI_PRICE_OUTPUT_PER_MTOK: z.coerce.number().optional(),
   AI_REQUEST_TIMEOUT_MS: z.coerce.number().int().positive().default(45_000),
   PAYMENT_SANDBOX_WEBHOOK_SECRET: z.string().optional().default(''),
+  /** Meta app for the official Instagram API (storefront Instagram section). Unset = not connectable; the section shows the profile link. */
+  INSTAGRAM_APP_ID: z.string().optional().default(''),
+  INSTAGRAM_APP_SECRET: z.string().optional().default(''),
 });
 
 export type Env = z.infer<typeof schema> & {

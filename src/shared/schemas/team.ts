@@ -70,7 +70,7 @@ export const leaveInput = z.object({
   staff_id: z.string().uuid().optional(),
   starts_at: z.string().datetime({ offset: true }),
   ends_at: z.string().datetime({ offset: true }),
-  leave_type: z.enum(['annual', 'sick', 'personal', 'other']).default('annual'),
+  leave_type: z.enum(['annual', 'sick', 'personal', 'other', 'emergency', 'unpaid']).default('annual'),
   reason: txt(500).optional(),
 });
 

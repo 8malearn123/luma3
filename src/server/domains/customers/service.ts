@@ -17,7 +17,7 @@ import { effectiveConsents, recordConsent } from './consents';
  * that looks up LUMA accounts by phone or email; walk-ins stay local records.
  */
 
-const LIST_COLS = ['id', 'display_name', 'phone', 'email', 'tags', 'source', 'status', 'first_visit_at', 'last_visit_at', 'created_at', 'updated_at', 'version'] as const;
+const LIST_COLS = ['id', 'display_name', 'phone', 'email', 'tags', 'source', 'status', 'first_visit_at', 'last_visit_at', 'created_at', 'updated_at', 'version', 'acquisition_source', 'acquisition_method'] as const;
 
 function normPhone(v: string | null | undefined) {
   if (v == null || v === '') return null;
@@ -32,6 +32,7 @@ export async function listCustomers(access: TenantAccess, q: z.infer<typeof cust
     let query = trx.selectFrom('tenant_customers').select([...LIST_COLS, sql<boolean>`user_id is not null`.as('has_account')]).where('tenant_id', '=', access.tenantId);
     if (q.status !== 'all') query = query.where('status', '=', q.status);
     if (q.source) query = query.where('source', '=', q.source);
+    if (q.acquisition) query = q.acquisition === 'unknown' ? query.where('acquisition_source', 'is', null) : query.where('acquisition_source', '=', q.acquisition);
     if (q.tag) query = query.where(sql<boolean>`${q.tag} = any(tags)`);
     if (q.q) {
       const term = likeTerm(q.q);

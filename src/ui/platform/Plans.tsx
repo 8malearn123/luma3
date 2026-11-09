@@ -16,6 +16,7 @@ import { PLAN_FEATURES } from '@/shared/plans';
 import { Money, TestBadge } from './common';
 import { usePlatform } from './PlatformShell';
 import { useStepUp } from './stepup';
+import { FoundingCard, PromotionsCard } from './admin/PlanOffers';
 
 type Feature = { feature_key: string; kind: 'limit' | 'switch'; enabled: boolean; limit_value: number | null };
 type Plan = {
@@ -35,13 +36,14 @@ export function PlansPage() {
   return (
     <div className="flex flex-col gap-5">
       <PageHeader title={t('platform.plans.title')} subtitle={t('platform.plans.subtitle')} />
-      <Alert tone="warn">{t('platform.plans.not_final')}</Alert>
+      {plans.some((p) => p.price_is_test) ? <Alert tone="warn">{t('platform.plans.not_final')}</Alert> : <Alert tone="info">{t('admin.plans.no_booking_limit')}</Alert>}
       <div className="grid gap-4 md:grid-cols-3">
         {plans.map((p) => (
           <Card key={p.id} title={<span className="font-display text-xl text-luma-700">{pick(p.name_ar, p.name_en)}</span>}
             actions={can('platform.plans.manage') ? <Button size="sm" variant="outline" icon={<Pencil className="size-4" />} onClick={() => setEdit(p)}>{t('actions.edit')}</Button> : null}>
             <p className="text-sm text-ink-muted">{pick(p.description_ar, p.description_en)}</p>
             <p className="mt-3 text-lg font-semibold"><Money minor={p.price_monthly_minor} currency={p.currency} />{p.price_monthly_minor != null ? <span className="text-sm font-normal"> / {t('platform.plans.month')}</span> : null}</p>
+            {p.price_yearly_minor != null ? <p className="text-sm text-ink-muted"><Money minor={p.price_yearly_minor} currency={p.currency} /> {t('admin.plans.per_year')}{p.price_monthly_minor != null && p.price_yearly_minor <= p.price_monthly_minor * 10 ? ` · ${t('admin.plans.two_months_free')}` : ''}</p> : null}
             {p.price_monthly_minor != null && p.price_is_test ? <TestBadge /> : null}
             <dl className="mt-3 grid grid-cols-2 gap-1 text-sm">
               <dt className="text-ink-muted">{t('platform.plans.trial_days')}</dt><dd>{p.trial_days}</dd>
@@ -69,6 +71,10 @@ export function PlansPage() {
           </table>
         </div>
       </Card>
+      <div className="grid gap-4 lg:grid-cols-3">
+        <FoundingCard />
+        <div className="lg:col-span-2"><PromotionsCard /></div>
+      </div>
       {edit ? <PlanEditor plan={edit} onClose={() => setEdit(null)} /> : null}
     </div>
   );

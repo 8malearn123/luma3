@@ -18,14 +18,17 @@ import type { Tx } from '../../db/client';
  *  Expense recorded             Dr operating_expenses     Cr cash_on_hand
  *  Gift card sold               Dr provider_clearing      Cr gift_card_liability
  *  Gift card redeemed           Dr gift_card_liability    Cr customer_deposits
+ *  Payroll (tips, advances, month close, payslip paid): see domains/payroll/service.ts
+ *  and migration 0600_payroll.sql.
  *
  * A collected deposit is NOT service revenue until the service is completed.
  * Corrections are new offsetting groups (reverses_group_id), never edits.
  */
 export type Account =
-  | 'cash_on_hand' | 'provider_clearing' | 'customer_deposits' | 'accounts_receivable' | 'service_revenue' | 'product_revenue'
+  | 'cash_on_hand' | 'bank' | 'provider_clearing' | 'customer_deposits' | 'accounts_receivable' | 'service_revenue' | 'product_revenue'
   | 'gift_card_liability' | 'membership_liability' | 'discounts' | 'refunds' | 'provider_fees' | 'tax_payable' | 'cogs' | 'inventory'
-  | 'material_costs' | 'commissions_expense' | 'commissions_payable' | 'operating_expenses' | 'owner_equity';
+  | 'material_costs' | 'commissions_expense' | 'commissions_payable' | 'operating_expenses' | 'owner_equity'
+  | 'salaries_expense' | 'payroll_payable' | 'staff_advances' | 'tips_payable';
 
 export type Line = { account: Account; debit?: number; credit?: number; memo?: string };
 

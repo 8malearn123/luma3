@@ -35,7 +35,7 @@ export const issueInput = z.object({
 
 const hashCode = (code: string) => hashToken(normalizeHumanCode(code), 'giftcard');
 
-async function entry(trx: Tx, tenantId: string, cardId: string, kind: 'issue' | 'redeem' | 'refund' | 'expire' | 'void' | 'adjust', delta: number, ref: { type?: string; id?: string | null } = {}, by: string | null = null) {
+export async function entry(trx: Tx, tenantId: string, cardId: string, kind: 'issue' | 'redeem' | 'refund' | 'expire' | 'void' | 'adjust', delta: number, ref: { type?: string; id?: string | null } = {}, by: string | null = null) {
   const card = await trx.selectFrom('gift_cards').select(['balance_minor']).where('id', '=', cardId).forUpdate().executeTakeFirstOrThrow();
   const after = card.balance_minor + delta;
   if (after < 0) throw Errors.invalid('insufficient_gift_balance', 'Not enough balance on this gift card');

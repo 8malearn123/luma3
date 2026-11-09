@@ -12,9 +12,13 @@ import { BranchesSection } from './Branches';
 import { SubscriptionSection } from './Subscription';
 import { DisplaySection, LegalTaxSection, NotificationsSection } from './Misc';
 import { PaymentsSection } from './Payments';
+import { ReviewRequestSection } from './ReviewRequests';
 import { settingsKey, type SettingsData } from './shared';
+import { MarketplaceSection } from './Marketplace';
+import { DigestSettingsSection } from '../business/Digest';
+import { ZatcaNotice } from '../business/ZatcaNotice';
 
-export const SETTINGS_TABS = ['profile', 'branches', 'booking', 'payments', 'subscription', 'notifications', 'display', 'legal'] as const;
+export const SETTINGS_TABS = ['profile', 'branches', 'booking', 'payments', 'subscription', 'notifications', 'digest', 'display', 'legal', 'marketplace'] as const;
 type Tab = (typeof SETTINGS_TABS)[number];
 
 export function SettingsPage({ initialTab }: { initialTab?: string }) {
@@ -29,7 +33,7 @@ export function SettingsPage({ initialTab }: { initialTab?: string }) {
         : k === 'branches' ? access.can('business.manage', 'schedule.manage')
           : manage);
   const tab: Tab | undefined = (visible as readonly string[]).includes(initialTab ?? '') ? (initialTab as Tab) : visible[0];
-  const needsSettings = manage && tab && !['branches', 'subscription', 'payments'].includes(tab);
+  const needsSettings = manage && tab && !['branches', 'subscription', 'payments', 'marketplace', 'digest'].includes(tab);
   const q = useApiQuery<SettingsData>(settingsKey(access.slug), needsSettings ? access.api('/settings') : null);
 
   if (!tab) return <DeniedState />;
@@ -46,8 +50,12 @@ export function SettingsPage({ initialTab }: { initialTab?: string }) {
           {tab === 'payments' ? <PaymentsSection slug={access.slug} /> : null}
           {tab === 'subscription' ? <SubscriptionSection slug={access.slug} canManage={access.can('subscription.manage')} tz={access.timezone} /> : null}
           {tab === 'notifications' && q.data ? <NotificationsSection slug={access.slug} data={q.data} /> : null}
+          {tab === 'notifications' && q.data ? <div className="mt-4"><ReviewRequestSection slug={access.slug} data={q.data} /></div> : null}
           {tab === 'display' && q.data ? <DisplaySection slug={access.slug} data={q.data} /> : null}
+          {tab === 'digest' ? <DigestSettingsSection /> : null}
+          {tab === 'legal' ? <ZatcaNotice className="mb-4" /> : null}
           {tab === 'legal' && q.data ? <LegalTaxSection slug={access.slug} data={q.data} /> : null}
+          {tab === 'marketplace' ? <MarketplaceSection slug={access.slug} canManage={manage && !access.readOnly} /> : null}
         </div>
       )}
     </div>

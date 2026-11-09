@@ -49,7 +49,10 @@ export function BookingsPanel() {
               ) : null}
               <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-sm">
                 <span className="text-ink-muted">{t('account.bookings.number')}: <span dir="ltr" className="font-mono">{b.number}</span> · {formatMoney(b.total_minor, b.currency, locale)}</span>
-                <Link href={b.detail_path} className="inline-flex items-center gap-1 text-luma-700 hover:underline">{t('account.bookings.details')}<Chevron className="size-4" aria-hidden /></Link>
+                <span className="flex items-center gap-3">
+                  {!['held', 'pending_payment'].includes(b.status) ? <a href={`/s/${b.tenant_slug}/booking?rebook=${b.id}`} className="text-luma-700 hover:underline">{t('customer.rebook.cta')}</a> : null}
+                  <Link href={b.detail_path} className="inline-flex items-center gap-1 text-luma-700 hover:underline">{t('account.bookings.details')}<Chevron className="size-4" aria-hidden /></Link>
+                </span>
               </div>
             </li>
           ))}

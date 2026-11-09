@@ -26,8 +26,10 @@ test('customer books from the published storefront and pays in the sandbox; conf
   await signIn(page, 'customer@demo.test', '/s/noura-salon/booking');
   await page.waitForURL(/\/s\/noura-salon\/booking/);
   await page.getByRole('button', { name: /Cut & style/ }).first().click();
-  // A later day avoids colliding with the other journey's hold.
-  await page.getByRole('tab').nth(4).click();
+  // A later day avoids colliding with the other journey's hold. Pick the last
+  // bookable day in the window: a fixed index can land on a day nobody works
+  // (e.g. Friday when the suite runs on a Monday), whose tab is disabled.
+  await page.locator('[role="tab"]:not([disabled])').last().click();
   await timeButton(page).click();
   await page.getByRole('button', { name: /Reserve this time/ }).click();
 

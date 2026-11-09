@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { createContext, useContext, useState, type ReactNode } from 'react';
 import {
-  Building2, ChartLine, CreditCard, KeyRound, Layers, LayoutDashboard, LayoutTemplate, LifeBuoy, Menu, Plug, ScrollText, ShieldAlert, Sparkles, Users, X,
+  Activity, BarChart3, Building2, ChartLine, CreditCard, HandCoins, KeyRound, Layers, LayoutDashboard, LayoutTemplate, LifeBuoy, Menu, Plug, Receipt, ScrollText, Settings, Share2, ShieldAlert, Sparkles, Store, Users, X,
   type LucideIcon,
 } from 'lucide-react';
 import { useI18n } from '@/i18n/client';
@@ -14,6 +14,7 @@ import { Alert } from '../components/feedback';
 import { UserMenu } from '../shell/UserMenu';
 import { NotificationsBell } from '../shell/NotificationsBell';
 import { StepUpProvider } from './stepup';
+import { PlatformFeedBell } from './admin/Feed';
 
 export type PlatformNavItem = { key: string; href: string; icon: LucideIcon; cap: string | null };
 
@@ -23,7 +24,13 @@ export const PLATFORM_NAV: PlatformNavItem[] = [
   { key: 'tenants', href: '/platform/tenants', icon: Building2, cap: 'platform.tenants.view' },
   { key: 'subscriptions', href: '/platform/subscriptions', icon: CreditCard, cap: 'platform.tenants.view' },
   { key: 'plans', href: '/platform/plans', icon: Layers, cap: 'platform.tenants.view' },
+  { key: 'marketplace', href: '/platform/marketplace', icon: Store, cap: 'platform.marketplace.review' },
   { key: 'reports', href: '/platform/reports', icon: ChartLine, cap: 'platform.revenue.view' },
+  { key: 'analytics', href: '/platform/analytics', icon: BarChart3, cap: 'platform.analytics.view' },
+  { key: 'activity', href: '/platform/activity', icon: Receipt, cap: 'platform.activity.view' },
+  { key: 'feed', href: '/platform/feed', icon: Activity, cap: 'platform.feed.view' },
+  { key: 'settlements', href: '/platform/settlements', icon: HandCoins, cap: 'platform.settlements.manage' },
+  { key: 'referrals', href: '/platform/referrals', icon: Share2, cap: 'platform.referrals.manage' },
   { key: 'users', href: '/platform/users', icon: Users, cap: 'platform.users.manage' },
   { key: 'support', href: '/platform/support', icon: LifeBuoy, cap: 'platform.support.access' },
   { key: 'policies', href: '/platform/policies', icon: ShieldAlert, cap: 'platform.policy.review' },
@@ -31,6 +38,7 @@ export const PLATFORM_NAV: PlatformNavItem[] = [
   { key: 'audit', href: '/platform/audit', icon: ScrollText, cap: 'platform.audit.view' },
   { key: 'ai_usage', href: '/platform/ai-usage', icon: Sparkles, cap: 'platform.ai_usage.view' },
   { key: 'integrations', href: '/platform/integrations', icon: Plug, cap: 'platform.integrations.view' },
+  { key: 'settings', href: '/platform/settings', icon: Settings, cap: 'platform.settings.manage' },
   { key: 'security', href: '/platform/security', icon: KeyRound, cap: null },
 ];
 
@@ -97,6 +105,7 @@ export function PlatformShell({ platform, user, gate, children }: { platform: Pl
               <span className="hidden text-xs text-ink-muted sm:inline">· {platform.roles.map((r) => t(`platform.roles.${r}`)).join('، ')}</span>
               <div className="flex-1" />
               <Link href="/app" className="hidden text-sm text-ink-muted hover:text-ink sm:inline">{t('platform.to_businesses')}</Link>
+              {!gate ? <PlatformFeedBell /> : null}
               <NotificationsBell />
               <UserMenu name={user.displayName} />
             </header>

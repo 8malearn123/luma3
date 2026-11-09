@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { ACQUISITION_SOURCES } from '../acquisition';
 
 const txt = (n: number) => z.string().trim().max(n);
 
@@ -22,6 +23,8 @@ export const customerListQuery = z.object({
   status: z.enum(['active', 'archived', 'all']).default('active'),
   tag: tag.optional(),
   source: z.enum(['storefront', 'dashboard', 'walk_in', 'import']).optional(),
+  /** «كيف عرفتِ عنا؟» filter; 'unknown' = not inferred and not answered. */
+  acquisition: z.enum([...ACQUISITION_SOURCES, 'unknown']).optional(),
   sort: z.enum(['name', 'recent', 'last_visit', 'created']).default('recent'),
   limit: z.coerce.number().int().min(1).max(100).default(25),
   cursor: z.string().max(200).optional(),

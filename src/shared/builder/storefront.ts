@@ -1,3 +1,4 @@
+import type { ServiceBadge } from '../badges';
 import type { PageBlock, SiteLayout } from './blocks';
 import type { Brand } from './theme';
 
@@ -34,6 +35,8 @@ export type PublicService = {
   id: string; name_ar: string | null; name_en: string | null; description_ar: string | null; description_en: string | null;
   price_minor: number; price_display: 'fixed' | 'starting_from'; duration_min: number; image_asset_id: string | null;
   category_id: string | null; staff_ids: string[]; bookable: boolean;
+  /** Manual owner-set badge (see shared/badges.ts); optional for older snapshots. */
+  badge?: ServiceBadge | null;
 };
 export type PublicStaff = {
   id: string; display_name: string; display_name_en: string | null; title_ar: string | null; title_en: string | null;
@@ -53,6 +56,16 @@ export type PublicBranch = {
   phone: string | null; is_primary: boolean; timezone: string; hours: Array<{ weekday: number; opens: string; closes: string }>;
 };
 export type PublicAsset = { width: number | null; height: number | null; alt_ar: string | null; alt_en: string | null };
+
+/** Portfolio item (before/after pair, or a single "after" image). */
+export type PublicPortfolioItem = { id: string; before_asset_id: string | null; after_asset_id: string; caption_ar: string | null; caption_en: string | null; category: string | null };
+/** Instagram section: the profile link always; cached posts only while an account is connected (images via the media proxy). */
+export type PublicInstagram = {
+  handle: string | null; profile_url: string | null; connected: boolean;
+  posts: Array<{ id: string; permalink: string; caption: string | null; media_type: string; timestamp: string }>;
+};
+/** Event bookings («حجوزات المناسبات») request form availability. */
+export type PublicEvents = { enabled: boolean; max_people: number; free_cancellation_days: number; default_deposit_bp: number; intro_ar: string | null; intro_en: string | null };
 
 export type StorefrontMode = 'published' | 'preview' | 'canvas';
 
@@ -83,6 +96,10 @@ export type StorefrontData = {
     deposit_mode: 'none' | 'percent' | 'fixed'; deposit_percent_bp: number; deposit_fixed_minor: number; allow_pay_on_site: boolean;
   };
   features: { products: boolean };
+  /** Expert experience (optional so older read models stay valid). */
+  portfolio?: PublicPortfolioItem[];
+  instagram?: PublicInstagram;
+  events?: PublicEvents;
 };
 
 export const SOCIAL_KEYS = ['instagram', 'tiktok', 'snapchat', 'x', 'facebook', 'youtube', 'website'] as const;

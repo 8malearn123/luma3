@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { DateTime } from 'luxon';
-import { Ban, CalendarClock, CircleCheck, Download, FileText, LogIn, Play, Printer, Undo2, UserX, Wallet, XCircle } from 'lucide-react';
+import { Ban, CalendarClock, CircleCheck, Download, FileText, HandCoins, LogIn, Play, Printer, Undo2, UserX, Wallet, XCircle } from 'lucide-react';
 import { useI18n } from '@/i18n/client';
 import { tzLabel } from '@/shared/format';
 import { api, ApiError } from '../api';
@@ -16,6 +16,7 @@ import { useToast } from '../components/toast';
 import { useAccess } from '../shell/access-context';
 import { ASSIGNED_ACTIONS, BookingStatusBadge, PaymentStatusBadge, useBookingFmt, useFinancialAccess, useLabel, type BookingAction, type BookingStatus } from './common';
 import { SlotPicker, type RequestedItem, type SlotOption } from './SlotPicker';
+import { TipDialog } from '../payroll/TipDialog';
 
 type Item = {
   id: string; sequence: number; service_id: string; variant_id: string | null; staff_id: string; staff_name: string; starts_at: string; ends_at: string;
@@ -52,7 +53,7 @@ export function BookingDrawer({ bookingId, onClose }: { bookingId: string; onClo
   const canRefundList = access.can('refunds.request', 'refunds.approve', 'finance.view');
   const refunds = useApiQuery<Refund[]>(['refunds', access.slug], canRefundList ? access.api('/refunds') : null);
   const [action, setAction] = useState<BookingAction | null>(null);
-  const [dialog, setDialog] = useState<'collect' | 'refund' | 'reschedule' | null>(null);
+  const [dialog, setDialog] = useState<'collect' | 'refund' | 'reschedule' | 'tip' | null>(null);
 
   const writable = !access.readOnly;
   const canManage = writable && access.can('bookings.manage');
@@ -62,6 +63,7 @@ export function BookingDrawer({ bookingId, onClose }: { bookingId: string; onClo
   const canReschedule = canManage && !!b && ['confirmed', 'pending_approval'].includes(b.status);
   const balance = b && b.total_minor != null && b.paid_minor != null ? Math.max(0, b.total_minor - b.paid_minor) : 0;
   const canCollect = writable && access.can('payments.collect') && !!b && b.total_minor != null && balance > 0 && !['cancelled', 'expired'].includes(b.status);
+  const canTip = writable && access.can('payments.collect', 'payroll.manage') && !!b && ['confirmed', 'checked_in', 'in_service', 'completed'].includes(b.status);
   const captured = (b?.payments ?? []).filter((p) => p.status === 'captured');
   const canRefund = writable && access.can('refunds.request') && captured.some((p) => p.amount_minor - (p.refunded_or_pending_minor ?? 0) > 0);
   const bookingRefunds = (refunds.data ?? []).filter((r) => r.booking_id === bookingId);
@@ -164,6 +166,7 @@ export function BookingDrawer({ bookingId, onClose }: { bookingId: string; onClo
                 <div className="flex flex-wrap gap-2">
                   {canCollect ? <Button size="sm" icon={<Wallet className="size-4" />} onClick={() => setDialog('collect')}>{t('booking.actions.collect')}</Button> : null}
                   {canRefund ? <Button size="sm" variant="outline" icon={<Undo2 className="size-4" />} onClick={() => setDialog('refund')}>{t('booking.actions.refund')}</Button> : null}
+                  {canTip ? <Button size="sm" variant="outline" icon={<HandCoins className="size-4" />} onClick={() => setDialog('tip')}>{t('payroll.tip.add')}</Button> : null}
                 </div>
               </div>
               {b.payments.length ? (
@@ -207,6 +210,8 @@ export function BookingDrawer({ bookingId, onClose }: { bookingId: string; onClo
       }} /> : null}
       {dialog === 'collect' && b ? <CollectDialog booking={b} balance={balance} onClose={() => setDialog(null)} onDone={async () => { setDialog(null); toast({ tone: 'ok', text: t('bookings_ui.collect.done') }); await refresh(); }} /> : null}
       {dialog === 'refund' && b ? <RefundDialog booking={b} payments={captured} onClose={() => setDialog(null)} onDone={async (status) => { setDialog(null); toast({ tone: 'ok', text: status === 'requested' ? t('bookings_ui.refund.requested') : t('bookings_ui.refund.sent') }); await refresh(); }} /> : null}
+      {dialog === 'tip' && b ? <TipDialog bookingId={b.id} staff={[...new Map(b.items.map((i) => [i.staff_id, i.staff_name])).entries()].map(([id, name]) => ({ id, name }))}
+        onClose={() => setDialog(null)} onDone={() => { setDialog(null); toast({ tone: 'ok', text: t('payroll.tip.done') }); }} /> : null}
       {dialog === 'reschedule' && b ? <RescheduleDialog booking={b} onClose={() => setDialog(null)} onDone={async () => { setDialog(null); toast({ tone: 'ok', text: t('bookings_ui.reschedule.done') }); await refresh(); }} /> : null}
     </Drawer>
   );

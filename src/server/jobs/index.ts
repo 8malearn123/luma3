@@ -15,3 +15,8 @@ import '../domains/policy/jobs';
 import '../domains/subscriptions/jobs';
 import '../domains/analytics/jobs';
 import '../domains/marketing/jobs';
+import '../domains/hr/jobs';
+import '../domains/reviews/jobs';
+import '../domains/giftcards/jobs';
+import '../domains/business/jobs';
+import '../domains/events/jobs';

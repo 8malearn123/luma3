@@ -1,8 +1,9 @@
 'use client';
 
 import { useState } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
-import { Check, Palmtree, Plus, X } from 'lucide-react';
+import { ArrowLeftRight, Check, Palmtree, Plus, X } from 'lucide-react';
 import { useI18n } from '@/i18n/client';
 import { api, ApiError } from '../api';
 import { useApiQuery } from '../hooks';
@@ -16,10 +17,11 @@ import { useAccess } from '../shell/access-context';
 import { useFmt } from '../commerce/common';
 import { ApiErrorBox, localToIso, parseRange, todayIn } from '../catalog/common';
 import type { StaffRow } from './TeamPage';
+import { LeaveBalancesCard, OwnBalanceNote, RerouteDrawer } from '../hr/LeavePanels';
 
 type Leave = { id: string; staff_id: string; display_name: string; during: string; leave_type: string; status: string; reason: string | null; affected_booking_ids: string[]; created_at: string };
 const STATUSES = ['requested', 'approved', 'rejected', 'cancelled'] as const;
-const TYPES = ['annual', 'sick', 'personal', 'other'] as const;
+const TYPES = ['annual', 'sick', 'emergency', 'unpaid', 'personal', 'other'] as const;
 const TONE: Record<string, 'warn' | 'ok' | 'danger' | 'neutral'> = { requested: 'warn', approved: 'ok', rejected: 'danger', cancelled: 'neutral' };
 
 export function LeaveTab({ staff }: { staff: StaffRow[] }) {
@@ -38,14 +40,26 @@ export function LeaveTab({ staff }: { staff: StaffRow[] }) {
   const [err, setErr] = useState<unknown>(null);
   const [requesting, setRequesting] = useState(false);
   const [affected, setAffected] = useState<number | null>(null);
+  const router = useRouter();
+  const pathname = usePathname();
+  const sp = useSearchParams();
+  const reroute = sp.get('reroute');
+  const canReroute = access.can('bookings.manage') && !access.readOnly;
+  const setReroute = (id: string | null) => {
+    const u = new URLSearchParams(sp.toString());
+    if (id) u.set('reroute', id); else u.delete('reroute');
+    router.replace(`${pathname}${u.toString() ? `?${u}` : ''}`, { scroll: false });
+  };
+  const showBalances = access.can('leave.approve', 'schedule.manage', 'hr.configure');
 
   async function submitDecision() {
     if (!decide) return;
     setBusy(true); setErr(null);
     try {
-      const r = await api<{ affected_booking_ids: string[] }>(access.api(`/leave/${decide.row.id}`), { body: { decision: decide.decision, ...(note.trim() ? { note: note.trim() } : {}) } });
+      const r = await api<{ affected_booking_ids: string[]; status: string }>(access.api(`/leave/${decide.row.id}`), { body: { decision: decide.decision, ...(note.trim() ? { note: note.trim() } : {}) } });
       setAffected(r.affected_booking_ids?.length || null);
-      toast({ tone: 'ok', text: decide.decision === 'approved' ? t('catalog_team.leave.approved_done') : t('catalog_team.leave.rejected_done') });
+      if (r.affected_booking_ids?.length && canReroute) setReroute(decide.row.id);
+      toast({ tone: 'ok', text: r.status === 'requested' ? t('hr.requests.step_done') : decide.decision === 'approved' ? t('catalog_team.leave.approved_done') : t('catalog_team.leave.rejected_done') });
       setDecide(null); setNote('');
       await qc.invalidateQueries({ queryKey: ['leave', access.slug] });
     } catch (e) {
@@ -66,6 +80,7 @@ export function LeaveTab({ staff }: { staff: StaffRow[] }) {
       {affected ? <Alert tone="warn" title={t('team_ui.affected', { n: affected })}>{t('catalog_team.leave.affected_hint')}</Alert> : null}
       <ApiErrorBox err={err} />
       {requesting ? <RequestForm staff={staff} onDone={() => setRequesting(false)} /> : null}
+      {showBalances ? <LeaveBalancesCard /> : null}
       {q.isLoading ? <LoadingState rows={3} /> : q.error ? <ErrorState error={q.error} onRetry={() => q.refetch()} /> : !q.data?.length ? (
         <EmptyState icon={<Palmtree className="size-8" aria-hidden />} title={status === 'requested' ? t('catalog_team.leave.empty_pending') : t('states.empty')} />
       ) : (
@@ -85,6 +100,9 @@ export function LeaveTab({ staff }: { staff: StaffRow[] }) {
                   {r ? <p className="mt-1 text-sm">{when(r.from)} – {when(r.to)}</p> : null}
                   {l.reason ? <p className="mt-1 text-xs text-ink-muted">{l.reason}</p> : null}
                 </div>
+                {l.status === 'approved' && l.affected_booking_ids.length && canReroute ? (
+                  <Button size="sm" variant="outline" icon={<ArrowLeftRight className="size-4" />} onClick={() => setReroute(l.id)}>{t('hr.reroute.open')}</Button>
+                ) : null}
                 {l.status === 'requested' && canDecide ? (
                   <div className="flex gap-2">
                     <Button size="sm" icon={<Check className="size-4" />} onClick={() => { setNote(''); setDecide({ row: l, decision: 'approved' }); }}>{t('team_ui.approve')}</Button>
@@ -96,6 +114,7 @@ export function LeaveTab({ staff }: { staff: StaffRow[] }) {
           })}
         </ul>
       )}
+      {reroute && canReroute ? <RerouteDrawer leaveId={reroute} onClose={() => { setReroute(null); void qc.invalidateQueries({ queryKey: ['leave', access.slug] }); }} /> : null}
       <Dialog open={!!decide} onClose={() => setDecide(null)} title={decide?.decision === 'approved' ? t('catalog_team.leave.approve_title') : t('catalog_team.leave.reject_title')} footer={<>
         <Button variant="ghost" onClick={() => setDecide(null)}>{t('actions.cancel')}</Button>
         <Button variant={decide?.decision === 'rejected' ? 'danger' : 'primary'} loading={busy} onClick={submitDecision}>{decide?.decision === 'approved' ? t('team_ui.approve') : t('team_ui.reject')}</Button>
@@ -150,6 +169,7 @@ function RequestForm({ staff, onDone }: { staff: StaffRow[]; onDone: () => void 
         )}</Field>
         <Field label={t('fields.from')} required>{(fp) => <Input {...fp} type="datetime-local" dir="ltr" value={form.from} onChange={(e) => setForm({ ...form, from: e.target.value })} />}</Field>
         <Field label={t('fields.to')} required>{(fp) => <Input {...fp} type="datetime-local" dir="ltr" value={form.to} onChange={(e) => setForm({ ...form, to: e.target.value })} />}</Field>
+        {form.leave_type === 'annual' && (form.staff_id || access.staffProfileId) ? <div className="sm:col-span-2"><OwnBalanceNote staffId={form.staff_id || access.staffProfileId} /></div> : null}
         <Field label={t('fields.reason')} className="sm:col-span-2">{(fp) => <Textarea {...fp} maxLength={500} value={form.reason} onChange={(e) => setForm({ ...form, reason: e.target.value })} />}</Field>
         <div className="flex gap-2 sm:col-span-2">
           <Button loading={busy} disabled={manage && !form.staff_id} onClick={submit}>{t('actions.submit')}</Button>
