@@ -225,6 +225,8 @@ export const PLATFORM_CAPABILITIES = [
   'platform.referrals.manage',
   'platform.settings.manage',
   'platform.feed.view',
+  // Loom Marketing platform settings (ranking defaults, thresholds, event sources, sector packs): platform owner only.
+  'platform.loom.manage',
 ] as const;
 export type PlatformCapability = (typeof PLATFORM_CAPABILITIES)[number];
 

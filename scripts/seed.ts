@@ -42,6 +42,7 @@ const { createProduct } = await import('../src/server/domains/commerce/products'
 const { seedIncident, seedAppeal } = await import('../src/server/domains/policy/seed');
 const { publish } = await import('../src/server/domains/builder/publish');
 const { createExamplePlan } = await import('../src/server/domains/marketing/plans');
+const { analyzeNow } = await import('../src/loom');
 
 const credentials: string[] = ['# LUMA demo credentials (development only — fictional people)', ''];
 const credentialMap: Record<string, string> = {};
@@ -253,6 +254,28 @@ async function main() {
     { name_ar: 'زيت أرغان للشعر', name_en: 'Argan hair oil', variants: [{ price_minor: 9000, initial_stock: 3, sku: 'OIL-ARG' }] },
     { name_ar: 'مبرد أظافر', name_en: 'Nail file', variants: [{ price_minor: 1500, cost_minor: 400, initial_stock: 60, sku: 'NF-01' }] },
   ]) await createProduct(access, actor, { status: 'active', is_visible: true, ...pr });
+
+  // Loom Marketing: consumption recipes (colour dye is short of stock and has no unit cost, so the
+  // colour margin stays "costs incomplete"; manicure polish is costed and sufficient), marketing
+  // consent for some walk-in customers, the business dated to its first historical booking, and a
+  // first rules-based analysis so the «الفرص» tab has explained opportunities.
+  await withSystem('seed loom: business age', (trx) => trx.updateTable('tenants').set({ created_at: DateTime.now().minus({ days: 60 }).toJSDate() }).where('id', '=', noura.tenantId).execute());
+  await withTenant(noura.tenantId, async (trx) => {
+    const material = async (name: string, onHand: number, unitCost: number | null, threshold: number) => (await trx.insertInto('inventory_items').values({
+      tenant_id: noura.tenantId, branch_id: noura.branchId, name, kind: 'material', unit: 'ml', on_hand: onHand, cost_per_unit_minor: unitCost, low_stock_threshold: threshold,
+    }).returning('id').executeTakeFirstOrThrow()).id;
+    const dye = await material('صبغة شعر (مادة تشغيل)', 120, null, 100);
+    const polish = await material('طلاء أظافر (مادة تشغيل)', 400, 15, 50);
+    await trx.insertInto('service_material_recipes').values([
+      { tenant_id: noura.tenantId, service_id: color, inventory_item_id: dye, quantity: 60, unit: 'ml', approved_by: ownerId, approved_at: new Date() },
+      { tenant_id: noura.tenantId, service_id: mani, inventory_item_id: polish, quantity: 5, unit: 'ml', approved_by: ownerId, approved_at: new Date() },
+    ]).execute();
+    for (const [i, c] of customers.entries()) {
+      if (i % 2) continue;
+      await trx.insertInto('customer_consents').values({ tenant_id: noura.tenantId, tenant_customer_id: c, channel: 'push', purpose: 'marketing', granted: true, source: 'dashboard' }).execute();
+    }
+  });
+  try { await analyzeNow(noura.tenantId, { trigger: 'seed', requestedBy: ownerId }); } catch (e) { console.warn(`[seed] loom analysis skipped: ${(e as Error).message}`); }
 
   // A labelled example marketing plan (rules-based; no AI provider is connected in the demo).
   try { await createExamplePlan(access, actor, 'monthly'); } catch (e) { console.warn(`[seed] example plan skipped: ${(e as Error).message}`); }

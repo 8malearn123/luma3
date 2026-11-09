@@ -1,6 +1,7 @@
 # AI, Loom Marketing and analytics
 
 > Target product concept and architecture for Loom Marketing (gap analysis, canonical model, engines, API, phases): [LOOM_MARKETING_ARCHITECTURE.md](LOOM_MARKETING_ARCHITECTURE.md).
+> The independent Loom core (connector, metrics registry, quality gate, opportunity engine, Loom API v1, setup checklist, platform settings) is documented in [LOOM_CORE.md](LOOM_CORE.md). The plans/recommendations pipeline below still runs alongside it.
 
 | File | Role |
 |---|---|

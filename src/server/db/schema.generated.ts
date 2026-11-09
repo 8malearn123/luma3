@@ -1060,6 +1060,472 @@ export interface LeaveRequests {
   updated_at: Generated<Timestamp>;
 }
 
+export interface LoomAnalyses {
+  business_id: string;
+  created_at: Generated<Timestamp>;
+  data_version: string | null;
+  error_code: string | null;
+  error_message: string | null;
+  finished_at: Timestamp | null;
+  id: Generated<string>;
+  kind: Generated<string>;
+  mode: string | null;
+  period_from: string | null;
+  period_to: string | null;
+  quality_level: string | null;
+  requested_by: string | null;
+  result: Generated<Json>;
+  snapshot_hash: string | null;
+  started_at: Timestamp | null;
+  status: Generated<string>;
+  trigger: Generated<string>;
+}
+
+export interface LoomBusinessGoals {
+  business_id: string;
+  created_at: Generated<Timestamp>;
+  created_by: string | null;
+  id: Generated<string>;
+  kind: string;
+  note: string | null;
+  offering_ids: Generated<string[]>;
+  priority: string;
+  status: Generated<string>;
+  updated_at: Generated<Timestamp>;
+}
+
+export interface LoomBusinessProfileFacts {
+  business_id: string;
+  confidence: string | null;
+  id: Generated<string>;
+  key: string;
+  kind: string;
+  needs_review: Generated<boolean>;
+  source_ref: string | null;
+  source_type: string;
+  superseded_at: Timestamp | null;
+  superseded_by: string | null;
+  updated_at: Generated<Timestamp>;
+  updated_by: string | null;
+  valid_from: Generated<Timestamp>;
+  value: Json;
+}
+
+export interface LoomConnections {
+  business_id: string;
+  config: Generated<Json>;
+  created_at: Generated<Timestamp>;
+  id: Generated<string>;
+  kind: string;
+  last_error: string | null;
+  last_sync_at: Timestamp | null;
+  status: Generated<string>;
+  updated_at: Generated<Timestamp>;
+}
+
+export interface LoomDataQualityChecks {
+  analysis_id: string | null;
+  business_id: string;
+  checks: Json;
+  created_at: Generated<Timestamp>;
+  domains: Json;
+  id: Generated<string>;
+  overall: string;
+}
+
+export interface LoomExportBookedIntervals {
+  ends_at: Timestamp | null;
+  offering_id: string | null;
+  resource_id: string | null;
+  starts_at: Timestamp | null;
+}
+
+export interface LoomExportBusiness {
+  city: string | null;
+  created_at: Timestamp | null;
+  currency: string | null;
+  id: string | null;
+  locale: string | null;
+  sector: string | null;
+  status: string | null;
+  subsector: string | null;
+  timezone: string | null;
+}
+
+export interface LoomExportCalendarEvents {
+  ends_on: string | null;
+  has_source: boolean | null;
+  id: string | null;
+  kind: string | null;
+  starts_on: string | null;
+  title: string | null;
+}
+
+export interface LoomExportCampaigns {
+  attributed_net_minor: number | null;
+  channel: string | null;
+  conversions: number | null;
+  created_at: Timestamp | null;
+  finished_at: Timestamp | null;
+  holdout: number | null;
+  holdout_bp: number | null;
+  id: string | null;
+  started_at: Timestamp | null;
+  status: string | null;
+  targeted: number | null;
+}
+
+export interface LoomExportCommissionPolicies {
+  category: string | null;
+  enabled: boolean | null;
+  max_override_bp: number | null;
+  rate_bp: number | null;
+  staff_overrides: number | null;
+  tiers: Json | null;
+}
+
+export interface LoomExportComplaints {
+  at: Timestamp | null;
+  id: string | null;
+  offering_id: string | null;
+  type: string | null;
+  verified: boolean | null;
+}
+
+export interface LoomExportCustomers {
+  acquisition_source: string | null;
+  consents: Json | null;
+  created_at: Timestamp | null;
+  dup_key: string | null;
+  first_visit_at: Timestamp | null;
+  last_visit_at: Timestamp | null;
+  origin: string | null;
+  ref: string | null;
+  status: string | null;
+  updated_at: Timestamp | null;
+  visits: number | null;
+}
+
+export interface LoomExportDemandSignals {
+  day: Timestamp | null;
+  events: number | null;
+  offering_id: string | null;
+  sessions: number | null;
+  type: string | null;
+}
+
+export interface LoomExportInventoryItems {
+  consumed_90d: number | null;
+  id: string | null;
+  is_active: boolean | null;
+  location_id: string | null;
+  name: string | null;
+  offering_id: string | null;
+  on_hand: number | null;
+  reorder_level: number | null;
+  reserved: number | null;
+  sold_90d: number | null;
+  unit: string | null;
+  unit_cost_minor: number | null;
+  updated_at: Timestamp | null;
+  usage: string | null;
+}
+
+export interface LoomExportLocations {
+  city: string | null;
+  id: string | null;
+  is_primary: boolean | null;
+  name: string | null;
+  status: string | null;
+  timezone: string | null;
+}
+
+export interface LoomExportMarketingPreferences {
+  channels: string[] | null;
+  goals: Json | null;
+  max_discount_bp: number | null;
+  monthly_budget_minor: number | null;
+  promote_products: boolean | null;
+  tone: string | null;
+  updated_at: Timestamp | null;
+}
+
+export interface LoomExportMarketSignals {
+  evidence_strength: string | null;
+  id: string | null;
+  observed_at: Timestamp | null;
+  published_at: Timestamp | null;
+  region: string | null;
+  title: string | null;
+  topic: string | null;
+}
+
+export interface LoomExportOfferingRequirements {
+  confidence: string | null;
+  offering_id: string | null;
+  quantity: number | null;
+  ref_id: string | null;
+  type: string | null;
+  unit: string | null;
+}
+
+export interface LoomExportOfferings {
+  buffer_min: number | null;
+  category_id: string | null;
+  created_at: Timestamp | null;
+  duration_min: number | null;
+  has_description: boolean | null;
+  has_image: boolean | null;
+  id: string | null;
+  is_visible: boolean | null;
+  kind: string | null;
+  location_id: string | null;
+  name_ar: string | null;
+  name_en: string | null;
+  price_minor: number | null;
+  product_id: string | null;
+  recorded_cost_minor: number | null;
+  source_kind: string | null;
+  status: string | null;
+  updated_at: Timestamp | null;
+}
+
+export interface LoomExportPaymentFees {
+  amount_minor: number | null;
+  platform_fee_minor: number | null;
+  transaction_id: string | null;
+}
+
+export interface LoomExportResources {
+  id: string | null;
+  is_active: boolean | null;
+  kind: string | null;
+  location_id: string | null;
+  resource_type_id: string | null;
+}
+
+export interface LoomExportReviews {
+  at: Timestamp | null;
+  id: string | null;
+  offering_id: string | null;
+  rating: number | null;
+  resource_id: string | null;
+  verified: boolean | null;
+}
+
+export interface LoomExportShiftOverrides {
+  end_time: string | null;
+  kind: string | null;
+  on_date: string | null;
+  resource_id: string | null;
+  start_time: string | null;
+  timezone: string | null;
+}
+
+export interface LoomExportStaffBreaks {
+  end_time: string | null;
+  on_date: string | null;
+  resource_id: string | null;
+  start_time: string | null;
+  weekday: number | null;
+}
+
+export interface LoomExportStaffHours {
+  effective_from: string | null;
+  effective_to: string | null;
+  end_time: string | null;
+  resource_id: string | null;
+  start_time: string | null;
+  timezone: string | null;
+  weekday: number | null;
+}
+
+export interface LoomExportStaffLeave {
+  ends_at: Timestamp | null;
+  resource_id: string | null;
+  starts_at: Timestamp | null;
+}
+
+export interface LoomExportTimeBlocks {
+  ends_at: Timestamp | null;
+  is_staff: boolean | null;
+  resource_id: string | null;
+  starts_at: Timestamp | null;
+}
+
+export interface LoomExportTransactionLines {
+  duration_min: number | null;
+  id: string | null;
+  line_total_minor: number | null;
+  offering_id: string | null;
+  qty: number | null;
+  resource_id: string | null;
+  starts_at: Timestamp | null;
+  transaction_id: string | null;
+  unit_cost_minor: number | null;
+}
+
+export interface LoomExportTransactions {
+  campaign_id: string | null;
+  cancel_source: string | null;
+  channel: string | null;
+  customer_ref: string | null;
+  discount_minor: number | null;
+  has_coupon: boolean | null;
+  id: string | null;
+  kind: string | null;
+  marketplace_fee_bp: number | null;
+  occurred_at: Timestamp | null;
+  origin: string | null;
+  platform_fee_minor: number | null;
+  refunded_minor: number | null;
+  source_status: string | null;
+  subtotal_minor: number | null;
+  tax_minor: number | null;
+  total_minor: number | null;
+  updated_at: Timestamp | null;
+}
+
+export interface LoomLoomSettings {
+  key: string;
+  updated_at: Generated<Timestamp>;
+  updated_by: string | null;
+  value: Json;
+  version: Generated<number>;
+}
+
+export interface LoomMetricDefinitions {
+  created_at: Generated<Timestamp>;
+  definition_hash: string;
+  formula: string;
+  grain: string[];
+  key: string;
+  label_ar: string;
+  label_en: string;
+  min_sample: Generated<number>;
+  requires: Generated<string[]>;
+  sectors: Generated<string[]>;
+  time_window: string;
+  unit: string;
+  version: number;
+}
+
+export interface LoomMetricValues {
+  analysis_id: string;
+  business_id: string;
+  created_at: Generated<Timestamp>;
+  grain_ref: string;
+  id: Generated<number>;
+  metric_key: string;
+  metric_version: number;
+  n: number | null;
+  period_from: string | null;
+  period_to: string | null;
+  status: string;
+  value: number | null;
+}
+
+export interface LoomOpportunities {
+  business_id: string;
+  card: Json;
+  category: string;
+  conversion: Json | null;
+  created_at: Generated<Timestamp>;
+  data_quality: string | null;
+  decided_at: Timestamp | null;
+  decided_by: string | null;
+  decision_note: string | null;
+  decision_reason: string | null;
+  deferred_until: string | null;
+  detected_at: Generated<Timestamp>;
+  detector_id: string;
+  display_bucket: string | null;
+  evidence_strength: string | null;
+  fingerprint: string;
+  first_analysis_id: string | null;
+  id: Generated<string>;
+  last_analysis_id: string | null;
+  parent_id: string | null;
+  period_from: string | null;
+  period_to: string | null;
+  priority_rank: number | null;
+  priority_score: number | null;
+  review_at: string | null;
+  sector_pack: Generated<string>;
+  sector_pack_version: string;
+  status: string;
+  subject: Generated<Json>;
+  updated_at: Generated<Timestamp>;
+}
+
+export interface LoomOpportunityChecks {
+  analysis_id: string | null;
+  business_id: string;
+  check_type: string;
+  created_at: Generated<Timestamp>;
+  details: Generated<Json>;
+  id: Generated<string>;
+  opportunity_id: string;
+  status: string;
+}
+
+export interface LoomOpportunityEvents {
+  actor_id: string | null;
+  analysis_id: string | null;
+  business_id: string;
+  counts_as_idea_failure: boolean | null;
+  created_at: Generated<Timestamp>;
+  data: Generated<Json>;
+  event: string;
+  from_status: string | null;
+  id: Generated<string>;
+  note: string | null;
+  opportunity_id: string;
+  reason: string | null;
+  to_status: string | null;
+}
+
+export interface LoomOpportunityEvidence {
+  analysis_id: string | null;
+  business_id: string;
+  created_at: Generated<Timestamp>;
+  grade: string;
+  grain_ref: string;
+  id: string;
+  label: Json;
+  metric_key: string;
+  metric_version: number | null;
+  n: number | null;
+  opportunity_id: string;
+  value: number | null;
+}
+
+export interface LoomSourceMappings {
+  business_id: string;
+  connection_id: string;
+  created_at: Generated<Timestamp>;
+  entity: string;
+  field_map: Generated<Json>;
+  id: Generated<string>;
+  revenue_basis: string | null;
+  status_map: Generated<Json>;
+  updated_at: Generated<Timestamp>;
+  version: Generated<number>;
+}
+
+export interface LoomSyncRuns {
+  analysis_id: string | null;
+  business_id: string;
+  connection_id: string;
+  data_version: string | null;
+  entities: Generated<Json>;
+  error: string | null;
+  finished_at: Generated<Timestamp>;
+  id: Generated<string>;
+  started_at: Timestamp;
+  status: string;
+}
+
 export interface LoyaltyAccounts {
   balance: Generated<number>;
   created_at: Generated<Timestamp>;
@@ -2911,6 +3377,44 @@ export interface DB {
   job_runs: JobRuns;
   leave_ledger: LeaveLedger;
   leave_requests: LeaveRequests;
+  "loom_export.booked_intervals": LoomExportBookedIntervals;
+  "loom_export.business": LoomExportBusiness;
+  "loom_export.calendar_events": LoomExportCalendarEvents;
+  "loom_export.campaigns": LoomExportCampaigns;
+  "loom_export.commission_policies": LoomExportCommissionPolicies;
+  "loom_export.complaints": LoomExportComplaints;
+  "loom_export.customers": LoomExportCustomers;
+  "loom_export.demand_signals": LoomExportDemandSignals;
+  "loom_export.inventory_items": LoomExportInventoryItems;
+  "loom_export.locations": LoomExportLocations;
+  "loom_export.market_signals": LoomExportMarketSignals;
+  "loom_export.marketing_preferences": LoomExportMarketingPreferences;
+  "loom_export.offering_requirements": LoomExportOfferingRequirements;
+  "loom_export.offerings": LoomExportOfferings;
+  "loom_export.payment_fees": LoomExportPaymentFees;
+  "loom_export.resources": LoomExportResources;
+  "loom_export.reviews": LoomExportReviews;
+  "loom_export.shift_overrides": LoomExportShiftOverrides;
+  "loom_export.staff_breaks": LoomExportStaffBreaks;
+  "loom_export.staff_hours": LoomExportStaffHours;
+  "loom_export.staff_leave": LoomExportStaffLeave;
+  "loom_export.time_blocks": LoomExportTimeBlocks;
+  "loom_export.transaction_lines": LoomExportTransactionLines;
+  "loom_export.transactions": LoomExportTransactions;
+  "loom.analyses": LoomAnalyses;
+  "loom.business_goals": LoomBusinessGoals;
+  "loom.business_profile_facts": LoomBusinessProfileFacts;
+  "loom.connections": LoomConnections;
+  "loom.data_quality_checks": LoomDataQualityChecks;
+  "loom.loom_settings": LoomLoomSettings;
+  "loom.metric_definitions": LoomMetricDefinitions;
+  "loom.metric_values": LoomMetricValues;
+  "loom.opportunities": LoomOpportunities;
+  "loom.opportunity_checks": LoomOpportunityChecks;
+  "loom.opportunity_events": LoomOpportunityEvents;
+  "loom.opportunity_evidence": LoomOpportunityEvidence;
+  "loom.source_mappings": LoomSourceMappings;
+  "loom.sync_runs": LoomSyncRuns;
   loyalty_accounts: LoyaltyAccounts;
   loyalty_programs: LoyaltyPrograms;
   marketing_calendar_events: MarketingCalendarEvents;

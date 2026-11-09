@@ -15,9 +15,11 @@ import { LoomPlans } from './LoomPlans';
 import { LoomRecommendations } from './LoomRecommendations';
 import { LoomTrends } from './LoomTrends';
 import { LoomCampaigns } from './LoomCampaigns';
+import { LoomOpportunities } from './LoomOpportunities';
+import { LoomSetup } from './LoomSetup';
 
-type Tab = 'summary' | 'plans' | 'recommendations' | 'trends' | 'campaigns' | 'preferences' | 'jobs';
-const TABS: Tab[] = ['summary', 'plans', 'recommendations', 'trends', 'campaigns', 'preferences', 'jobs'];
+type Tab = 'summary' | 'opportunities' | 'plans' | 'recommendations' | 'trends' | 'campaigns' | 'setup' | 'preferences' | 'jobs';
+const TABS: Tab[] = ['summary', 'opportunities', 'plans', 'recommendations', 'trends', 'campaigns', 'setup', 'preferences', 'jobs'];
 
 export function LoomDashboard({ initialTab }: { initialTab?: string }) {
   const { t } = useI18n();
@@ -34,7 +36,7 @@ export function LoomDashboard({ initialTab }: { initialTab?: string }) {
     <div>
       <PageHeader title={t('marketing.title')} subtitle={t('marketing.subtitle')} />
       <Tabs value={tab} onChange={change} items={TABS.map((v) => ({ value: v, label: t(`marketing.tabs.${v}`) }))} />
-      {tab === 'summary' ? <Summary onNavigate={change} /> : tab === 'plans' ? <LoomPlans /> : tab === 'recommendations' ? <LoomRecommendations />
+      {tab === 'summary' ? <Summary onNavigate={change} /> : tab === 'opportunities' ? <LoomOpportunities onSetup={() => change('setup')} /> : tab === 'setup' ? <LoomSetup /> : tab === 'plans' ? <LoomPlans /> : tab === 'recommendations' ? <LoomRecommendations />
         : tab === 'trends' ? <LoomTrends /> : tab === 'campaigns' ? <LoomCampaigns /> : tab === 'preferences' ? <Preferences /> : <Jobs />}
     </div>
   );

@@ -15,6 +15,7 @@ import '../domains/policy/jobs';
 import '../domains/subscriptions/jobs';
 import '../domains/analytics/jobs';
 import '../domains/marketing/jobs';
+import '../../loom/jobs';
 import '../domains/hr/jobs';
 import '../domains/reviews/jobs';
 import '../domains/giftcards/jobs';
