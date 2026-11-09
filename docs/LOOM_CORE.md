@@ -1,4 +1,4 @@
-# Loom Marketing Core (phases 1–2)
+# Loom Marketing Core (phases 1–2, radar phase 4)
 
 > Spec: [LOOM_MARKETING_ARCHITECTURE.md](LOOM_MARKETING_ARCHITECTURE.md) (§4–§8, §14, §15, §20). This file documents what is built, the contracts later phases build on, and how to extend them.
 
@@ -54,6 +54,7 @@ Every business table has `business_id` (= LUMA tenant id) with RLS `app.tenant_v
 | Settings: `getPlatformSettings()`, `updatePlatformSettings(actor, patch)`, `platformSettingsSchema`, `PLATFORM_DEFAULTS`, `RankingWeights` | `src/loom/settings/platform.ts` | |
 | Pipeline: `requestAnalysis(businessId, …)`, `runAnalysis(id, businessId, { now })`, `analyzeNow(businessId)`, job kind `loom.analysis` | `src/loom/analysis/run.ts`, `src/loom/jobs.ts` | |
 | API service: `loomApi.*` and request schemas (`goalsInput`, `preferencesInput`, `setupInput`, `decisionInput`, `convertInput`, `opportunityListQuery`, `profilePatchInput`) | `src/loom/api/*` | host-agnostic: `{ businessId, actor, locale }` |
+| Radar (phase 4): `timingContextFor`, `checkAwarenessRule`, `clusterSignals`, `evidenceClassOf`, `signalRelevance`/`eventRelevance`, `marketPriceContext`, `enforceNoMarketPriceCut`, `priceProposalAllowed`, `RadarFetcher` port (`setRadarFetcher`), `SignalApiProvider` (`registerApiProvider`), `radarApi.*` | `src/loom/radar/*` | see §10 |
 
 ### 3.1 Analysis pipeline (rules path)
 
@@ -82,7 +83,7 @@ Reads only `loom_export.*` inside `withTenant(business_id)`. Views are `security
 | `default_ranking_weights` | goal fit .20, evidence .20, impact .20, feasibility .15, cost/effort .10, timing .10, risk .05 (sum = 1, each ≤ .6) | ranking when the business has not customised weights |
 | `cost_completeness_threshold` | 0.80 (0.5–1) | quality gate, `margin_check = costs_incomplete`, `missing_cost_blocker` |
 | `learned_model_thresholds` | 180 days, 500 completed transactions | phase 6 (stored now) |
-| `event_sources` | `[]` (id, name, https url, region, kind, licence note, enabled) | phase 4 official calendars |
+| `event_sources` | `[]` (id, name, https url, region, kind, licence note, enabled) | official calendars (§10.3): imported daily through safe-fetch; `kind = other` ⇒ imported events need verification |
 | `enabled_sector_packs` | `['beauty']` | analysis refuses a disabled pack |
 
 **Business setup checklist (`GET/PUT /loom/setup`, tab «إعداد لووم»):** goals, monthly budget, discount policy (`no_discounts` / max discount), excluded and growth offerings, content tone, ranking weights (accept the platform default or customise, each ≤ .5, sum = 1), shared-training consent (owner only, default false). Each item shows «مطلوب» until an explicit fact confirms it. Analyses still run; every card lists the unconfirmed items in `limitations` and says when the platform default weights were used.
@@ -121,3 +122,83 @@ The plans/recommendations pipeline (`src/server/domains/marketing/*`, `ai_jobs`)
 ## 9. Tests
 
 `tests/unit/loom-{architecture,engine,economics,connector,metrics-quality,ranking}.test.ts` (pure, synthetic datasets in `tests/helpers/loom-dataset.ts`) and `tests/integration/loom-{core,api,settings}.test.ts` (DB, fixtures in `tests/helpers/loom-core.ts`). §20 coverage on the rules path: T1, T2, T3, T4, T5, T6, T7, T8, T11, T12, T13, T15 (T9, T10, T14 belong to phases 3 and 5).
+
+Phase 4: `tests/unit/loom-radar.test.ts` (freshness/T7, dedupe, deterministic clustering, evidence classes, relevance, awareness rule, starter calendar invariants, ICS, T15 guards) and `tests/integration/loom-radar-{signals,calendar,market}.test.ts` (safe-fetch with a fake transport/resolver: sources, dedupe, backoff sweep, unconfigured API ⇒ disconnected while analysis continues, supported trend from provider numbers, official import, needs_verification never verified, T8, awareness-only, T15, tenant isolation, platform-only management).
+
+## 10. Radar, timing and market (phase 4)
+
+Code in `src/loom/radar/*`, public through `@/loom`. Migration `0720_loom_radar`. No AI is involved; every rule below is deterministic and tested.
+
+### 10.1 Storage (schema `loom`)
+
+| Table | Scope | Content | Mutability |
+|---|---|---|---|
+| `signal_sources` | business | `rss` / `user_link` / `api` (+ `provider`, `query`), `access_basis`, status `active/disabled/error/disconnected`, `consecutive_failures`, `next_fetch_at` (backoff) | updatable; the migration copies existing business `trend_sources` (rss, user_link) |
+| `signals` | business | `untrusted_title`, `untrusted_summary`, `url`, `published_at`, `observed_at`, `region`, `topic`, `title_tokens`, `reach_metrics` (only what the source gives, else NULL), `evidence_class`, `valid_until`, `content_hash` (per source), `dedupe_key` (same story across sources), `duplicate_of` | **append-only** |
+| `signal_clusters` | business | `cluster_key`, `signal_ids`, counts (stories, sources, live stories), `evidence_class`, `liveness` (`live`/`stale`), `valid_until`, rules `relevance` + score, decision (`open/dismissed/attached/merged`), `opportunity_id`, `planned_ref` | updatable (recomputed, decisions kept) |
+| `platform_calendar_events` | platform (read all, system write) | origin `starter/official_source/platform_manual`, `source_name`, `source_url`, `source_ref`, `kind`, `region` (`GLOBAL`, `SA`, `SA:<city>`), trusted `title_ar/en` (curated) or `untrusted_title/description` (imported), dates, `date_basis`, `needs_verification`, verification by the platform owner, `topics`, `status` | DB CHECK: `lunar_estimate`/`approximate` ⇒ `needs_verification` |
+| `official_source_state` | platform | per registry source: status, last fetch/success, error, failures, `next_fetch_at`, `last_hash` | system |
+| `calendar_choices` | business | `adopted` / `hidden` per platform event | updatable |
+| `timing_attachments` | business | `(opportunity_id, ref_kind platform_event/owner_event/signal_cluster, ref_id, framing standard/awareness_only, plan_ref)`, detached rows kept | updatable (detach) |
+| `market_observations` | business | `kind` (competitor_offer, price_point, audience_need, channel_norm), `offering_id`, competitor, note, `price_minor`, source manual/link (+ `untrusted_title/excerpt`, `link_status`), `observed_on`, `region`, `comparability` + reasons | updatable (archive) |
+
+RLS `business_isolation` on business tables; platform tables `read_all` + `system_write`; grants and the append-only trigger on `signals` are set in the migration (not by `apply_conventions`).
+
+### 10.2 Signals
+
+- **Sources** through the host's **RadarFetcher port** (`setRadarFetcher`); LUMA registers `src/server/loom-host/radar.ts`, which wraps the existing `safe-fetch` (https, public addresses only, re-validated redirects, size/time limits, a content-type allowlist per kind). `user_link`/`rss` URLs are checked with `assertPublic` before saving (`blocked_url`).
+- **API providers** implement `SignalApiProvider { id, label, status(), fetch(query, fetcher) }` (`registerApiProvider`). Built in: `search_interest`, `social_trends`, each configured only by an https endpoint in `LOOM_RADAR_SEARCH_INTEREST_URL` / `LOOM_RADAR_SOCIAL_TRENDS_URL` returning `{ items: [{ title, url, published_at, region?, summary?, metrics? }] }`. Not configured ⇒ the source is stored `disconnected` and shown «غير متصل»; nothing is fetched and the analysis continues on internal data.
+- **Freshness** (source date): fresh ≤ 14 d, aging ≤ 45 d, stale > 45 d, unknown when undated or future-dated. Only fresh/aging are **live** (T7). Items older than 180 days are not stored. `valid_until = published + 45 d`.
+- **Dedupe**: one row per `(source, content_hash)`; a story already stored from another source gets `duplicate_of` (same `dedupe_key` = hash of sorted, Arabic-normalised title tokens) and counts once.
+- **Clustering** (`clusterSignals`, pure): two signals are related when their times (published, else observed) are ≤ 14 days apart AND they share a topic, or their title tokens have Jaccard ≥ 0.5, or they are the same story. Clusters are connected components (independent of input order); `cluster_key` derives from the earliest member, so it is stable while the cluster grows. Components that merge leave the absorbed key as `merged` (decisions on it stay recorded).
+- **Evidence class** (live members only): `supported_trend` iff a live item carries numbers supplied by its source; `early_signal` iff ≥ 3 distinct live stories from ≥ 2 sources; else `example`. Counts and growth rates are never estimated.
+- **Jobs**: periodic `loom.radar_sweep` (every 15 min) → official sources due (daily, backoff 1 h·2ⁿ⁻¹ ≤ 24 h) and the starter calendar (idempotent), then business sources due (6 h after success, same backoff, a 10-minute claim lease), re-cluster touched businesses, mark clusters past `valid_until` stale. Re-runs store nothing twice.
+
+### 10.3 Calendar
+
+- **Starter calendar** (`calendar-sa.ts`, Nov 2026 – Nov 2027): fixed national days (royal-order dates), WHO/UN days, Hijri occasions as `lunar_estimate` and school calendar/seasons as `approximate` — the last two are **always** `needs_verification` and named with their authority. `ensureStarterCalendar()` never overwrites a reviewed or withdrawn event.
+- **Official sources**: registry in platform setting `event_sources`; ICS (`text/calendar`, all-day DTEND exclusive) or JSON `{ events: [{ uid, title, starts_on, ends_on?, region?, kind? }] }`. Imported titles are `untrusted_*`; health topics (`HEALTH_TOPICS`) make an event `health_awareness`. A registry source of kind `other` imports as needs-verification. An unchanged file (same hash) imports nothing.
+- **Verification**: `verified` ⇔ `needs_verification = false` (official source, fixed rule, or platform-owner verification with a note — `date_basis = platform_verified`). Unverified events are listed as «يحتاج تحقق», cannot be attached, are not used by the engine and are `usable_for_dates: false` in the timing context.
+- **Business view** (`businessCalendar`): active platform events in the business's area (`SA`, `GLOBAL`, own city; other local areas are left out) + owner-verified LUMA calendar events (connector), with relevance, adoption and attachments. The business adopts or hides events.
+
+### 10.4 Relevance and attachment (P1)
+
+- `signalRelevance` / `eventRelevance` (rules): sector .35, audience .25, region .15, link to an OPEN internal opportunity .25, each with a reason. Events link to a promotional opportunity whose window ends ≤ 30 days before the event (never a prerequisite; an awareness-only event never to a discount).
+- **Attach** (`attachTiming`): only to an existing opportunity in `detected/assessed/proposed/studying/accepted/deferred`; refused for stale clusters (`signal_stale`), dismissed clusters, unverified events (`needs_verification`) and awareness events on a discount (`awareness_discount_coupling`). Attaching never creates an opportunity, plan item or campaign (T8). **Add to plan** is a separate command (`timingPlanCommand`) executed by the host ActionPort (`plan_action` → a new plan version).
+- **Engine**: after `runEngine`, `applyRadarTiming` (in `runAnalysis`) sets `card.timing` from explicit platform-event attachments, else from the first ADOPTED + VERIFIED platform event within 45 days that starts ≤ 30 days after the window (the owner-calendar rule of `attachSeasonalTiming` is unchanged). Awareness events add `:awareness_only` to `event_ref` and the awareness framing to `assumptions`.
+
+**Planner contract** — `timingContextFor(businessId, opportunity: id | { id, period? }) → TimingContext` (also `GET /loom/opportunities/{id}/timing`):
+
+```ts
+{ opportunity_id, window: { from, to },
+  events: Array<{ ref: 'owner:<id>' | 'platform:<id>', origin, title: {ar,en}, title_is_untrusted, kind, region, starts_on, ends_on,
+                  verification: 'verified' | 'needs_verification', usable_for_dates, framing: 'standard' | 'awareness_only',
+                  attached, source: { name, url }, relevance }>,   // window.from … window.to + 30 d; owner, adopted or attached; hidden excluded
+  signals: Array<{ cluster_id, untrusted_label, topic, evidence_class, valid_until, attached: true, sources }>,  // live attached clusters only
+  rules: { standalone_campaign_allowed: false, unverified_dates_usable: false, competitor_price_decrease_allowed: false, awareness_only_refs },
+  notes: Array<{ar,en}> }
+```
+
+The planner must use only `usable_for_dates` events as dates, treat `untrusted_*`/`title_is_untrusted` text as data, and apply `checkAwarenessRule` to anything tied to an `awareness_only_refs` entry.
+
+### 10.5 Awareness-only rule (validator)
+
+`checkAwarenessRule({ awareness_only, text, discount_bp?, action_kind?, framing? }, pack?) → { ok, violations: ('discount_coupling' | 'therapeutic_claim' | 'missing_awareness_framing')[], messages }` — pure, exported for the phase-3 validator. An event is awareness-only when its kind is `health_awareness` or a topic is in `pack.validation.awarenessOnlyTopics`. Discount wording (خصم، كوبون، %…), a discount action or `discount_bp > 0` ⇒ `discount_coupling`; therapeutic/medical claims (pack `forbiddenClaims` + a fixed list) ⇒ `therapeutic_claim`.
+
+### 10.6 Market observations (T15)
+
+Owner adds observations manually or from a link (fetched through the port; page title/description stored as untrusted). `comparable` needs no reason; `partial`/`not_comparable` need ≥ 1 reason; a price with no matching offering of ours is forced `not_comparable` (`no_matching_offering`). `marketPriceContext()` gives the comparable median and position with `may_decrease_price: false`. **Hard rule:** a competitor price alone never yields a price decrease — the selector only proposes increase reviews, `enforceNoMarketPriceCut()` (in `runAnalysis`) removes any price cut and adds the "context only" limitation to opportunities on observed offerings, and `conversionCommand` refuses a Loom price proposal below the current price (`price_decrease_not_supported`).
+
+### 10.7 API (phase 4)
+
+| Method & path | Capability |
+|---|---|
+| `GET radar` (sources + connection, providers, live clusters, stale, dismissed) | view |
+| `POST radar/sources` · `PATCH radar/sources/{id}` · `POST radar/sources/{id}/fetch` | manage |
+| `POST radar/clusters/{id}` `{ action: dismiss | reopen | attach(opportunity_id) | detach | add_to_plan }` | manage |
+| `GET radar/calendar?days=` · `POST radar/calendar/{id}` `{ action: adopt | hide | reset | attach | detach | add_to_plan, origin? }` | view · manage |
+| `GET/POST market-observations` · `PATCH market-observations/{id}` | view · manage |
+| `GET opportunities/{id}/timing` | view |
+| `GET/POST /api/v1/platform/loom/calendar` (`{ target: starter | sources, source_id? }`) · `PATCH …/calendar/{id}` (`verify(note, dates?) | withdraw | restore`) | `platform.loom.manage` (+ step-up for writes, audited `loom.calendar_event_reviewed`) |
+
+UI: the «الرادار» tab (`src/ui/marketing/LoomTrends.tsx`: signals by cluster, calendar, market, sources) and `/platform/loom` (`LoomCalendarAdmin`). The old `/marketing/trends` routes and `trend_*` tables still serve the plans pipeline's `trend_assessment`.

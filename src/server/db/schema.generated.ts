@@ -1111,6 +1111,14 @@ export interface LoomBusinessProfileFacts {
   value: Json;
 }
 
+export interface LoomCalendarChoices {
+  business_id: string;
+  choice: string;
+  decided_at: Generated<Timestamp>;
+  decided_by: string | null;
+  event_id: string;
+}
+
 export interface LoomConnections {
   business_id: string;
   config: Generated<Json>;
@@ -1394,6 +1402,29 @@ export interface LoomLoomSettings {
   version: Generated<number>;
 }
 
+export interface LoomMarketObservations {
+  archived_at: Timestamp | null;
+  business_id: string;
+  comparability: string;
+  comparability_reasons: Generated<string[]>;
+  competitor: string | null;
+  created_at: Generated<Timestamp>;
+  created_by: string | null;
+  id: Generated<string>;
+  kind: string;
+  link_status: string | null;
+  note: string;
+  observed_on: string;
+  offering_id: string | null;
+  price_minor: number | null;
+  region: string | null;
+  source_type: string;
+  source_url: string | null;
+  untrusted_excerpt: string | null;
+  untrusted_title: string | null;
+  updated_at: Generated<Timestamp>;
+}
+
 export interface LoomMetricDefinitions {
   created_at: Generated<Timestamp>;
   definition_hash: string;
@@ -1423,6 +1454,19 @@ export interface LoomMetricValues {
   period_to: string | null;
   status: string;
   value: number | null;
+}
+
+export interface LoomOfficialSourceState {
+  consecutive_failures: Generated<number>;
+  imported_count: Generated<number>;
+  last_error: string | null;
+  last_fetched_at: Timestamp | null;
+  last_hash: string | null;
+  last_success_at: Timestamp | null;
+  next_fetch_at: Generated<Timestamp>;
+  source_id: string;
+  status: Generated<string>;
+  updated_at: Generated<Timestamp>;
 }
 
 export interface LoomOpportunities {
@@ -1500,6 +1544,101 @@ export interface LoomOpportunityEvidence {
   value: number | null;
 }
 
+export interface LoomPlatformCalendarEvents {
+  created_at: Generated<Timestamp>;
+  date_basis: string;
+  ends_on: string;
+  event_key: string;
+  id: Generated<string>;
+  kind: string;
+  needs_verification: boolean;
+  origin: string;
+  region: string;
+  source_id: string | null;
+  source_name: string;
+  source_ref: string | null;
+  source_url: string | null;
+  starts_on: string;
+  status: Generated<string>;
+  title_ar: string | null;
+  title_en: string | null;
+  topics: Generated<string[]>;
+  untrusted_description: string | null;
+  untrusted_title: string | null;
+  updated_at: Generated<Timestamp>;
+  verification_note: string | null;
+  verified_at: Timestamp | null;
+  verified_by: string | null;
+}
+
+export interface LoomSignalClusters {
+  business_id: string;
+  cluster_key: string;
+  created_at: Generated<Timestamp>;
+  decided_at: Timestamp | null;
+  decided_by: string | null;
+  evidence_class: string;
+  first_published_at: Timestamp | null;
+  id: Generated<string>;
+  last_published_at: Timestamp | null;
+  live_count: Generated<number>;
+  liveness: string;
+  opportunity_id: string | null;
+  planned_ref: string | null;
+  relevance: Generated<Json>;
+  relevance_score: number | null;
+  signal_count: Generated<number>;
+  signal_ids: Generated<string[]>;
+  source_count: Generated<number>;
+  status: Generated<string>;
+  topic: string | null;
+  untrusted_label: string;
+  updated_at: Generated<Timestamp>;
+  valid_until: string | null;
+}
+
+export interface LoomSignals {
+  business_id: string;
+  content_hash: string;
+  created_at: Generated<Timestamp>;
+  dedupe_key: string;
+  duplicate_of: string | null;
+  evidence_class: string;
+  id: Generated<string>;
+  observed_at: Generated<Timestamp>;
+  published_at: Timestamp | null;
+  reach_metrics: Json | null;
+  region: string | null;
+  source_id: string;
+  title_tokens: Generated<string[]>;
+  topic: string | null;
+  untrusted_summary: string | null;
+  untrusted_title: string;
+  url: string;
+  valid_until: string | null;
+}
+
+export interface LoomSignalSources {
+  access_basis: string;
+  business_id: string;
+  consecutive_failures: Generated<number>;
+  created_at: Generated<Timestamp>;
+  created_by: string | null;
+  id: Generated<string>;
+  kind: string;
+  last_error: string | null;
+  last_fetched_at: Timestamp | null;
+  last_success_at: Timestamp | null;
+  legacy_trend_source_id: string | null;
+  name: string;
+  next_fetch_at: Generated<Timestamp>;
+  provider: string | null;
+  query: Generated<Json>;
+  status: Generated<string>;
+  updated_at: Generated<Timestamp>;
+  url: string | null;
+}
+
 export interface LoomSourceMappings {
   business_id: string;
   connection_id: string;
@@ -1524,6 +1663,20 @@ export interface LoomSyncRuns {
   id: Generated<string>;
   started_at: Timestamp;
   status: string;
+}
+
+export interface LoomTimingAttachments {
+  attached_by: string | null;
+  business_id: string;
+  created_at: Generated<Timestamp>;
+  detached_at: Timestamp | null;
+  detached_by: string | null;
+  framing: string;
+  id: Generated<string>;
+  opportunity_id: string;
+  plan_ref: string | null;
+  ref_id: string;
+  ref_kind: string;
 }
 
 export interface LoyaltyAccounts {
@@ -3404,17 +3557,25 @@ export interface DB {
   "loom.analyses": LoomAnalyses;
   "loom.business_goals": LoomBusinessGoals;
   "loom.business_profile_facts": LoomBusinessProfileFacts;
+  "loom.calendar_choices": LoomCalendarChoices;
   "loom.connections": LoomConnections;
   "loom.data_quality_checks": LoomDataQualityChecks;
   "loom.loom_settings": LoomLoomSettings;
+  "loom.market_observations": LoomMarketObservations;
   "loom.metric_definitions": LoomMetricDefinitions;
   "loom.metric_values": LoomMetricValues;
+  "loom.official_source_state": LoomOfficialSourceState;
   "loom.opportunities": LoomOpportunities;
   "loom.opportunity_checks": LoomOpportunityChecks;
   "loom.opportunity_events": LoomOpportunityEvents;
   "loom.opportunity_evidence": LoomOpportunityEvidence;
+  "loom.platform_calendar_events": LoomPlatformCalendarEvents;
+  "loom.signal_clusters": LoomSignalClusters;
+  "loom.signal_sources": LoomSignalSources;
+  "loom.signals": LoomSignals;
   "loom.source_mappings": LoomSourceMappings;
   "loom.sync_runs": LoomSyncRuns;
+  "loom.timing_attachments": LoomTimingAttachments;
   loyalty_accounts: LoyaltyAccounts;
   loyalty_programs: LoyaltyPrograms;
   marketing_calendar_events: MarketingCalendarEvents;

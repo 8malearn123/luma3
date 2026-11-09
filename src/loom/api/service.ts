@@ -9,6 +9,7 @@ import { decide, DecisionError, markConverted, type DecisionInput } from '../opp
 import { loadFacts, loadGoals, replaceGoals, resolveProfile, validateExplicit, writeFact } from '../profile/facts';
 import { readPlatformSettings } from '../settings/platform';
 import { render, type LoomLocale } from '../util/text';
+import { priceProposalAllowed } from '../radar/market';
 import type { goalsInput, opportunityListQuery, preferencesInput, setupInput } from './schemas';
 
 /**
@@ -26,6 +27,11 @@ async function offeringChoices(businessId: string, locale: LoomLocale) {
   const page = await connectorFor(conn.kind).pull(conn, 'offerings', null, 1000);
   return (page.records.map((r) => r.data) as Offering[]).filter((o) => o.status === 'active' && (o.kind === 'service' || o.kind === 'product'))
     .map((o) => ({ id: o.id, kind: o.kind, name: render(o.name, locale) }));
+}
+
+async function offeringChoicesWithPrice(businessId: string) {
+  const conn = await withTenant(businessId, (trx) => ensureConnection(trx, businessId));
+  return (await connectorFor(conn.kind).pull(conn, 'offerings', null, 1000)).records.map((r) => r.data as Offering);
 }
 
 export async function getProfile(c: Pick<Ctx, 'businessId' | 'locale'>) {
@@ -224,5 +230,8 @@ export async function conversionCommand(c: Pick<Ctx, 'businessId'>, id: string, 
     return { kind: 'campaign_draft', opportunity_id: id, name: card.title, body: card.recommended_action.description, channel: ch, segment: (card.target_segment.definition as Record<string, unknown>) ?? null };
   }
   if (card.recommended_action.kind !== 'price_review' || !subject.offering_ids[0]) throw Errors.invalid('not_a_price_review', 'Only price-review opportunities can become a price proposal');
+  // T15: Loom only proposes measured INCREASE reviews; a proposal below the current price is refused (competitor prices are context only).
+  const current = (await offeringChoicesWithPrice(c.businessId)).find((o) => o.id === subject.offering_ids[0])?.price_minor ?? null;
+  if (!priceProposalAllowed(current, input.proposed_price_minor).allowed) throw Errors.invalid('price_decrease_not_supported', 'Loom does not propose price decreases; competitor prices are context only');
   return { kind: 'price_proposal', opportunity_id: id, offering_id: subject.offering_ids[0], proposed_price_minor: input.proposed_price_minor, reason: `Loom: ${card.title.en}`.slice(0, 500) };
 }

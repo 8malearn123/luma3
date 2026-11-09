@@ -32,3 +32,4 @@ export type { SectorPack, InterventionDef, InterventionId } from './sector/types
 export { analyzeNow, requestAnalysis, runAnalysis, ensureConnection, ANALYSIS_JOB } from './analysis/run';
 export * as loomApi from './api/service';
 export * from './api/schemas';
+export * from './radar';
