@@ -4,7 +4,7 @@ import { withTenant, type Tx } from '../../db';
 import {
   CANONICAL_ENTITIES, type CanonicalEntity, type CostFact, type InventoryUsage, type OfferingKind, type RequirementType, type ResourceKind,
 } from '../../contracts/canonical';
-import type { ConnectionHealth, ConnectionRef, ConnectorManifest, LoomConnector, PulledRecord, PullResult } from '../../contracts/connector';
+import type { CampaignGroupStat, CampaignGroupStats, ConnectionHealth, ConnectionRef, ConnectorManifest, LoomConnector, PulledRecord, PullResult } from '../../contracts/connector';
 import { stableHash } from '../../util/text';
 import { addDays, localToday } from '../../util/time';
 import { convertQty } from '../../util/units';
@@ -232,6 +232,17 @@ export class LumaConnector implements LoomConnector {
     } catch (e) {
       return { status: 'down', checked_at: new Date().toISOString(), detail: (e as Error).message };
     }
+  }
+
+  /** Campaign target / holdout groups (loom_export.campaign_groups, migration 0730). */
+  async campaignGroups(conn: ConnectionRef, campaignId: string): Promise<CampaignGroupStats | null> {
+    const rows = await withTenant(conn.business_id, (trx) => trx.selectFrom('loom_export.campaign_groups').selectAll().where('campaign_id', '=', campaignId).execute());
+    if (!rows.length) return null;
+    const g = (name: string): CampaignGroupStat | null => {
+      const r = rows.find((x) => x.grp === name);
+      return r ? { members: n(r.members), converters: n(r.converters), bookings: n(r.bookings), net_minor: n(r.net_minor), cancelled: n(r.cancelled), refunded_minor: n(r.refunded_minor) } : null;
+    };
+    return { campaign_id: campaignId, window_days: n(rows[0]!.attribution_window_days) || 14, started_at: ms(rows[0]!.started_at), target: g('target'), holdout: g('holdout') };
   }
 
   /** Reads the whole entity in one tenant transaction and pages by offset (the views are already windowed). */

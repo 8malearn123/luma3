@@ -107,7 +107,10 @@ export async function runAnalysis(analysisId: string, businessId: string, opts: 
       const noData = !ctx.activeOfferings.length || quality.overall === 'insufficient';
       const engine = noData ? { opportunities: [], suppressed: [{ detector_id: '*', reason: 'insufficient_data' }] }
         : runEngine({ ds, ctx, metrics, quality, profile, pack, params: {} }, { reserved: await reservedVolumes(trx, businessId) });
-      const persisted = await persistOpportunities(trx, businessId, analysisId, engine.opportunities, { today: ds.meta.today, sectorPack: pack.id, sectorPackVersion: pack.version });
+      const budgetFact = profile.facts.find((f) => f.key === 'pref.monthly_budget_minor' && f.kind === 'explicit');
+      const persisted = await persistOpportunities(trx, businessId, analysisId, engine.opportunities, {
+        today: ds.meta.today, sectorPack: pack.id, sectorPackVersion: pack.version, constraints: { budgetUpdatedAt: budgetFact ? new Date(budgetFact.updated_at) : null },
+      });
       const result = {
         mode: quality.exploratory ? 'exploratory' : 'standard',
         snapshot: { hash, data_version: ds.meta.data_version, reused: !!prev, as_of: new Date(ds.meta.as_of).toISOString(), connector: ds.meta.connector },

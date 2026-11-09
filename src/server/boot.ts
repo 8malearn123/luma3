@@ -17,6 +17,8 @@ import { recordServerEvent } from './domains/analytics/events';
 import { recordMarketplaceCommission } from './domains/marketplace/attribution';
 import { consumeMaterialsForBookingItem, markOrderPaid, releaseCouponRedemption } from './domains/commerce';
 import { onEventPaymentCaptured, onEventPaymentFailed, onEventRefunded } from './domains/events/service';
+// Loom: LUMA change events → Loom change signals, and the default plan-revision adapter.
+import './loom-host/changes';
 
 const g = globalThis as unknown as { __lumaBooted?: boolean };
 if (!g.__lumaBooted) {

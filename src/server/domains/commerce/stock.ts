@@ -1,6 +1,7 @@
 import { sql, type Tx } from '../../db/client';
 import { Errors } from '../../http/errors';
 import { notifyCapability } from '../../infra/notify';
+import { emitDomainEvent } from '../../infra/domain-events';
 
 /**
  * Stock ledger primitives. `inventory_items.on_hand/reserved` are a cache kept
@@ -52,6 +53,7 @@ export async function moveStock(trx: Tx, tenantId: string, itemId: string, m: {
   }).execute();
   const available = Number(row.on_hand) - Number(row.reserved);
   await syncLowStockAlert(trx, tenantId, itemId, row.name, available, row.low_stock_threshold == null ? null : Number(row.low_stock_threshold));
+  await emitDomainEvent(trx, tenantId, { type: 'stock.moved', item_id: itemId, available, threshold: row.low_stock_threshold == null ? null : Number(row.low_stock_threshold) });
   return { onHand: Number(row.on_hand), reserved: Number(row.reserved), available };
 }
 

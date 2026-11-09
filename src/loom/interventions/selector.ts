@@ -81,6 +81,8 @@ export function selectIntervention(c: OpportunityCandidate, dc: DetectContext, c
     const def = dc.pack.catalog[id];
     // Hard preference: no discount intervention exists at all under no_discounts.
     if (def.discount && (dc.profile.prefs.no_discounts || dc.profile.prefs.max_discount_bp <= 0)) continue;
+    // Confirmed brand-fit exclusion (§10.1: brand_fit → inferred fact → owner confirmation).
+    if (dc.profile.prefs.avoided_interventions?.includes(id)) { alternatives.push({ kind: def.kind, intervention_id: id, rejected_because: L('أكّدتِ أنه لا يناسب هوية المنشأة', 'You confirmed it does not fit the brand') }); continue; }
     if (chosen) { alternatives.push({ kind: def.kind, intervention_id: id, rejected_because: L('خيار أدنى في الترتيب بعد اختيار تدخل مناسب', 'Lower in the order after a suitable intervention was chosen') }); continue; }
     const r = evaluate(id, c, dc);
     if (r.ok) chosen = { ...def, discount_bp: r.discount_bp ?? null, direction: r.direction ?? null, rationale: r.rationale ?? null };

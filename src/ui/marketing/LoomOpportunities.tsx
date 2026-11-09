@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ChevronDown, ChevronUp, Play } from 'lucide-react';
+import { ChevronDown, ChevronUp, Play, ThumbsDown, ThumbsUp } from 'lucide-react';
 import { useI18n } from '@/i18n/client';
 import { formatDate, formatDateTime, formatMoney } from '@/shared/format';
 import { useApiQuery } from '../hooks';
@@ -11,6 +11,7 @@ import { Alert, Badge, EmptyState, ErrorState, LoadingState } from '../component
 import { Field, Input, MoneyInput, Select, Textarea } from '../components/form';
 import { Card } from '../components/layout';
 import { loomKey, useAct } from './loom-shared';
+import { DecisionHistory } from './LoomResults';
 
 const REASONS = ['capacity_staffing', 'capacity_inventory', 'budget', 'brand_fit', 'timing', 'already_doing', 'disagree_with_data', 'not_valuable', 'other'] as const;
 const NON_IDEA = ['capacity_staffing', 'capacity_inventory', 'budget', 'timing'];
@@ -114,9 +115,10 @@ function OpportunityCard({ o }: { o: any }) {
             <Badge>{t(`loom.status.${o.status}`)}</Badge>
             <Badge tone={c.priority.evidence_strength === 'strong' ? 'ok' : c.priority.evidence_strength === 'moderate' ? 'info' : 'warn'}>{t(`loom.strength.${c.priority.evidence_strength}`)}</Badge>
             <Badge>{t('loom.card.priority', { rank: c.priority.rank })}</Badge>
+            {o.resurfaced ? <Badge tone="ok">{t('loom_memory.resurfaced')} ({t(`loom_memory.resurfaced_reason.${o.resurfaced.reason}`)})</Badge> : null}
           </div>
         </div>
-        <Button size="sm" variant="ghost" aria-expanded={open} icon={open ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />} onClick={() => setOpen(!open)}>{open ? t('loom.card.hide') : t('loom.card.details')}</Button>
+        <Button size="sm" variant="ghost" aria-expanded={open} icon={open ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />} onClick={() => { if (!open) void act('viewed', `/loom/opportunities/${c.opportunity_id}/feedback`, { body: { kind: 'viewed' }, invalidate: [] }); setOpen(!open); }}>{open ? t('loom.card.hide') : t('loom.card.details')}</Button>
       </div>
       <p className="mt-2 text-sm" dir="auto"><span className="font-medium">{t('loom.card.why_now')}:</span> {c.why_now}</p>
       <p className="mt-1 text-sm" dir="auto"><span className="font-medium">{t('loom.card.action')} ({t(`loom.action_kind.${c.recommended_action.kind}`)}):</span> {c.recommended_action.description}</p>
@@ -158,6 +160,20 @@ function OpportunityCard({ o }: { o: any }) {
                 ))}
               </ul>
             )}
+          </div>
+          <div className="sm:col-span-2">
+            <p className="text-xs font-medium text-ink-muted">{t('loom_memory.ladder.title')}</p>
+            {detail.isLoading ? <LoadingState rows={1} /> : <DecisionHistory ladder={detail.data?.ladder ?? []} />}
+          </div>
+          <div className="flex flex-wrap items-center gap-2 sm:col-span-2">
+            {(['like', 'dislike'] as const).map((r) => (
+              <Button key={r} size="sm" variant={detail.data?.reaction === r ? 'secondary' : 'ghost'} aria-pressed={detail.data?.reaction === r} loading={busy === `r${r}`}
+                icon={r === 'like' ? <ThumbsUp className="size-4" /> : <ThumbsDown className="size-4" />}
+                onClick={() => act(`r${r}`, `/loom/opportunities/${c.opportunity_id}/feedback`, { body: { kind: 'reaction', reaction: detail.data?.reaction === r ? 'none' : r }, invalidate: [loomKey(access.slug, 'opp', c.opportunity_id)] })}>
+                {t(`loom_memory.reaction.${r}`)}
+              </Button>
+            ))}
+            <span className="text-xs text-ink-muted">{t('loom_memory.reaction.note')}</span>
           </div>
           <p className="text-xs text-ink-muted sm:col-span-2">{t('loom.card.review_at', { date: formatDate(c.review_at, { locale, tz: access.timezone }) })}</p>
         </div>

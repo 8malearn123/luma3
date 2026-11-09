@@ -2,6 +2,7 @@ import { randomBytes } from 'node:crypto';
 import type { Tx } from '../db';
 import { NON_IDEA_REASONS, OPEN_STATUSES, type CardContent, type DecisionReason, type OpportunityStatus } from '../contracts/opportunity';
 import type { AssessedOpportunity } from './engine';
+import { countsAsIdeaFailure, inferBrandFit, recordLadder } from '../memory/ladder';
 
 /**
  * Persistence and lifecycle (§6.5). One row per fingerprint; a re-detected
@@ -34,7 +35,14 @@ export async function reservedVolumes(trx: Tx, businessId: string): Promise<Map<
 
 export type PersistSummary = { created: number; updated: number; reopened: number; expired: number; kept_closed: number };
 
-export async function persistOpportunities(trx: Tx, businessId: string, analysisId: string, items: AssessedOpportunity[], opts: { today: string; sectorPack: string; sectorPackVersion: string }): Promise<PersistSummary> {
+/**
+ * Constraints that may have cleared since a non-idea rejection (§10.1, T13):
+ * a budget dismissal resurfaces once the budget preference was changed after
+ * the decision; a timing dismissal once `timing_resurface_days` have passed.
+ */
+export type ConstraintState = { budgetUpdatedAt?: Date | null; timingResurfaceDays?: number };
+
+export async function persistOpportunities(trx: Tx, businessId: string, analysisId: string, items: AssessedOpportunity[], opts: { today: string; sectorPack: string; sectorPackVersion: string; constraints?: ConstraintState }): Promise<PersistSummary> {
   const sum: PersistSummary = { created: 0, updated: 0, reopened: 0, expired: 0, kept_closed: 0 };
   const seen = new Set<string>();
   for (const o of items) {
@@ -54,8 +62,13 @@ export async function persistOpportunities(trx: Tx, businessId: string, analysis
         const reason = existing.decision_reason as DecisionReason | null;
         const capacityFreed = reason === 'capacity_staffing' && (o.checks.capacity.status === 'ok') && o.category !== 'capacity_prerequisite';
         const stockFreed = reason === 'capacity_inventory' && ['ok', 'constrained', 'not_applicable'].includes(o.checks.inventory.status);
+        const budgetFreed = reason === 'budget' && !!existing.decided_at && !!opts.constraints?.budgetUpdatedAt && opts.constraints.budgetUpdatedAt > existing.decided_at;
+        const timingFreed = reason === 'timing' && !!existing.decided_at && Date.parse(`${opts.today}T00:00:00Z`) - existing.decided_at.getTime() >= (opts.constraints?.timingResurfaceDays ?? 30) * 86_400_000;
         if (cur !== 'dismissed') { status = 'proposed'; reopenReason = 'detected_again'; }
-        else if (capacityFreed || stockFreed) { status = 'proposed'; reopenReason = capacityFreed ? 'capacity_available' : 'inventory_available'; }
+        else if (capacityFreed || stockFreed || budgetFreed || timingFreed) {
+          status = 'proposed';
+          reopenReason = capacityFreed ? 'capacity_available' : stockFreed ? 'inventory_available' : budgetFreed ? 'budget_available' : 'timing_elapsed';
+        }
         else { sum.kept_closed++; continue; }
       } else { sum.kept_closed++; continue; } // accepted / converted / executed / measured / closed keep their decision
       id = existing.id;
@@ -104,8 +117,10 @@ export async function persistOpportunities(trx: Tx, businessId: string, analysis
 }
 
 // ── Decisions (§10.1) ───────────────────────────────────────────────────────
+/** Owner edits applied when approving ("edit + approve"); kept as a diff on the initiative record. */
+export type DecisionEdits = { description?: string; channel?: string[]; period?: { from: string; to: string } };
 export type DecisionInput =
-  | { action: 'approve'; note?: string }
+  | { action: 'approve'; note?: string; edits?: DecisionEdits }
   | { action: 'study'; note?: string }
   | { action: 'defer'; reason: DecisionReason; until: string; note?: string }
   | { action: 'dismiss'; reason: DecisionReason; note?: string }
@@ -123,7 +138,7 @@ const FROM: Record<DecisionInput['action'], OpportunityStatus[]> = {
 export class DecisionError extends Error { constructor(readonly code: string) { super(code); } }
 
 export async function decide(trx: Tx, businessId: string, id: string, input: DecisionInput, actorId: string | null) {
-  const row = await trx.selectFrom('loom.opportunities').select(['id', 'status']).where('business_id', '=', businessId).where('id', '=', id).forUpdate().executeTakeFirst();
+  const row = await trx.selectFrom('loom.opportunities').select(['id', 'status', 'card']).where('business_id', '=', businessId).where('id', '=', id).forUpdate().executeTakeFirst();
   if (!row) throw new DecisionError('not_found');
   if (!FROM[input.action].includes(row.status as OpportunityStatus)) throw new DecisionError('invalid_transition');
   const to = TARGET[input.action];
@@ -137,6 +152,15 @@ export async function decide(trx: Tx, businessId: string, id: string, input: Dec
     // Rejections for capacity, budget or timing are not failures of the marketing idea.
     counts_as_idea_failure: input.action === 'dismiss' ? !NON_IDEA_REASONS.includes(input.reason) : null,
     data: input.action === 'defer' ? { until: input.until } : {},
+  });
+  // §10.1 ladder: the decision as its own stage (edit + approve keeps the edits).
+  const edits = input.action === 'approve' && input.edits && Object.keys(input.edits).length ? input.edits : null;
+  let inferred: string | null = null;
+  if (reason === 'brand_fit' && input.action === 'dismiss') inferred = await inferBrandFit(trx, businessId, id, row.card as CardContent, actorId);
+  await recordLadder(trx, businessId, {
+    opportunity_id: id, stage: 'decided', action: edits ? 'edit_approve' : input.action, reason, note: input.note ?? null, actor: actorId,
+    counts_as_idea_failure: countsAsIdeaFailure(input.action, reason),
+    data: { from: row.status, to, ...(input.action === 'defer' ? { until: input.until } : {}), ...(edits ? { edits } : {}), ...(inferred ? { inferred_fact: inferred } : {}) },
   });
   return { id, status: to };
 }

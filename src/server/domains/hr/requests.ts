@@ -13,6 +13,7 @@ import { checkAnnualBalance } from './balance';
 import { CHAIN_ROLES, DATE_RE, loadSchedules, notifyRoles } from './common';
 import { createUnpaidLeaveSuggestions } from './deductions';
 import { datesBetween, leaveDayCount, localDatesOf } from './rules';
+import { emitDomainEvent } from '../../infra/domain-events';
 
 /**
  * Staff requests with approval chains.
@@ -361,6 +362,7 @@ async function finalizeLeave(trx: Tx, access: TenantAccess, actor: AuditActor, v
   if (v.leaveType === 'annual' && v.days > 0) await checkAnnualBalance(trx, v.staffId, v.startsOn, v.days, { excludePendingDays: v.requestId ? v.days : 0 });
   const affected = await futureBookingsFor(trx, v.staffId, { from: lr.from_at, to: lr.to_at });
   await trx.updateTable('leave_requests').set({ status: 'approved', decided_by: actor.userId, decided_at: new Date(), decision_note: v.note, affected_booking_ids: affected }).where('id', '=', lr.id).execute();
+  await emitDomainEvent(trx, access.tenantId, { type: 'leave.approved', leave_id: lr.id, staff_id: v.staffId, from: lr.from_at, to: lr.to_at });
   if ((v.leaveType === 'annual' || v.leaveType === 'sick') && v.days > 0) {
     await trx.insertInto('leave_ledger').values({ tenant_id: access.tenantId, staff_id: v.staffId, bucket: v.leaveType, kind: 'taken', days: -v.days, leave_request_id: lr.id, created_by: actor.userId }).execute();
   }

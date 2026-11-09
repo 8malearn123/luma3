@@ -66,6 +66,8 @@ export type ResolvedProfile = {
     tone: { style: string; banned_words: string[] } | null;
     ranking_weights: RankingWeights; weights_source: 'platform_default' | 'business';
     shared_training_consent: boolean;
+    /** Interventions the owner confirmed do not fit the brand (from a brand_fit rejection, §10.1). */
+    avoided_interventions: string[];
   };
   competitor_prices: Record<string, number>;
   facts: ProfileFact[];
@@ -112,6 +114,7 @@ export function resolveProfile(facts: ProfileFact[], goals: Goal[], platformWeig
       ranking_weights: rw?.mode === 'custom' ? rw.weights : platformWeights,
       weights_source: rw?.mode === 'custom' ? 'business' : 'platform_default',
       shared_training_consent: v<boolean>('consent.shared_training', false) === true && eff.get('consent.shared_training')?.kind === 'explicit',
+      avoided_interventions: [...eff.values()].filter((f) => f.kind === 'explicit' && f.key.startsWith('brand.avoid_intervention:') && f.value === true).map((f) => f.key.split(':')[1]!),
     },
     competitor_prices,
     facts,
@@ -159,6 +162,11 @@ export function validateExplicit(key: string, value: unknown): unknown {
   if (key.startsWith('market.competitor_price:')) {
     if (!/^market\.competitor_price:[0-9a-f-]{36}$/.test(key)) throw new Error('invalid_fact_key');
     return z.number().int().min(0).max(100_000_000).parse(value);
+  }
+  // Owner confirmation (or rejection) of an inferred brand-fit fact.
+  if (key.startsWith('brand.avoid_intervention:')) {
+    if (!/^brand\.avoid_intervention:[a-z][a-z0-9_]{1,60}$/.test(key)) throw new Error('invalid_fact_key');
+    return z.boolean().parse(value);
   }
   const schema = (EXPLICIT_FACTS as Record<string, z.ZodTypeAny>)[key];
   if (!schema) throw new Error('invalid_fact_key');
