@@ -16,10 +16,11 @@ import { useToast } from '../components/toast';
 import { useAccess } from '../shell/access-context';
 import { OffsetPager, parseNum, qs, useFmt } from './common';
 import { StockPanel } from './StockPanel';
+import { CountsTab } from './CountsTab';
 
 type Item = {
   id: string; name: string; kind: 'retail' | 'material' | 'both'; unit: Unit; on_hand: number; reserved: number; available: number;
-  low_stock_threshold: number | null; low_stock: boolean; cost_per_unit_minor?: number | null; is_active: boolean; variant_id: string | null; sku: string | null;
+  low_stock_threshold: number | null; low_stock: boolean; idle_reason?: 'no_recipe' | 'not_consumed' | 'not_sold' | null; cost_per_unit_minor?: number | null; is_active: boolean; variant_id: string | null; sku: string | null;
 };
 const LIMIT = 25;
 
@@ -29,7 +30,7 @@ export function InventoryPage() {
   const router = useRouter();
   const pathname = usePathname();
   const sp = useSearchParams();
-  const tab = (['items', 'recipes', 'capacity'] as const).find((x) => x === sp.get('tab')) ?? 'items';
+  const tab = (['items', 'counts', 'recipes', 'capacity'] as const).find((x) => x === sp.get('tab')) ?? 'items';
   const setParam = (k: string, v: string | null) => {
     const u = new URLSearchParams(sp.toString());
     if (v) u.set(k, v); else u.delete(k);
@@ -40,27 +41,30 @@ export function InventoryPage() {
       <PageHeader title={t('commerce.inventory.title')} subtitle={t('commerce.inventory.subtitle')} />
       <Tabs value={tab} onChange={(v) => setParam('tab', v === 'items' ? null : v)} items={[
         { value: 'items', label: t('commerce.inventory.tab_items') },
+        { value: 'counts', label: t('commerce.inventory.tab_counts') },
         { value: 'recipes', label: t('commerce.inventory.tab_recipes') },
         { value: 'capacity', label: t('commerce.inventory.tab_capacity') },
       ]} />
-      {tab === 'items' ? <ItemsTab openId={sp.get('item')} setOpen={(id) => setParam('item', id)} /> : tab === 'recipes' ? <RecipesTab /> : <CapacityTab />}
+      {tab === 'items' ? <ItemsTab openId={sp.get('item')} setOpen={(id) => setParam('item', id)} initialIdle={sp.get('idle') === '1'} />
+        : tab === 'counts' ? <CountsTab openId={sp.get('count')} setOpen={(id) => setParam('count', id)} /> : tab === 'recipes' ? <RecipesTab /> : <CapacityTab />}
     </div>
   );
 }
 
-function ItemsTab({ openId, setOpen }: { openId: string | null; setOpen: (id: string | null) => void }) {
+function ItemsTab({ openId, setOpen, initialIdle }: { openId: string | null; setOpen: (id: string | null) => void; initialIdle: boolean }) {
   const { t } = useI18n();
   const access = useAccess();
   const { qty } = useFmt();
   const [search, setSearch] = useState('');
   const [kind, setKind] = useState('');
   const [low, setLow] = useState(false);
+  const [idle, setIdle] = useState(initialIdle);
   const [inactive, setInactive] = useState(false);
   const [sort, setSort] = useState('name');
   const [offset, setOffset] = useState(0);
   const [creating, setCreating] = useState(false);
   const q = useDebounced(search.trim(), 300);
-  const query = qs({ q, kind, low: low ? '1' : '', include_inactive: inactive ? '1' : '', sort, dir: sort === 'updated' ? 'desc' : 'asc', limit: LIMIT, offset });
+  const query = qs({ q, kind, low: low ? '1' : '', idle: idle ? '1' : '', include_inactive: inactive ? '1' : '', sort, dir: sort === 'updated' ? 'desc' : 'asc', limit: LIMIT, offset });
   const list = useApiQuery<{ items: Item[]; total: number; low_stock_count: number }>(['inventory', access.slug, query], access.api(`/inventory/items${query}`));
   const canManage = access.can('inventory.manage') && !access.readOnly;
 
@@ -74,6 +78,7 @@ function ItemsTab({ openId, setOpen }: { openId: string | null; setOpen: (id: st
         <span className="inline-flex items-center gap-2">{qty(i.available)} {t(`commerce.inventory.unit.${i.unit}`)}
           {i.available <= 0 ? <Badge tone="danger">{t('commerce.products.out')}</Badge> : i.low_stock ? <Badge tone="warn">{t('commerce.products.low')}</Badge> : null}
           {!i.is_active ? <Badge>{t('fields.inactive')}</Badge> : null}
+          {i.idle_reason ? <span title={t(`commerce.inventory.idle_hint.${i.idle_reason}`)}><Badge tone="info">{t(`commerce.inventory.idle.${i.idle_reason}`)}</Badge></span> : null}
         </span>
       ),
     },
@@ -82,6 +87,7 @@ function ItemsTab({ openId, setOpen }: { openId: string | null; setOpen: (id: st
   return (
     <div>
       {list.data?.low_stock_count ? <Alert tone="warn" className="mb-3">{t('commerce.inventory.low_count', { n: list.data.low_stock_count })}</Alert> : null}
+      {idle && list.data?.items.length ? <Alert tone="info" className="mb-3">{list.data.total} {t('commerce.inventory.idle_count')}</Alert> : null}
       <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
         <div className="relative sm:w-72">
           <Search className="pointer-events-none absolute inset-y-0 start-3 my-auto size-4 text-ink-muted" aria-hidden />
@@ -97,6 +103,7 @@ function ItemsTab({ openId, setOpen }: { openId: string | null; setOpen: (id: st
           <option value="updated">{t('commerce.products.sort_created')}</option>
         </Select>
         <Checkbox label={t('commerce.inventory.low_only')} checked={low} onChange={(v) => { setLow(v); setOffset(0); }} />
+        <Checkbox label={t('commerce.inventory.idle_only')} checked={idle} onChange={(v) => { setIdle(v); setOffset(0); }} />
         <Checkbox label={t('fields.inactive')} checked={inactive} onChange={(v) => { setInactive(v); setOffset(0); }} />
         {canManage ? <Button className="sm:ms-auto" icon={<Plus className="size-4" />} onClick={() => setCreating(true)}>{t('commerce.inventory.new_material')}</Button> : null}
       </div>

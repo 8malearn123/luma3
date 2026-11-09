@@ -2373,6 +2373,37 @@ export interface StaffProfiles {
   updated_at: Generated<Timestamp>;
 }
 
+export interface StockCountLines {
+  count_id: string;
+  counted_at: Timestamp | null;
+  counted_by: string | null;
+  counted_quantity: Numeric | null;
+  created_at: Generated<Timestamp>;
+  id: Generated<string>;
+  inventory_item_id: string;
+  system_quantity: Numeric | null;
+  tenant_id: string;
+  updated_at: Generated<Timestamp>;
+  variance: Numeric | null;
+  variance_cost_minor: number | null;
+}
+
+export interface StockCounts {
+  applied_at: Timestamp | null;
+  applied_by: string | null;
+  branch_id: string;
+  created_at: Generated<Timestamp>;
+  created_by: string | null;
+  id: Generated<string>;
+  note: string | null;
+  number: string;
+  status: Generated<string>;
+  tenant_id: string;
+  tolerance_pct: Generated<Numeric>;
+  updated_at: Generated<Timestamp>;
+  version: Generated<number>;
+}
+
 export interface StockMovements {
   actor_user_id: string | null;
   created_at: Generated<Timestamp>;
@@ -2969,6 +3000,8 @@ export interface DB {
   staff_files: StaffFiles;
   staff_pay_profiles: StaffPayProfiles;
   staff_profiles: StaffProfiles;
+  stock_count_lines: StockCountLines;
+  stock_counts: StockCounts;
   stock_movements: StockMovements;
   stock_reservations: StockReservations;
   store_pages: StorePages;

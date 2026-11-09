@@ -10,6 +10,7 @@ import '../domains/waitlist/jobs';
 import '../domains/engagement/jobs';
 import '../domains/notifications/jobs';
 import '../domains/commerce/jobs';
+import '../domains/finance/jobs';
 import '../domains/policy/jobs';
 import '../domains/subscriptions/jobs';
 import '../domains/analytics/jobs';
