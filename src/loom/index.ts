@@ -32,7 +32,7 @@ export type { SectorPack, InterventionDef, InterventionId } from './sector/types
 export { analyzeNow, requestAnalysis, runAnalysis, ensureConnection, ANALYSIS_JOB } from './analysis/run';
 export * as loomApi from './api/service';
 export * as loomMemory from './api/memory';
-// Phase 5: memory, measurement and the change aggregator (docs/LOOM_CORE.md §10–§12).
+// Phase 5: memory, measurement and the change aggregator (docs/LOOM_CORE.md §14–§17).
 export { recordLadder, recordView, recordReaction, inferBrandFit, brandFitKey, LADDER_STAGES, REACTIONS, type LadderStage, type Reaction } from './memory/ladder';
 export { createInitiative, recordExecution, applyEdits, designFor, goalMetricsFor, ARTIFACT_KINDS, GOAL_METRICS, GUARDRAILS, MEASUREMENT_QUALITIES, INITIATIVE_STATUSES, type ArtifactKind, type GoalMetric, type MeasurementQuality } from './memory/initiatives';
 export { measureInitiative, MIN_GROUP_FOR_INCREMENTAL, NOT_CAUSAL, type MeasureInput, type Outcome, type ExternalFactor, type CampaignGroups } from './memory/measure';
@@ -56,3 +56,4 @@ export { knowledgeLibrary, rankUnits, knowledgeUnitSchema, isStale, type Knowled
 export { retrieveKnowledge, recordCitations, syncKnowledgeLibrary, resetKnowledgeSync, listKnowledgeUnits, knowledgeTitles } from './knowledge/store';
 export * as loomPlannerApi from './api/planner';
 export { planRequestInput, commentInput } from './api/planner';
+export * from './radar';

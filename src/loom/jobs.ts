@@ -3,6 +3,8 @@ import { ANALYSIS_JOB, failStuckAnalyses, runAnalysis } from './analysis/run';
 import { CHANGE_TOPIC, CHANGES_JOB, processChanges, recordChange, scheduleDueChanges, type ChangeInput } from './memory/changes';
 import { MEASURE_JOB, measureBusiness, scheduleMeasurements } from './memory/outcomes';
 import { failStuckPlannerRuns, PLAN_JOB, runPlannerRun } from './planner/run';
+import { importDueOfficialSources } from './radar/calendar';
+import { sweepSources } from './radar/sources';
 
 /** Loom background work: the analysis job (one per loom.analyses row) and a sweeper for stuck runs. */
 registerJob(ANALYSIS_JOB, async (payload, ctx) => {
@@ -37,3 +39,5 @@ registerJob(PLAN_JOB, async (payload, ctx) => {
   return r ? { status: r.status, source: r.source } : { skipped: true };
 });
 registerPeriodic({ name: 'loom.stuck_planner_runs', everySec: 900, run: failStuckPlannerRuns });
+/** Radar (phase 4): official calendars (daily per source, with backoff) and business sources (6 h, with backoff), dedupe, re-cluster, stale marking. */
+registerPeriodic({ name: 'loom.radar_sweep', everySec: 900, run: async () => { await importDueOfficialSources(); await sweepSources(); } });

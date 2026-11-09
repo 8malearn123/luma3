@@ -12,6 +12,8 @@ import { loadFacts, loadGoals, resolveProfile } from '../profile/facts';
 import { qualityGate, type QualityReport } from '../quality/gate';
 import { sectorPack } from '../sector/beauty';
 import { readPlatformSettings } from '../settings/platform';
+import { enforceNoMarketPriceCut, observedOfferings } from '../radar/market';
+import { applyRadarTiming } from '../radar/timing';
 
 /**
  * Analysis pipeline (§6.1), rules path:
@@ -105,8 +107,15 @@ export async function runAnalysis(analysisId: string, businessId: string, opts: 
       const profile = resolveProfile(await loadFacts(trx, businessId), await loadGoals(trx, businessId), platform.default_ranking_weights);
 
       const noData = !ctx.activeOfferings.length || quality.overall === 'insufficient';
-      const engine = noData ? { opportunities: [], suppressed: [{ detector_id: '*', reason: 'insufficient_data' }] }
+      let engine = noData ? { opportunities: [], suppressed: [{ detector_id: '*', reason: 'insufficient_data' }] } as ReturnType<typeof runEngine>
         : runEngine({ ds, ctx, metrics, quality, profile, pack, params: {} }, { reserved: await reservedVolumes(trx, businessId) });
+      if (!noData) {
+        // Phase 4 (radar): adopted/attached platform events time EXISTING opportunities only (P1, T8);
+        // market prices are context and never a price cut (T15).
+        await applyRadarTiming(trx, businessId, engine.opportunities, ds.meta.today, pack.id);
+        const guard = enforceNoMarketPriceCut(engine.opportunities, await observedOfferings(trx, businessId));
+        engine = { opportunities: guard.kept, suppressed: [...engine.suppressed, ...guard.removed.map((r) => ({ detector_id: '*', subject_key: r.fingerprint, reason: r.reason }))] };
+      }
       const budgetFact = profile.facts.find((f) => f.key === 'pref.monthly_budget_minor' && f.kind === 'explicit');
       const persisted = await persistOpportunities(trx, businessId, analysisId, engine.opportunities, {
         today: ds.meta.today, sectorPack: pack.id, sectorPackVersion: pack.version, constraints: { budgetUpdatedAt: budgetFact ? new Date(budgetFact.updated_at) : null },
