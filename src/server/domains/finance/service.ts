@@ -148,7 +148,7 @@ export async function financeReport(access: TenantAccess, fromISO: string, toISO
 }
 
 // ── Receipts & invoices ─────────────────────────────────────────────────────
-async function sellerSnapshot(trx: Tx, tenantId: string) {
+export async function sellerSnapshot(trx: Tx, tenantId: string) {
   const t = await trx.selectFrom('tenants').select(['name']).where('id', '=', tenantId).executeTakeFirstOrThrow();
   const s = await trx.selectFrom('tenant_settings').select(['legal_name', 'tax_number', 'legal_address', 'contact_phone', 'contact_email', 'tax_label', 'tax_rate_bp', 'prices_include_tax']).where('tenant_id', '=', tenantId).executeTakeFirstOrThrow();
   return { name: t.name, legal_name: s.legal_name, tax_number: s.tax_number, address: s.legal_address, phone: s.contact_phone, email: s.contact_email, tax: { label: s.tax_label, rate_bp: s.tax_rate_bp, prices_include_tax: s.prices_include_tax } };

@@ -161,9 +161,12 @@ export interface BookingAllocations {
   id: Generated<string>;
   released_at: Timestamp | null;
   resource_id: string | null;
+  space_key: Generated<string | null>;
   staff_id: string | null;
   state: string;
   tenant_id: string;
+  within_workspace_booking_id: string | null;
+  workspace_booking_id: string | null;
 }
 
 export interface BookingEvents {
@@ -267,6 +270,7 @@ export interface Bookings {
   total_minor: number;
   updated_at: Generated<Timestamp>;
   version: Generated<number>;
+  workspace_booking_id: string | null;
 }
 
 export interface Branches {
@@ -994,6 +998,7 @@ export interface InvoiceItems {
 export interface Invoices {
   booking_id: string | null;
   buyer_snapshot: Json;
+  buyer_tenant_id: string | null;
   created_by: string | null;
   currency: string;
   discount_minor: Generated<number>;
@@ -1010,6 +1015,7 @@ export interface Invoices {
   tax_minor: Generated<number>;
   tenant_id: string;
   total_minor: number;
+  workspace_booking_id: string | null;
 }
 
 export interface JobRuns {
@@ -1336,6 +1342,40 @@ export interface LoomExportDemandSignals {
   type: string | null;
 }
 
+export interface LoomExportHostingIdle {
+  booked_min: number | null;
+  day: string | null;
+  listed_min: number | null;
+  listing_id: string | null;
+}
+
+export interface LoomExportHostingOccupancy {
+  ends_at: Timestamp | null;
+  listing_id: string | null;
+  resource_id: string | null;
+  starts_at: Timestamp | null;
+  usage: string | null;
+}
+
+export interface LoomExportHostingRevenue {
+  addons_minor: number | null;
+  discount_minor: number | null;
+  ends_at: Timestamp | null;
+  guest_ref: string | null;
+  id: string | null;
+  late_fees_minor: number | null;
+  listing_id: string | null;
+  paid_minor: number | null;
+  payment_status: string | null;
+  refunded_minor: number | null;
+  rent_minor: number | null;
+  settlement_status: string | null;
+  starts_at: Timestamp | null;
+  status: string | null;
+  tax_minor: number | null;
+  total_minor: number | null;
+}
+
 export interface LoomExportInventoryItems {
   consumed_90d: number | null;
   id: string | null;
@@ -1506,6 +1546,20 @@ export interface LoomExportTransactions {
   tax_minor: number | null;
   total_minor: number | null;
   updated_at: Timestamp | null;
+}
+
+export interface LoomExportWorkspaceCosts {
+  charges_minor: number | null;
+  duration_min: number | null;
+  ends_at: Timestamp | null;
+  host_name: string | null;
+  host_ref: string | null;
+  id: string | null;
+  paid_minor: number | null;
+  refunded_minor: number | null;
+  starts_at: Timestamp | null;
+  status: string | null;
+  total_minor: number | null;
 }
 
 export interface LoomFeedback {
@@ -2477,6 +2531,7 @@ export interface Payments {
   method: string;
   needs_reconciliation: Generated<boolean>;
   order_id: string | null;
+  payer_tenant_id: string | null;
   payer_user_id: string | null;
   payment_account_id: string | null;
   platform_fee_minor: Generated<number>;
@@ -2488,6 +2543,7 @@ export interface Payments {
   status: Generated<string>;
   tenant_id: string;
   updated_at: Generated<Timestamp>;
+  workspace_booking_id: string | null;
 }
 
 export interface Payouts {
@@ -3049,6 +3105,14 @@ export interface Resources {
   sort: Generated<number>;
   tenant_id: string;
   updated_at: Generated<Timestamp>;
+}
+
+export interface ResourceStaffLinks {
+  created_at: Generated<Timestamp>;
+  created_by: string | null;
+  resource_id: string;
+  staff_id: string;
+  tenant_id: string;
 }
 
 export interface ResourceTypes {
@@ -3911,6 +3975,212 @@ export interface WorkingHours {
   weekday: number;
 }
 
+export interface WorkspaceBookingEvents {
+  actor_kind: string;
+  actor_user_id: string | null;
+  created_at: Generated<Timestamp>;
+  data: Generated<Json>;
+  from_status: string | null;
+  guest_tenant_id: string;
+  host_tenant_id: string;
+  id: Generated<string>;
+  kind: Generated<string>;
+  reason: string | null;
+  to_status: string | null;
+  workspace_booking_id: string;
+}
+
+export interface WorkspaceBookingLines {
+  addon_id: string | null;
+  amount_minor: number;
+  charge_group: Generated<string>;
+  created_at: Generated<Timestamp>;
+  created_by: string | null;
+  decided_at: Timestamp | null;
+  decided_by: string | null;
+  decision_note: string | null;
+  description: string;
+  guest_tenant_id: string;
+  host_tenant_id: string;
+  id: Generated<string>;
+  inventory_item_id: string | null;
+  invoice_id: string | null;
+  kind: string;
+  material_request_id: string | null;
+  payment_id: string | null;
+  product_variant_id: string | null;
+  quantity: Generated<Numeric>;
+  resource_id: string | null;
+  status: Generated<string>;
+  stock_moved_at: Timestamp | null;
+  stock_returned_at: Timestamp | null;
+  tax_included: Generated<boolean>;
+  unit_cost_minor: number | null;
+  unit_price_minor: Generated<number>;
+  workspace_booking_id: string;
+}
+
+export interface WorkspaceBookings {
+  addons_minor: Generated<number>;
+  approval_deadline: Timestamp | null;
+  approved_at: Timestamp | null;
+  approved_by: string | null;
+  booking_mode: string;
+  branch_id: string;
+  cancel_reason: string | null;
+  cancel_source: string | null;
+  cancelled_at: Timestamp | null;
+  check_in_code: string;
+  checked_in_at: Timestamp | null;
+  checked_in_by: string | null;
+  checked_out_at: Timestamp | null;
+  checked_out_by: string | null;
+  completed_at: Timestamp | null;
+  confirmed_at: Timestamp | null;
+  created_at: Generated<Timestamp>;
+  currency: Generated<string>;
+  discount_minor: Generated<number>;
+  ends_at: Timestamp;
+  guest_note: string | null;
+  guest_snapshot: Generated<Json>;
+  guest_staff_id: string;
+  guest_tenant_id: string;
+  guest_user_id: string;
+  hold_expires_at: Timestamp | null;
+  host_note: string | null;
+  host_snapshot: Generated<Json>;
+  host_tenant_id: string;
+  id: Generated<string>;
+  listing_id: string;
+  listing_terms_version: number;
+  number: string;
+  occupied: string;
+  paid_minor: Generated<number>;
+  payment_status: Generated<string>;
+  qr_token: string;
+  refunded_minor: Generated<number>;
+  rent_minor: Generated<number>;
+  resource_id: string;
+  settlement_status: Generated<string>;
+  starts_at: Timestamp;
+  status: string;
+  tax_minor: Generated<number>;
+  terms_snapshot: Json;
+  timezone: string;
+  total_minor: Generated<number>;
+  updated_at: Generated<Timestamp>;
+  version: Generated<number>;
+}
+
+export interface WorkspaceListingAddons {
+  created_at: Generated<Timestamp>;
+  id: Generated<string>;
+  is_active: Generated<boolean>;
+  kind: string;
+  listing_id: string;
+  max_quantity: Generated<number>;
+  name_ar: string | null;
+  name_en: string | null;
+  product_variant_id: string | null;
+  rental_price_minor: number | null;
+  rental_unit: string | null;
+  resource_id: string | null;
+  sort: Generated<number>;
+  tenant_id: string;
+}
+
+export interface WorkspaceListings {
+  access_instructions_ar: string | null;
+  access_instructions_en: string | null;
+  addons_discount_bp: Generated<number>;
+  booking_mode: Generated<string>;
+  branch_id: string;
+  cancellation_terms: Generated<Json>;
+  cleanup_buffer_min: Generated<number>;
+  code: string;
+  created_at: Generated<Timestamp>;
+  created_by: string | null;
+  currency: Generated<string>;
+  description_ar: string | null;
+  description_en: string | null;
+  id: Generated<string>;
+  included_resource_ids: Generated<string[]>;
+  late_terms: Generated<Json>;
+  max_duration_min: Generated<number>;
+  min_duration_min: Generated<number>;
+  own_materials_policy_ar: string | null;
+  own_materials_policy_en: string | null;
+  percent_basis: string | null;
+  percent_bp: number | null;
+  period_min: number | null;
+  photo_asset_ids: Generated<string[]>;
+  price_minor: Generated<number>;
+  price_model: Generated<string>;
+  published_at: Timestamp | null;
+  resource_id: string;
+  setup_buffer_min: Generated<number>;
+  space_type: Generated<string>;
+  specialties: Generated<string[]>;
+  status: Generated<string>;
+  tenant_id: string;
+  terms_version: Generated<number>;
+  title_ar: string | null;
+  title_en: string | null;
+  updated_at: Generated<Timestamp>;
+  updated_by: string | null;
+  usage_rules_ar: string | null;
+  usage_rules_en: string | null;
+  version: Generated<number>;
+}
+
+export interface WorkspaceListingWindows {
+  end_time: string;
+  id: Generated<string>;
+  listing_id: string;
+  start_time: string;
+  tenant_id: string;
+  weekday: number;
+}
+
+export interface WorkspaceMaterialRequests {
+  addon_id: string;
+  created_at: Generated<Timestamp>;
+  decided_at: Timestamp | null;
+  decided_by: string | null;
+  decision_note: string | null;
+  guest_tenant_id: string;
+  host_tenant_id: string;
+  id: Generated<string>;
+  note: string | null;
+  quantity: number;
+  requested_by: string | null;
+  status: Generated<string>;
+  workspace_booking_id: string;
+}
+
+export interface WorkspaceReviews {
+  body: string | null;
+  created_at: Generated<Timestamp>;
+  created_by: string | null;
+  guest_tenant_id: string;
+  host_tenant_id: string;
+  id: Generated<string>;
+  listing_id: string;
+  rating: number;
+  workspace_booking_id: string;
+}
+
+export interface WorkspaceSettlements {
+  approved_at: Generated<Timestamp>;
+  approved_by: string | null;
+  guest_tenant_id: string;
+  host_tenant_id: string;
+  id: Generated<string>;
+  statement: Json;
+  version: number;
+  workspace_booking_id: string;
+}
+
 export interface DB {
   ai_jobs: AiJobs;
   ai_runs: AiRuns;
@@ -3984,6 +4254,9 @@ export interface DB {
   "loom_export.complaints": LoomExportComplaints;
   "loom_export.customers": LoomExportCustomers;
   "loom_export.demand_signals": LoomExportDemandSignals;
+  "loom_export.hosting_idle": LoomExportHostingIdle;
+  "loom_export.hosting_occupancy": LoomExportHostingOccupancy;
+  "loom_export.hosting_revenue": LoomExportHostingRevenue;
   "loom_export.inventory_items": LoomExportInventoryItems;
   "loom_export.locations": LoomExportLocations;
   "loom_export.market_signals": LoomExportMarketSignals;
@@ -4000,6 +4273,7 @@ export interface DB {
   "loom_export.time_blocks": LoomExportTimeBlocks;
   "loom_export.transaction_lines": LoomExportTransactionLines;
   "loom_export.transactions": LoomExportTransactions;
+  "loom_export.workspace_costs": LoomExportWorkspaceCosts;
   "loom.analyses": LoomAnalyses;
   "loom.audit_events": LoomAuditEvents;
   "loom.business_goals": LoomBusinessGoals;
@@ -4105,6 +4379,7 @@ export interface DB {
   referrals: Referrals;
   referrers: Referrers;
   refunds: Refunds;
+  resource_staff_links: ResourceStaffLinks;
   resource_types: ResourceTypes;
   resources: Resources;
   returns: Returns;
@@ -4165,4 +4440,13 @@ export interface DB {
   waitlist_offers: WaitlistOffers;
   weekly_digests: WeeklyDigests;
   working_hours: WorkingHours;
+  workspace_booking_events: WorkspaceBookingEvents;
+  workspace_booking_lines: WorkspaceBookingLines;
+  workspace_bookings: WorkspaceBookings;
+  workspace_listing_addons: WorkspaceListingAddons;
+  workspace_listing_windows: WorkspaceListingWindows;
+  workspace_listings: WorkspaceListings;
+  workspace_material_requests: WorkspaceMaterialRequests;
+  workspace_reviews: WorkspaceReviews;
+  workspace_settlements: WorkspaceSettlements;
 }

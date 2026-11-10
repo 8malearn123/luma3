@@ -28,7 +28,9 @@ export type Account =
   | 'cash_on_hand' | 'bank' | 'provider_clearing' | 'customer_deposits' | 'accounts_receivable' | 'service_revenue' | 'product_revenue'
   | 'gift_card_liability' | 'membership_liability' | 'discounts' | 'refunds' | 'provider_fees' | 'tax_payable' | 'cogs' | 'inventory'
   | 'material_costs' | 'commissions_expense' | 'commissions_payable' | 'operating_expenses' | 'owner_equity'
-  | 'salaries_expense' | 'payroll_payable' | 'staff_advances' | 'tips_payable';
+  | 'salaries_expense' | 'payroll_payable' | 'staff_advances' | 'tips_payable'
+  // Workspace hosting (migration 0810; see domains/hosting/money.ts for the postings).
+  | 'hosting_revenue' | 'hosting_receivable' | 'hosting_expense' | 'hosting_payable';
 
 export type Line = { account: Account; debit?: number; credit?: number; memo?: string };
 

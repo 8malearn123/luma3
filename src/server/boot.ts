@@ -17,6 +17,7 @@ import { recordServerEvent } from './domains/analytics/events';
 import { recordMarketplaceCommission } from './domains/marketplace/attribution';
 import { consumeMaterialsForBookingItem, markOrderPaid, releaseCouponRedemption } from './domains/commerce';
 import { onEventPaymentCaptured, onEventPaymentFailed, onEventRefunded } from './domains/events/service';
+import { onWorkspacePaymentCaptured, onWorkspacePaymentFailed, onWorkspaceRefunded } from './domains/hosting/bookings';
 // Loom: LUMA change events → Loom change signals, and the default plan-revision adapter.
 import './loom-host/changes';
 // Loom host ports (SSRF-safe HTTP, encrypted secrets).
@@ -57,6 +58,10 @@ if (!g.__lumaBooted) {
   paymentTargets.event.onCaptured = (trx, tenantId, id, payment) => onEventPaymentCaptured(trx, tenantId, id, payment);
   paymentTargets.event.onFailed = (trx, tenantId, id) => onEventPaymentFailed(trx, tenantId, id);
   paymentTargets.event.onRefunded = (trx, tenantId, id, refund) => onEventRefunded(trx, tenantId, id, refund);
+  // Workspace hosting: rent + add-ons paid to the host salon confirm the space booking for both tenants.
+  paymentTargets.workspace.onCaptured = (trx, tenantId, id, payment) => onWorkspacePaymentCaptured(trx, tenantId, id, payment);
+  paymentTargets.workspace.onFailed = (trx, tenantId, id) => onWorkspacePaymentFailed(trx, tenantId, id);
+  paymentTargets.workspace.onRefunded = (trx, tenantId, id, refund) => onWorkspaceRefunded(trx, tenantId, id, refund);
   registerBookingHook.refundDue(async (trx, tenantId, bookingId, amount, basis) => {
     await refundBookingDue(trx, tenantId, bookingId, amount, basis);
   });

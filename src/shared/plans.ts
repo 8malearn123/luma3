@@ -25,6 +25,11 @@ export const PLAN_FEATURES = {
   'feature.resources': { kind: 'switch', label_ar: 'الموارد (غرف/كراسي)', label_en: 'Resources (rooms/chairs)' },
   'feature.finance_reports': { kind: 'switch', label_ar: 'التقارير المالية', label_en: 'Finance reports' },
   'feature.remove_powered_by': { kind: 'switch', label_ar: 'إخفاء "بدعم من لوما"', label_en: 'Hide "Powered by LUMA"' },
+  // Workspace hosting (migration 0810; distribution «مقترح — غير معتمد», D12)
+  'limit.hosting_spaces': { kind: 'limit', label_ar: 'المساحات المنشورة للإيجار', label_en: 'Spaces published for rent' },
+  'hosting.publish': { kind: 'switch', label_ar: 'نشر المساحات للإيجار', label_en: 'Publish spaces for rent' },
+  'hosting.reports': { kind: 'switch', label_ar: 'تقارير الاستضافة', label_en: 'Hosting reports' },
+  'workspace.book': { kind: 'switch', label_ar: 'حجز مساحة عمل', label_en: 'Book a workspace' },
 } as const;
 
 export type PlanFeatureKey = keyof typeof PLAN_FEATURES;

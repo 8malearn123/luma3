@@ -23,3 +23,4 @@ import '../domains/reviews/jobs';
 import '../domains/giftcards/jobs';
 import '../domains/business/jobs';
 import '../domains/events/jobs';
+import '../domains/hosting/jobs';
