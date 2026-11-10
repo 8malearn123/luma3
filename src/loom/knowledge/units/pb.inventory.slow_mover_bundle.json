@@ -1,0 +1,62 @@
+{
+  "id": "pb.inventory.slow_mover_bundle",
+  "version": 1,
+  "title": {
+    "ar": "تصريف المنتج الراكد بباقة",
+    "en": "Bundle a slow-moving product"
+  },
+  "applies_to": {
+    "sectors": [
+      "beauty"
+    ],
+    "detectors": [
+      "slow_mover_bundle"
+    ],
+    "interventions": [
+      "bundle_with_top_service",
+      "gift_with_service"
+    ],
+    "channels": [
+      "in_store",
+      "storefront"
+    ]
+  },
+  "guidance": {
+    "ar": "المنتج الذي يغطي مخزونه أشهرًا يمكن ربطه بخدمة رائجة كباقة بهامش موجب أو تقديمه هدية بتكلفته فقط. راجعي تاريخ الصلاحية قبل البدء.",
+    "en": "A product with months of stock cover can be bundled with a popular service at a positive margin, or given as a gift at its cost only. Check expiry dates first."
+  },
+  "when_not_to_use": {
+    "ar": "لا تصلح للمنتجات القريبة من انتهاء الصلاحية دون إفصاح.",
+    "en": "Not suitable for products close to expiry without disclosure."
+  },
+  "common_mistakes": [
+    {
+      "ar": "بيع بخسارة لتصريف المخزون",
+      "en": "Selling at a loss to clear stock"
+    }
+  ],
+  "measurement": {
+    "primary": "inventory.cover_days",
+    "design": "observational"
+  },
+  "examples": {
+    "good": [
+      {
+        "ar": "باقة «قص + منتج العناية» بسعر يغطي التكلفة",
+        "en": "A “cut + care product” bundle priced above cost"
+      }
+    ],
+    "bad": [
+      {
+        "ar": "تصفية المنتج بنصف التكلفة",
+        "en": "Clearing the product at half its cost"
+      }
+    ]
+  },
+  "source": {
+    "type": "internal_review",
+    "ref": "Loom marketing methodology review, beauty pack v1",
+    "reviewed_at": "2026-11-01"
+  },
+  "owner": "loom.methodology"
+}

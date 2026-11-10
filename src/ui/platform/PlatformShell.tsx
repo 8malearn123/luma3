@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { createContext, useContext, useState, type ReactNode } from 'react';
 import {
-  Activity, BarChart3, Building2, ChartLine, CreditCard, HandCoins, KeyRound, Layers, LayoutDashboard, LayoutTemplate, LifeBuoy, Menu, Plug, Receipt, ScrollText, Settings, Share2, ShieldAlert, Sparkles, Store, Users, X,
+  Activity, BarChart3, Bot, Building2, ChartLine, CreditCard, HandCoins, KeyRound, Layers, LayoutDashboard, LayoutTemplate, LifeBuoy, Menu, Plug, Receipt, ScrollText, Settings, Share2, ShieldAlert, Sparkles, Store, Users, X,
   type LucideIcon,
 } from 'lucide-react';
 import { useI18n } from '@/i18n/client';
@@ -38,6 +38,7 @@ export const PLATFORM_NAV: PlatformNavItem[] = [
   { key: 'audit', href: '/platform/audit', icon: ScrollText, cap: 'platform.audit.view' },
   { key: 'ai_usage', href: '/platform/ai-usage', icon: Sparkles, cap: 'platform.ai_usage.view' },
   { key: 'integrations', href: '/platform/integrations', icon: Plug, cap: 'platform.integrations.view' },
+  { key: 'loom', href: '/platform/loom', icon: Bot, cap: 'platform.loom.manage' },
   { key: 'settings', href: '/platform/settings', icon: Settings, cap: 'platform.settings.manage' },
   { key: 'security', href: '/platform/security', icon: KeyRound, cap: null },
 ];

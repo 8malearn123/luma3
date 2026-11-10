@@ -141,11 +141,14 @@ Changing a member (`PATCH /api/v1/t/{slug}/members/{id}`) requires `team.manage`
 | `platform.settlements.manage` | ✓ |  |  |  |
 | `platform.referrals.manage` (marketers, rewards, withdrawals) | ✓ |  |  |  |
 | `platform.settings.manage` (maintenance, sign-ups, approvals switch, founding, referral defaults) | ✓ |  |  |  |
+| `platform.loom.manage` (Loom Marketing defaults: ranking weights, cost-completeness threshold, learned-model thresholds, official event sources, sector packs; step-up, audited) | ✓ |  |  |  |
 
 `platform.marketplace.review` covers the سوق لوما queues (join requests, verification files and documents — every document view is audited), the commission ledger and reading marketplace settings. `platform.marketplace.manage` sets a business's commission rate and the marketplace settings (both with step-up). On the tenant side, the marketplace listing and verification documents need `business.manage` (owner only) and «عمولة سوق لوما» needs `finance.view`. See `docs/MARKETPLACE.md`.
 
 Phase-2 endpoints and rules: [PLATFORM_ADMIN.md](PLATFORM_ADMIN.md). Promotions use `platform.plans.manage`; approving new businesses uses `platform.tenants.manage` (the queue is readable with `platform.tenants.view`). The business «الإحالة» screen (`/app/{slug}/referrals`) needs the owner-only `business.manage`; a withdrawal request also needs step-up.
 
+
+**Loom Marketing (`/api/v1/t/{slug}/loom/**`, plan feature `feature.marketing_ai`)** maps Loom capabilities onto LUMA's: `loom.view` → `marketing.view` or `marketing.manage` (read cards, data quality, profile, setup, analyses); `loom.manage` → `marketing.manage` (run analyses, decisions, conversions, goals, preferences, setup items); `loom.connections.manage` → `business.manage` (connector status); the **shared-training consent** setup item is owner only (`business.manage`). Conversions run through LUMA's own rules: campaign drafts need `feature.campaigns` and are sent only after `campaigns.approve`; price proposals need `catalog.edit` and the owner's approval in the catalog. See [LOOM_CORE.md](LOOM_CORE.md).
 
 Every `/api/v1/platform/**` handler is built with `platformRoute()`. A caller with **no** platform role gets **404**, not 403, so the platform API does not reveal that it exists. A missing specific capability also returns 404. `GET /api/v1/platform/overview` and the MFA/me endpoints need only some platform role. Platform roles grant no tenant capabilities.
 

@@ -1,0 +1,61 @@
+{
+  "id": "pb.operations.restock_before_campaign",
+  "version": 1,
+  "title": {
+    "ar": "إعادة الطلب قبل الحملة",
+    "en": "Restock before the campaign"
+  },
+  "applies_to": {
+    "sectors": [
+      "beauty"
+    ],
+    "detectors": [
+      "capacity_prerequisite",
+      "slow_mover_bundle"
+    ],
+    "interventions": [
+      "restock"
+    ],
+    "channels": [
+      "in_store"
+    ]
+  },
+  "guidance": {
+    "ar": "إذا كانت مواد الخدمة لا تكفي للحجوزات المستهدفة فالحملة تنتظر: اطلبي المواد بالكمية التي تغطي الهدف مع هامش أمان، ثم أعيدي الفحص.",
+    "en": "If the service materials do not cover the target bookings, the campaign waits: order enough material to cover the target with a safety margin, then re-check."
+  },
+  "when_not_to_use": {
+    "ar": "لا يصلح إذا لم تكن هناك وصفة استهلاك (لا يُختلق عدد).",
+    "en": "Not suitable without a consumption recipe (no invented counts)."
+  },
+  "common_mistakes": [
+    {
+      "ar": "إطلاق الحملة ثم اكتشاف نفاد المادة",
+      "en": "Launching the campaign and then running out"
+    }
+  ],
+  "measurement": {
+    "primary": "inventory.covers_n",
+    "design": "observational"
+  },
+  "examples": {
+    "good": [
+      {
+        "ar": "طلب عبوتين من السيروم قبل أسبوع من الحملة",
+        "en": "Order two serum bottles a week before the campaign"
+      }
+    ],
+    "bad": [
+      {
+        "ar": "حملة لخدمة نفدت موادها",
+        "en": "A campaign for a service whose materials ran out"
+      }
+    ]
+  },
+  "source": {
+    "type": "internal_review",
+    "ref": "Loom marketing methodology review, beauty pack v1",
+    "reviewed_at": "2026-11-01"
+  },
+  "owner": "loom.methodology"
+}

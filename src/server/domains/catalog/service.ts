@@ -5,6 +5,7 @@ import { Errors } from '../../http/errors';
 import { audit, type AuditActor } from '../../infra/audit';
 import { hasCapability, requireWithinLimit, type TenantAccess } from '../../tenancy/access';
 import { assertTenantAssets } from '../assets/service';
+import { emitDomainEvent } from '../../infra/domain-events';
 import type {
   addonInput, categoryInput, categoryPatch, packageInput, priceProposalInput, serviceInput, servicePatch, variantInput,
 } from '@/shared/schemas/catalog';
@@ -183,6 +184,9 @@ export async function updateService(access: TenantAccess, actor: AuditActor, id:
     }
     if (fields.image_asset_id) await assertTenantAssets(trx, access.tenantId, [fields.image_asset_id]);
     await trx.updateTable('services').set({ ...fields, price_minor: newPrice, version: cur.version + 1 }).where('id', '=', id).execute();
+    if (newPrice !== cur.price_minor || (fields.cost_minor !== undefined && fields.cost_minor !== cur.cost_minor)) {
+      await emitDomainEvent(trx, access.tenantId, { type: 'service.economics_changed', service_id: id, price_before: cur.price_minor, price_after: newPrice, cost_before: cur.cost_minor, cost_after: fields.cost_minor !== undefined ? fields.cost_minor : cur.cost_minor });
+    }
     if (staff) await setServiceStaff(trx, access.tenantId, id, staff);
     if (resource_requirements) await setResourceRequirements(trx, access, id, resource_requirements);
     await audit(trx, actor, 'service.updated', { tenantId: access.tenantId, targetType: 'service', targetId: id, data: { fields: Object.keys(fields), price_from: cur.price_minor, price_to: newPrice, proposal: proposalId } });
@@ -231,7 +235,8 @@ export async function decidePriceProposal(access: TenantAccess, actor: AuditActo
     if (p.status !== 'proposed') throw Errors.conflict('already_decided');
     await trx.updateTable('service_price_proposals').set({ status: decision, decided_by: actor.userId, decided_at: new Date() }).where('id', '=', proposalId).execute();
     if (decision === 'approved') {
-      await trx.updateTable('services').set({ price_minor: p.proposed_price_minor, version: sql`version + 1` }).where('id', '=', p.service_id).execute();
+      const svc = await trx.updateTable('services').set({ price_minor: p.proposed_price_minor, version: sql`version + 1` }).where('id', '=', p.service_id).returning('cost_minor').executeTakeFirst();
+      await emitDomainEvent(trx, access.tenantId, { type: 'service.economics_changed', service_id: p.service_id, price_before: p.current_price_minor, price_after: p.proposed_price_minor, cost_before: svc?.cost_minor ?? null, cost_after: svc?.cost_minor ?? null });
     }
     await audit(trx, actor, `service.price_${decision}`, { tenantId: access.tenantId, targetType: 'service', targetId: p.service_id, data: { from: p.current_price_minor, to: p.proposed_price_minor } });
     return { id: proposalId, status: decision };

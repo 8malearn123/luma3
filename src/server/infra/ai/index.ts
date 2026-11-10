@@ -14,11 +14,13 @@ export function setAiProviderForTests(p: AiProvider | null | undefined) {
   override = p;
 }
 
-export function aiProvider(): AiProvider | null {
+/** The configured provider; tier 'strong' uses OPENAI_MODEL_STRONG when set (prompt_versions.model_tier). */
+export function aiProvider(tier: 'standard' | 'strong' = 'standard'): AiProvider | null {
   if (override !== undefined) return override;
   const e = env();
   if (!e.OPENAI_API_KEY || !e.OPENAI_MODEL) return null;
-  return new OpenAIProvider(e.OPENAI_API_KEY, e.OPENAI_MODEL, e.OPENAI_BASE_URL, e.AI_REQUEST_TIMEOUT_MS);
+  const model = tier === 'strong' && e.OPENAI_MODEL_STRONG ? e.OPENAI_MODEL_STRONG : e.OPENAI_MODEL;
+  return new OpenAIProvider(e.OPENAI_API_KEY, model, e.OPENAI_BASE_URL, e.AI_REQUEST_TIMEOUT_MS);
 }
 
 /**
@@ -58,8 +60,10 @@ export async function runAi<T>(opts: {
   inputSummary: Record<string, unknown>;
   cacheKey?: string;
   maxFormatRetries?: number;
+  /** Model tier of the prompt (default standard). */
+  modelTier?: 'standard' | 'strong';
 }): Promise<{ output: T; runId: string; provider: string; model: string; cached: boolean }> {
-  const provider = aiProvider();
+  const provider = aiProvider(opts.modelTier);
   if (!provider) throw new AiError('unavailable', 'AI is not configured');
 
   if (opts.cacheKey) {

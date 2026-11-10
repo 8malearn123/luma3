@@ -18,6 +18,8 @@ export default async function globalSetup() {
   const c = new pg.Client({ connectionString: e2eEnv.DATABASE_OWNER_URL });
   await c.connect();
   await c.query('drop schema if exists app cascade');
+  await c.query('drop schema if exists loom_export cascade');
+  await c.query('drop schema if exists loom cascade');
   await c.query('drop schema public cascade');
   await c.query('create schema public');
   await c.query(`grant usage on schema public to ${pg.escapeIdentifier(e2eEnv.DB_APP_ROLE)}`);

@@ -1,0 +1,70 @@
+{
+  "id": "pb.quiet_capacity.targeted_reminder",
+  "version": 1,
+  "title": {
+    "ar": "تذكير موجّه بالأوقات الهادئة",
+    "en": "Targeted quiet-time reminder"
+  },
+  "applies_to": {
+    "sectors": [
+      "beauty"
+    ],
+    "detectors": [
+      "quiet_capacity"
+    ],
+    "interventions": [
+      "targeted_reminder"
+    ],
+    "channels": [
+      "in_app",
+      "whatsapp",
+      "sms"
+    ]
+  },
+  "guidance": {
+    "ar": "اعرضي أوقاتًا هادئة محددة (يوم وساعة) برابط حجز مباشر على عميلات وافقن على التسويق وسبق أن حجزن الخدمة نفسها. الرسالة قصيرة وشخصية ولا تحتاج خصمًا: القيمة هي سهولة الحصول على موعد.",
+    "en": "Offer specific quiet times (day and hour) with a direct booking link to customers who consented to marketing and booked the same service before. Keep it short and personal; no discount is needed — the value is an easy appointment."
+  },
+  "when_not_to_use": {
+    "ar": "لا تستخدميه إذا كانت الأوقات المعروضة ممتلئة فعلًا أو إذا أُرسلت للمجموعة نفسها رسالة خلال سبعة أيام.",
+    "en": "Do not use it when the offered times are actually full or when the same group received a message in the last seven days."
+  },
+  "common_mistakes": [
+    {
+      "ar": "إرسال الرسالة لكل العميلات دون فلترة الموافقة",
+      "en": "Sending to everyone without filtering consent"
+    },
+    {
+      "ar": "عرض أوقات عامة بدل خانات محددة",
+      "en": "Offering vague times instead of specific slots"
+    }
+  ],
+  "measurement": {
+    "primary": "capacity.occupancy",
+    "design": "holdout",
+    "note": {
+      "ar": "مجموعة ضابطة ١٠٪ ومقارنة الإشغال في الأوقات المعروضة",
+      "en": "10% holdout and compare occupancy in the offered times"
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "ar": "«عندنا موعد الثلاثاء ٤ العصر لخدمة الصبغة، احجزي بضغطة»",
+        "en": "“We have Tuesday 4 pm open for colour — book in one tap”"
+      }
+    ],
+    "bad": [
+      {
+        "ar": "«خصومات كبيرة طوال الأسبوع!»",
+        "en": "“Huge discounts all week!”"
+      }
+    ]
+  },
+  "source": {
+    "type": "internal_review",
+    "ref": "Loom marketing methodology review, beauty pack v1",
+    "reviewed_at": "2026-11-01"
+  },
+  "owner": "loom.methodology"
+}
