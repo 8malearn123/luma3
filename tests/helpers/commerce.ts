@@ -24,7 +24,7 @@ export async function createProduct(owner: TestClient, slug: string, overrides: 
   return r.body.data as { id: string; version: number; variants: Array<{ id: string; inventory_item_id: string; available: number; price_minor: number }> };
 }
 
-export async function addMember(owner: TestClient, slug: string, role: 'receptionist' | 'specialist' | 'manager' | 'finance') {
+export async function addMember(owner: TestClient, slug: string, role: 'receptionist' | 'specialist' | 'manager' | 'finance' | 'warehouse') {
   const m = await signup(role);
   const inv = await owner.call(invitations.POST, { params: { tenantSlug: slug }, body: { identifier: m.identifier, role } });
   if (inv.status !== 201) throw new Error(`invite failed: ${JSON.stringify(inv.body)}`);

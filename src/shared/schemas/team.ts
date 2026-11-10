@@ -27,14 +27,14 @@ export const ownProfilePatch = z.object({
 
 export const inviteInput = z.object({
   identifier: z.string().trim().min(3).max(254),
-  role: z.enum(['manager', 'receptionist', 'specialist', 'finance']),
+  role: z.enum(['manager', 'receptionist', 'specialist', 'finance', 'warehouse']),
   granted_capabilities: z.array(z.string()).max(30).default([]),
   staff_profile_id: z.string().uuid().nullable().optional(),
   expires_in_days: z.number().int().min(1).max(14).default(7),
 });
 
 export const membershipPatch = z.object({
-  role: z.enum(['manager', 'receptionist', 'specialist', 'finance']).optional(),
+  role: z.enum(['manager', 'receptionist', 'specialist', 'finance', 'warehouse']).optional(),
   granted_capabilities: z.array(z.string()).max(30).optional(),
   revoked_capabilities: z.array(z.string()).max(30).optional(),
   status: z.enum(['active', 'suspended', 'removed']).optional(),

@@ -20,6 +20,8 @@ import type { Tx } from '../../db/client';
  *  Gift card redeemed           Dr gift_card_liability    Cr customer_deposits
  *  Payroll (tips, advances, month close, payslip paid): see domains/payroll/service.ts
  *  and migration 0600_payroll.sql.
+ *  Inventory, purchasing and supplier payments: see domains/commerce/inventory-journal.ts
+ *  and migration 0800_inventory_locations.sql.
  *
  * A collected deposit is NOT service revenue until the service is completed.
  * Corrections are new offsetting groups (reverses_group_id), never edits.
@@ -28,7 +30,9 @@ export type Account =
   | 'cash_on_hand' | 'bank' | 'provider_clearing' | 'customer_deposits' | 'accounts_receivable' | 'service_revenue' | 'product_revenue'
   | 'gift_card_liability' | 'membership_liability' | 'discounts' | 'refunds' | 'provider_fees' | 'tax_payable' | 'cogs' | 'inventory'
   | 'material_costs' | 'commissions_expense' | 'commissions_payable' | 'operating_expenses' | 'owner_equity'
-  | 'salaries_expense' | 'payroll_payable' | 'staff_advances' | 'tips_payable';
+  | 'salaries_expense' | 'payroll_payable' | 'staff_advances' | 'tips_payable'
+  // Inventory & purchasing (0800_inventory_locations.sql; rules in commerce/inventory-journal.ts).
+  | 'accounts_payable' | 'goods_received_not_invoiced' | 'input_tax' | 'inventory_shrinkage';
 
 export type Line = { account: Account; debit?: number; credit?: number; memo?: string };
 

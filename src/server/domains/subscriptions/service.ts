@@ -33,7 +33,8 @@ export async function usageFor(trx: Tx, tenantId: string): Promise<Usage> {
       (select count(*)::int from services where tenant_id = ${tenantId} and archived_at is null) as "limit.services",
       (select count(*)::int from products where tenant_id = ${tenantId} and status <> 'archived') as "limit.products",
       (select count(*)::int from store_pages where tenant_id = ${tenantId} and kind = 'custom' and status = 'active') as "limit.custom_pages",
-      (select count(*)::int from ai_runs where tenant_id = ${tenantId} and status = 'succeeded' and created_at >= date_trunc('month', now())) as "limit.ai_runs_monthly"
+      (select count(*)::int from ai_runs where tenant_id = ${tenantId} and status = 'succeeded' and created_at >= date_trunc('month', now())) as "limit.ai_runs_monthly",
+      (select count(*)::int from stock_locations where tenant_id = ${tenantId} and is_active and not is_default) as "limit.stock_locations"
   `.execute(trx);
   const row = r.rows[0] ?? {};
   return Object.fromEntries(LIMIT_KEYS.map((k) => [k, Number(row[k] ?? 0)])) as Usage;

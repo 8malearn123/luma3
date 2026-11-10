@@ -946,21 +946,66 @@ export interface InstagramConnections {
 }
 
 export interface InventoryItems {
+  archived_at: Timestamp | null;
+  avg_cost_minor: Numeric | null;
+  barcode: string | null;
   branch_id: string;
+  category: string | null;
+  code: string | null;
+  conversion_approved_at: Timestamp | null;
+  conversion_approved_by: string | null;
+  conversion_factor: Numeric | null;
   cost_per_unit_minor: number | null;
   created_at: Generated<Timestamp>;
+  description: string | null;
+  freelancer_price_minor: number | null;
   id: Generated<string>;
+  image_asset_id: string | null;
   is_active: Generated<boolean>;
+  is_tool: Generated<boolean>;
   kind: string;
   low_stock_alerted_at: Timestamp | null;
   low_stock_threshold: Numeric | null;
+  master_id: string | null;
   name: string;
   on_hand: Generated<Numeric>;
   reserved: Generated<Numeric>;
+  stock_value_minor: Generated<number>;
+  storage_unit: string | null;
+  supplier_id: string | null;
   tenant_id: string;
+  track_batches: Generated<boolean>;
+  track_expiry: Generated<boolean>;
   unit: string;
   updated_at: Generated<Timestamp>;
   variant_id: string | null;
+}
+
+export interface InventorySettings {
+  created_at: Generated<Timestamp>;
+  expiry_warning_days: Generated<number>;
+  tenant_id: string;
+  transfer_confirmation: Generated<string>;
+  updated_at: Generated<Timestamp>;
+  updated_by: string | null;
+}
+
+export interface InventoryTasks {
+  created_at: Generated<Timestamp>;
+  dedupe_key: string;
+  id: Generated<string>;
+  inventory_item_id: string | null;
+  kind: string;
+  location_id: string | null;
+  payload: Generated<Json>;
+  ref_id: string | null;
+  ref_type: string | null;
+  resolution: string | null;
+  resolved_at: Timestamp | null;
+  resolved_by: string | null;
+  status: Generated<string>;
+  tenant_id: string;
+  updated_at: Generated<Timestamp>;
 }
 
 export interface Invitations {
@@ -1337,9 +1382,11 @@ export interface LoomExportDemandSignals {
 }
 
 export interface LoomExportInventoryItems {
+  avg_cost_minor: number | null;
   consumed_90d: number | null;
   id: string | null;
   is_active: boolean | null;
+  is_tool: boolean | null;
   location_id: string | null;
   name: string | null;
   offering_id: string | null;
@@ -1347,6 +1394,7 @@ export interface LoomExportInventoryItems {
   reorder_level: number | null;
   reserved: number | null;
   sold_90d: number | null;
+  stock_value_minor: number | null;
   unit: string | null;
   unit_cost_minor: number | null;
   updated_at: Timestamp | null;
@@ -1380,6 +1428,22 @@ export interface LoomExportMarketSignals {
   region: string | null;
   title: string | null;
   topic: string | null;
+}
+
+export interface LoomExportMaterialConsumption {
+  actual_qty: number | null;
+  expected_qty: number | null;
+  id: string | null;
+  item_id: string | null;
+  offering_id: string | null;
+  posted_at: Timestamp | null;
+  posted_qty: number | null;
+  resource_id: string | null;
+  source: string | null;
+  status: string | null;
+  stock_location_id: string | null;
+  total_cost_minor: number | null;
+  waste_qty: number | null;
 }
 
 export interface LoomExportOfferingRequirements {
@@ -1466,6 +1530,19 @@ export interface LoomExportStaffLeave {
   ends_at: Timestamp | null;
   resource_id: string | null;
   starts_at: Timestamp | null;
+}
+
+export interface LoomExportStockBalances {
+  in_transit: number | null;
+  item_id: string | null;
+  location_id: string | null;
+  on_hand: number | null;
+  reorder_level: number | null;
+  reserved: number | null;
+  stock_location_id: string | null;
+  stock_location_kind: string | null;
+  updated_at: Timestamp | null;
+  value_minor: number | null;
 }
 
 export interface LoomExportTimeBlocks {
@@ -2245,6 +2322,36 @@ export interface MarketplaceVisits {
   tenant_id: string;
 }
 
+export interface MaterialConsumptions {
+  actual_qty: Numeric | null;
+  booking_id: string | null;
+  booking_item_id: string | null;
+  created_at: Generated<Timestamp>;
+  created_by: string | null;
+  expected_qty: Generated<Numeric>;
+  id: Generated<string>;
+  inventory_item_id: string;
+  location_id: string;
+  movement_ids: Generated<string[]>;
+  performer_staff_id: string | null;
+  performer_user_id: string | null;
+  posted_at: Timestamp | null;
+  posted_by: string | null;
+  posted_qty: Generated<Numeric>;
+  reason: string | null;
+  resource_id: string | null;
+  service_id: string | null;
+  shortage_qty: Generated<Numeric>;
+  source: string;
+  status: Generated<string>;
+  tenant_id: string;
+  total_cost_minor: Generated<number>;
+  unit: string;
+  updated_at: Generated<Timestamp>;
+  version: Generated<number>;
+  waste_qty: Generated<Numeric>;
+}
+
 export interface MembershipEntitlements {
   created_at: Generated<Timestamp>;
   id: Generated<string>;
@@ -2892,6 +2999,39 @@ export interface ProviderEvents {
   tenant_id: string | null;
 }
 
+export interface PurchaseReceiptLines {
+  batch_no: string | null;
+  created_at: Generated<Timestamp>;
+  entered_quantity: Numeric;
+  entered_uom: Generated<string>;
+  expiry_date: string | null;
+  id: Generated<string>;
+  inventory_item_id: string;
+  movement_id: string | null;
+  quantity: Numeric;
+  receipt_id: string;
+  tenant_id: string;
+  unit_cost_minor: Numeric | null;
+}
+
+export interface PurchaseReceipts {
+  created_at: Generated<Timestamp>;
+  created_by: string | null;
+  id: Generated<string>;
+  location_id: string;
+  note: string | null;
+  number: string;
+  posted_at: Timestamp | null;
+  posted_by: string | null;
+  received_on: string;
+  reference: string | null;
+  status: Generated<string>;
+  supplier_id: string | null;
+  tenant_id: string;
+  updated_at: Generated<Timestamp>;
+  version: Generated<number>;
+}
+
 export interface RateLimitBuckets {
   count: number;
   key: string;
@@ -3437,6 +3577,35 @@ export interface StaffProfiles {
   updated_at: Generated<Timestamp>;
 }
 
+export interface StockBalances {
+  created_at: Generated<Timestamp>;
+  in_transit: Generated<Numeric>;
+  inventory_item_id: string;
+  location_id: string;
+  on_hand: Generated<Numeric>;
+  reorder_level: Numeric | null;
+  reserved: Generated<Numeric>;
+  tenant_id: string;
+  updated_at: Generated<Timestamp>;
+}
+
+export interface StockBatchBalances {
+  batch_id: string;
+  location_id: string;
+  quantity: Generated<Numeric>;
+  tenant_id: string;
+  updated_at: Generated<Timestamp>;
+}
+
+export interface StockBatches {
+  batch_no: string;
+  created_at: Generated<Timestamp>;
+  expiry_date: string | null;
+  id: Generated<string>;
+  inventory_item_id: string;
+  tenant_id: string;
+}
+
 export interface StockCountLines {
   count_id: string;
   counted_at: Timestamp | null;
@@ -3459,6 +3628,7 @@ export interface StockCounts {
   created_at: Generated<Timestamp>;
   created_by: string | null;
   id: Generated<string>;
+  location_id: string;
   note: string | null;
   number: string;
   status: Generated<string>;
@@ -3468,19 +3638,60 @@ export interface StockCounts {
   version: Generated<number>;
 }
 
+export interface StockLocationResources {
+  created_at: Generated<Timestamp>;
+  location_id: string;
+  resource_id: string;
+  tenant_id: string;
+}
+
+export interface StockLocations {
+  branch_id: string;
+  code: string | null;
+  created_at: Generated<Timestamp>;
+  created_by: string | null;
+  id: Generated<string>;
+  is_active: Generated<boolean>;
+  is_default: Generated<boolean>;
+  kind: string;
+  name: string;
+  sort: Generated<number>;
+  staff_id: string | null;
+  tenant_id: string;
+  updated_at: Generated<Timestamp>;
+}
+
+export interface StockMovementBatches {
+  batch_id: string;
+  movement_id: string;
+  quantity: Numeric;
+  tenant_id: string;
+}
+
 export interface StockMovements {
   actor_user_id: string | null;
+  batch_id: string | null;
+  counter_location_id: string | null;
   created_at: Generated<Timestamp>;
+  document_id: string | null;
+  document_type: string | null;
   id: Generated<string>;
   inventory_item_id: string;
   kind: string;
+  location_id: string | null;
+  location_on_hand_after: Numeric | null;
   on_hand_after: Numeric;
+  performer_staff_id: string | null;
   quantity: Numeric;
   reason: string | null;
   ref_id: string | null;
   ref_type: string | null;
   reserved_after: Numeric;
+  reversal_of: string | null;
   tenant_id: string;
+  total_cost_minor: number | null;
+  unit: string | null;
+  unit_cost_minor: Numeric | null;
 }
 
 export interface StockReservations {
@@ -3494,6 +3705,40 @@ export interface StockReservations {
   status: Generated<string>;
   tenant_id: string;
   updated_at: Generated<Timestamp>;
+}
+
+export interface StockTransferLines {
+  batches: Generated<Json>;
+  created_at: Generated<Timestamp>;
+  id: Generated<string>;
+  inventory_item_id: string;
+  quantity: Numeric;
+  tenant_id: string;
+  to_inventory_item_id: string | null;
+  total_cost_minor: number | null;
+  transfer_id: string;
+  unit_cost_minor: Numeric | null;
+}
+
+export interface StockTransfers {
+  cancelled_at: Timestamp | null;
+  cancelled_by: string | null;
+  created_at: Generated<Timestamp>;
+  created_by: string | null;
+  dispatched_at: Timestamp | null;
+  dispatched_by: string | null;
+  from_location_id: string;
+  id: Generated<string>;
+  mode: string;
+  note: string | null;
+  number: string;
+  received_at: Timestamp | null;
+  received_by: string | null;
+  status: Generated<string>;
+  tenant_id: string;
+  to_location_id: string;
+  updated_at: Generated<Timestamp>;
+  version: Generated<number>;
 }
 
 export interface StoredFiles {
@@ -3556,6 +3801,85 @@ export interface Subscriptions {
   trial_ends_at: Timestamp | null;
   updated_at: Generated<Timestamp>;
   version: Generated<number>;
+}
+
+export interface SupplierInvoiceLines {
+  created_at: Generated<Timestamp>;
+  description: string | null;
+  discount_minor: Generated<number>;
+  id: Generated<string>;
+  inventory_item_id: string | null;
+  invoice_id: string;
+  net_minor: number;
+  quantity: Numeric;
+  tax_minor: Generated<number>;
+  tenant_id: string;
+  unit_cost_minor: Numeric;
+}
+
+export interface SupplierInvoiceReceiptLinks {
+  created_at: Generated<Timestamp>;
+  created_by: string | null;
+  id: Generated<string>;
+  invoice_line_id: string;
+  quantity: Numeric;
+  receipt_line_id: string;
+  tenant_id: string;
+}
+
+export interface SupplierInvoices {
+  attachment_asset_id: string | null;
+  created_at: Generated<Timestamp>;
+  created_by: string | null;
+  discount_minor: Generated<number>;
+  due_date: string | null;
+  id: Generated<string>;
+  invoice_date: string;
+  invoice_number: string;
+  note: string | null;
+  posted_at: Timestamp | null;
+  posted_by: string | null;
+  status: Generated<string>;
+  subtotal_minor: Generated<number>;
+  supplier_id: string;
+  tax_minor: Generated<number>;
+  tenant_id: string;
+  total_minor: Generated<number>;
+  updated_at: Generated<Timestamp>;
+  version: Generated<number>;
+  void_reason: string | null;
+  voided_at: Timestamp | null;
+  voided_by: string | null;
+}
+
+export interface SupplierPayments {
+  amount_minor: number;
+  created_at: Generated<Timestamp>;
+  created_by: string | null;
+  id: Generated<string>;
+  invoice_id: string | null;
+  method: string;
+  note: string | null;
+  paid_on: string;
+  reference: string | null;
+  supplier_id: string;
+  tenant_id: string;
+}
+
+export interface Suppliers {
+  contact_name: string | null;
+  created_at: Generated<Timestamp>;
+  created_by: string | null;
+  email: string | null;
+  id: Generated<string>;
+  is_active: Generated<boolean>;
+  name: string;
+  notes: string | null;
+  payment_terms_days: number | null;
+  phone: string | null;
+  tax_number: string | null;
+  tenant_id: string;
+  updated_at: Generated<Timestamp>;
 }
 
 export interface SupportAccessGrants {
@@ -3969,6 +4293,8 @@ export interface DB {
   incident_reviews: IncidentReviews;
   instagram_connections: InstagramConnections;
   inventory_items: InventoryItems;
+  inventory_settings: InventorySettings;
+  inventory_tasks: InventoryTasks;
   invitations: Invitations;
   invoice_items: InvoiceItems;
   invoices: Invoices;
@@ -3988,6 +4314,7 @@ export interface DB {
   "loom_export.locations": LoomExportLocations;
   "loom_export.market_signals": LoomExportMarketSignals;
   "loom_export.marketing_preferences": LoomExportMarketingPreferences;
+  "loom_export.material_consumption": LoomExportMaterialConsumption;
   "loom_export.offering_requirements": LoomExportOfferingRequirements;
   "loom_export.offerings": LoomExportOfferings;
   "loom_export.payment_fees": LoomExportPaymentFees;
@@ -3997,6 +4324,7 @@ export interface DB {
   "loom_export.staff_breaks": LoomExportStaffBreaks;
   "loom_export.staff_hours": LoomExportStaffHours;
   "loom_export.staff_leave": LoomExportStaffLeave;
+  "loom_export.stock_balances": LoomExportStockBalances;
   "loom_export.time_blocks": LoomExportTimeBlocks;
   "loom_export.transaction_lines": LoomExportTransactionLines;
   "loom_export.transactions": LoomExportTransactions;
@@ -4055,6 +4383,7 @@ export interface DB {
   marketplace_listings: MarketplaceListings;
   marketplace_settings: MarketplaceSettings;
   marketplace_visits: MarketplaceVisits;
+  material_consumptions: MaterialConsumptions;
   membership_entitlements: MembershipEntitlements;
   membership_plan_items: MembershipPlanItems;
   membership_plans: MembershipPlans;
@@ -4097,6 +4426,8 @@ export interface DB {
   products: Products;
   prompt_versions: PromptVersions;
   provider_events: ProviderEvents;
+  purchase_receipt_lines: PurchaseReceiptLines;
+  purchase_receipts: PurchaseReceipts;
   rate_limit_buckets: RateLimitBuckets;
   recommendations: Recommendations;
   reconciliation_runs: ReconciliationRuns;
@@ -4135,14 +4466,27 @@ export interface DB {
   staff_files: StaffFiles;
   staff_pay_profiles: StaffPayProfiles;
   staff_profiles: StaffProfiles;
+  stock_balances: StockBalances;
+  stock_batch_balances: StockBatchBalances;
+  stock_batches: StockBatches;
   stock_count_lines: StockCountLines;
   stock_counts: StockCounts;
+  stock_location_resources: StockLocationResources;
+  stock_locations: StockLocations;
+  stock_movement_batches: StockMovementBatches;
   stock_movements: StockMovements;
   stock_reservations: StockReservations;
+  stock_transfer_lines: StockTransferLines;
+  stock_transfers: StockTransfers;
   store_pages: StorePages;
   stored_files: StoredFiles;
   subscription_events: SubscriptionEvents;
   subscriptions: Subscriptions;
+  supplier_invoice_lines: SupplierInvoiceLines;
+  supplier_invoice_receipt_links: SupplierInvoiceReceiptLinks;
+  supplier_invoices: SupplierInvoices;
+  supplier_payments: SupplierPayments;
+  suppliers: Suppliers;
   support_access_grants: SupportAccessGrants;
   suppression_list: SuppressionList;
   templates: Templates;

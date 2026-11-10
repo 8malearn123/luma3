@@ -6,7 +6,7 @@ Capabilities are defined **in code**, not in `roles` / `permissions` tables. A m
 
 ## Tenant roles
 
-`owner`, `manager`, `receptionist`, `specialist`, `finance` (`TENANT_ROLES`). There is exactly one active owner per business (partial unique index `memberships_one_owner`). Invitations cannot carry the `owner` role (CHECK constraint).
+`owner`, `manager`, `receptionist`, `specialist`, `finance`, `warehouse` (`TENANT_ROLES`). There is exactly one active owner per business (partial unique index `memberships_one_owner`). Invitations cannot carry the `owner` role (CHECK constraint).
 
 Effective capabilities are computed by `effectiveCapabilities(role, granted, revoked)`:
 
@@ -90,6 +90,25 @@ Delegable allowlists, verbatim from `ROLE_DELEGABLE`:
 ### Owner-only capabilities
 
 `business.manage`, `subscription.manage` and `staff_file.manage` (`OWNER_ONLY`). They are never added by delegation, even if a grant array contains them, and `invalidGrants()` rejects them.
+
+### Inventory, purchasing and the warehouse role (0800)
+
+New role `warehouse` (مسؤول مستودع). New capabilities and their defaults (D = delegable):
+
+| Capability | owner | manager | receptionist | specialist | finance | warehouse |
+|---|:-:|:-:|:-:|:-:|:-:|:-:|
+| `inventory.view` | ✓ | ✓ | ✓ |  | ✓ | ✓ |
+| `inventory.manage` | ✓ | ✓ |  |  |  | ✓ |
+| `inventory.transfer` | ✓ | ✓ |  |  |  | ✓ |
+| `inventory.count` | ✓ | ✓ |  |  |  | ✓ |
+| `inventory.adjust_usage` | ✓ | ✓ |  | D |  | ✓ |
+| `purchasing.view` | ✓ | ✓ |  |  | ✓ | ✓ |
+| `purchasing.receive` | ✓ | ✓ |  |  |  | ✓ |
+| `purchasing.manage` | ✓ | D |  |  | ✓ | D |
+| `purchasing.pay` | ✓ | D |  |  | ✓ |  |
+| `costs.view` | ✓ | D |  |  | ✓ | D |
+
+The warehouse keeper has no finance, payroll or subscription capability and sees no costs unless `costs.view` is delegated. Supplier invoices and payments are readable with `purchasing.manage`, `purchasing.pay` or `finance.view` (the accountant view). Plan keys (0801, «مقترح — غير معتمد»): `limit.stock_locations` (0 / 10 / unlimited, extra locations beyond each branch default), `feature.inventory_transfers`, `feature.inventory_counts`, `feature.purchasing` (off / on / on), `feature.inventory_finance_link`, `feature.inventory_reports_advanced` (off / off / on).
 
 ### HR (see [HR.md](HR.md))
 

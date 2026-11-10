@@ -5,6 +5,6 @@ import { stockCountApplyInput } from '@/shared/schemas/commerce';
 
 /** Applies the count once: differences become adjustment movements; large ones notify. */
 export const POST = route({
-  auth: 'tenant', capability: 'inventory.manage', feature: 'feature.inventory', input: stockCountApplyInput,
+  auth: 'tenant', capability: ['inventory.manage', 'inventory.count'], feature: 'feature.inventory_counts', input: stockCountApplyInput,
   handler: async ({ tenant, actor, input, params }) => ({ data: await applyCount(tenant, actor, requireUuidParam(params, 'id'), input.version) }),
 });

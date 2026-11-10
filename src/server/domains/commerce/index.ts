@@ -13,6 +13,10 @@
  *   consumeMaterialsForBookingItem(trx, tenantId, bookingItemId, actorUserId)
  *       → Promise<{ consumed: {inventoryItemId, quantity, unit}[]; skipped: 'no_recipe' | 'already_consumed' | null; shortages: [...] }>
  *   capacityEstimate(trx, tenantId, serviceId) → Promise<CapacityEstimate>
+ *   cancelPlannedUsage(trx, tenantId, bookingId) — booking closed without service: planned material usage cancelled
+ *   moveStock(trx, tenantId, itemId, MoveInput) → Promise<MoveResult | null>   (location-aware, costed; see stock.ts)
+ *  Inventory reports (finance)
+ *   inventoryValuation(trx) → inventory value vs ledger, AP, goods received not invoiced
  *  Coupons
  *   validateCoupon(trx, tenantId, code, { tenantCustomerId, subtotalMinor, appliesTo }) → Promise<{ couponId, discountMinor }>
  *   redeemCoupon(trx, tenantId, couponId, { tenantCustomerId, bookingId?, orderId?, discountMinor }) → Promise<{ redemptionId }>
@@ -22,6 +26,9 @@
  */
 export { createOrderFromCart, markOrderPaid, cancelOrder, expireStaleOrders, getCustomerOrder, ORDER_PAYMENT_TTL_MIN, type OrderSummary } from './orders';
 export { consumeMaterialsForBookingItem, capacityEstimate, type CapacityEstimate, type ConsumptionResult } from './inventory';
+export { cancelPlannedUsage } from './consumption';
+export { moveStock, type MoveInput, type MoveResult, type StockKind } from './stock';
+export { valuation as inventoryValuation } from './inventory-reports';
 export { validateCoupon, redeemCoupon, releaseCouponRedemption, computeDiscount } from './coupons';
 export { publicVariantAvailability } from './products';
 export { resolveStorefront, type StorefrontTenant } from './storefront';

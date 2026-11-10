@@ -5,7 +5,7 @@ import { Errors } from '../../http/errors';
 import { audit, type AuditActor } from '../../infra/audit';
 import { hasCapability, requireWithinLimit, type TenantAccess } from '../../tenancy/access';
 import { assertTenantAssets } from '../assets/service';
-import { moveStock, primaryBranchId } from './stock';
+import { adoptManualCost, moveStock, primaryBranchId } from './stock';
 import type { ProductInput, ProductPatch, productListQuery } from '@/shared/schemas/commerce';
 
 /**
@@ -64,7 +64,7 @@ async function insertVariant(trx: Tx, tenantId: string, actor: AuditActor, produ
     low_stock_threshold: v.low_stock_threshold ?? null, cost_per_unit_minor: v.cost_minor ?? null,
   }).returning('id').executeTakeFirstOrThrow();
   if (v.initial_stock && v.initial_stock > 0) {
-    await moveStock(trx, tenantId, item.id, { kind: 'receipt', quantity: v.initial_stock, dOnHand: v.initial_stock, dReserved: 0, reason: 'opening stock', actorUserId: actor.userId });
+    await moveStock(trx, tenantId, item.id, { kind: 'opening', quantity: v.initial_stock, dOnHand: v.initial_stock, dReserved: 0, reason: 'opening stock', actorUserId: actor.userId, unitCostMinor: v.cost_minor ?? null });
   }
   return row.id;
 }
@@ -199,6 +199,10 @@ export async function updateProduct(access: TenantAccess, actor: AuditActor, id:
             ...(v.low_stock_threshold !== undefined ? { low_stock_threshold: v.low_stock_threshold } : {}),
             ...(v.cost_minor !== undefined ? { cost_per_unit_minor: v.cost_minor } : {}),
           }).where('variant_id', '=', v.id).execute();
+          if (v.cost_minor != null) {
+            const items = await trx.selectFrom('inventory_items').select('id').where('variant_id', '=', v.id).execute();
+            for (const it of items) await adoptManualCost(trx, access.tenantId, it.id, v.cost_minor, actor.userId);
+          }
         } else {
           await insertVariant(trx, access.tenantId, actor, { id, ...next }, v, false, i, branchId);
         }

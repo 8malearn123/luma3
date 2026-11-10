@@ -1,0 +1,193 @@
+/** Multi-location inventory, transfers, consumption, purchasing (requirements 2–8, 18). */
+export const inventoryOps = {
+  ar: {
+    errors: {
+      location_branch_mismatch: 'الموقع في فرع آخر غير فرع الصنف.', quarantine_location: 'مخزون الحجر لا يُباع ولا يُستخدم.', location_inactive: 'هذا الموقع موقوف.',
+      location_not_empty: 'انقلي أو جردي المخزون في هذا الموقع أولًا.', transfer_not_draft: 'نُفذت هذه المناقلة أو أُلغيت.', transfer_not_in_transit: 'المناقلة ليست قيد النقل.',
+      same_location: 'اختاري موقعين مختلفين.',
+      receipt_not_draft: 'رُحّل هذا الاستلام أو أُلغي.', invoice_not_draft: 'رُحّلت هذه الفاتورة أو أُلغيت.', duplicate_invoice_number: 'رقم فاتورة المورد مسجل من قبل.',
+      link_exceeds_received: 'الكمية أكبر من المستلم غير المفوتر.', link_exceeds_invoiced: 'الكمية أكبر من كمية سطر الفاتورة.', link_item_mismatch: 'السطران لصنفين مختلفين.',
+      overpayment: 'المبلغ أكبر من المتبقي على الفاتورة.', invoice_not_posted: 'رحّلي الفاتورة قبل سدادها.', already_reversed: 'عُكست هذه الحركة من قبل.',
+      not_reversible: 'صحّحي المستند الذي أنشأ الحركة بدلًا منها.', tool_not_consumable: 'الأدوات تُستخدم ولا تُستهلك.', no_conversion_factor: 'لا يوجد معامل تحويل معتمد لوحدة التخزين.',
+      expiry_required: 'تاريخ الانتهاء مطلوب لهذا الصنف.', batches_not_tracked: 'هذا الصنف لا يتتبع التشغيلات.', task_closed: 'هذه المهمة مغلقة.',
+    },
+    catalog_team: {
+      caps: {
+        inventory: { transfer: 'مناقلة المخزون بين المواقع', count: 'الجرد', adjust_usage: 'تعديل الاستهلاك الفعلي' },
+        purchasing: { view: 'عرض المشتريات', receive: 'استلام البضاعة', manage: 'فواتير الموردين والموردون', pay: 'سداد الموردين' },
+      },
+    },
+    inventory_ops: {
+      tabs: {
+        items: 'الأصناف', locations: 'المواقع', balances: 'الأرصدة', transfers: 'المناقلات', receipts: 'الاستلام', invoices: 'فواتير الموردين',
+        suppliers: 'الموردون', consumption: 'الصرف والاستهلاك', counts: 'الجرد', reports: 'التقارير', tasks: 'المهام', recipes: 'الوصفات', capacity: 'تقدير السعة',
+      },
+      common: {
+        location: 'الموقع', item: 'الصنف', quantity: 'الكمية', unit_cost: 'تكلفة الوحدة', value: 'القيمة', status: 'الحالة', date: 'التاريخ', reason: 'السبب',
+        supplier: 'المورد', from: 'من', to: 'إلى', add_line: 'إضافة سطر', remove: 'حذف', save: 'حفظ', post: 'ترحيل', create: 'إنشاء', none: 'لا يوجد',
+        all_locations: 'كل المواقع', choose: 'اختاري…', number: 'الرقم', note: 'ملاحظة', total: 'الإجمالي', branch: 'الفرع', on_hand: 'الرصيد', available: 'المتاح',
+        in_transit: 'قيد النقل', reserved: 'محجوز', reorder_level: 'حد إعادة الطلب', below_reorder: 'تحت حد الطلب', saved: 'تم الحفظ', no_costs: 'التكاليف مخفية لدورك',
+      },
+      locations: {
+        hint: 'الموقع هو مكان وجود المخزون. الكرسي يُحجز، ومحطته تحمل المواد؛ المخزون ملك الموقع لا الشخص.',
+        new: 'موقع جديد', name: 'اسم الموقع', code: 'الرمز', kind_label: 'النوع', staff: 'الموظفة المسؤولة (العهدة)', chairs: 'الكراسي التي تخدمها المحطة',
+        default: 'افتراضي للفرع', items_in_stock: 'أصناف بها رصيد', deactivate: 'إيقاف', activate: 'تفعيل', empty: 'لا مواقع بعد.',
+        kind: { main: 'المستودع الرئيسي', branch: 'مخزن الفرع', station: 'محطة كرسي', custody: 'عهدة موظفة', quarantine: 'حجر (تالف/محجوز)' },
+        quarantine_hint: 'مخزون الحجر لا يُباع ولا يُستخدم.',
+        settings: 'إعدادات المناقلة', confirmation: 'تأكيد الاستلام', confirmation_immediate: 'فوري (افتراضي)', confirmation_confirm: 'بعد تأكيد الموقع المستلم',
+        confirmation_hint: 'عند تفعيل التأكيد تكون الكمية «قيد النقل» غير متاحة في الموقعين حتى الاستلام.',
+      },
+      item: {
+        code: 'رمز الصنف', category: 'التصنيف', storage_unit: 'وحدة التخزين', storage_hint: 'مثل: عبوة، علبة', factor: 'كم وحدة استخدام في وحدة التخزين؟',
+        is_tool: 'أداة قابلة لإعادة الاستخدام', is_tool_hint: 'تُعدّ ولا تُستهلك في الخدمات.', track_expiry: 'تتبع التشغيلة وتاريخ الانتهاء',
+      },
+      balances: { hint: 'الرصيد لكل صنف في كل موقع، بقيمة المتوسط المرجّح.', nonzero: 'الأرصدة غير الصفرية فقط', empty: 'لا أرصدة.' },
+      transfers: {
+        new: 'مناقلة جديدة', hint: 'المناقلة لا تُسجَّل بيعًا ولا استهلاكًا ولا مصروفًا؛ المجموع ثابت ويتغير التوزيع فقط.',
+        dispatch: 'تنفيذ', receive: 'تأكيد الاستلام', cancel: 'إلغاء', empty: 'لا مناقلات بعد.', lines: 'الأسطر',
+        status: { draft: 'مسودة', in_transit: 'قيد النقل', completed: 'مكتملة', cancelled: 'ملغاة' },
+        mode: { immediate: 'فورية', confirm_receipt: 'بتأكيد استلام' },
+        done: 'تمت المناقلة', received: 'تم الاستلام',
+      },
+      receipts: {
+        new: 'استلام جديد', hint: 'الاستلام يضيف البضاعة للمخزون مرة واحدة. الفاتورة مستند منفصل وربطها لا يضيف كمية.',
+        received_on: 'تاريخ الاستلام', reference: 'رقم سند التسليم', uom: 'وحدة الإدخال', uom_usage: 'وحدة الاستخدام', uom_storage: 'وحدة التخزين',
+        batch_no: 'رقم التشغيلة', expiry: 'تاريخ الانتهاء', post_now: 'ترحيل الآن (إضافة للمخزون)', empty: 'لا استلامات.',
+        matching: { not_invoiced: 'مستلم غير مفوتر', partly_invoiced: 'مفوتر جزئيًا', invoiced: 'مفوتر' },
+        status: { draft: 'مسودة', posted: 'مرحّل', void: 'ملغى' }, not_invoiced_only: 'المستلم غير المفوتر فقط',
+      },
+      invoices: {
+        new: 'فاتورة مورد', invoice_number: 'رقم فاتورة المورد', invoice_date: 'تاريخ الفاتورة', due_date: 'تاريخ الاستحقاق', description: 'الوصف',
+        discount: 'الخصم', tax: 'الضريبة', link_receipt: 'ربط بسطر استلام', matched: 'مطابق', paid: 'المدفوع', outstanding: 'المتبقي', pay: 'سداد',
+        method: 'طريقة السداد', method_cash: 'نقدًا', method_bank: 'تحويل بنكي', paid_on: 'تاريخ السداد', empty: 'لا فواتير موردين.',
+        status: { draft: 'مسودة', posted: 'مرحّلة', void: 'ملغاة' },
+        matching: { matched: 'مطابقة', partly_matched: 'مطابقة جزئيًا', unmatched: 'غير مطابقة' },
+        payment: { unpaid: 'غير مدفوعة', partly_paid: 'مدفوعة جزئيًا', paid: 'مدفوعة' },
+        hint: 'الفاتورة تُرحَّل للذمم الدائنة؛ فرق السعر يعدّل قيمة المخزون الموجود أو تكلفة ما استُخدم.',
+      },
+      suppliers: { new: 'مورد جديد', name: 'اسم المورد', contact: 'جهة الاتصال', phone: 'الجوال', email: 'البريد', tax_number: 'الرقم الضريبي', terms: 'أيام السداد', balance: 'الرصيد المستحق', empty: 'لا موردين بعد.' },
+      consumption: {
+        issue: 'صرف يدوي', issue_hint: 'صرف مواد بسبب موثّق دون حجز (تدريب، صيانة…).', waste: 'تسجيل هدر', expected: 'المتوقع', actual: 'الفعلي', posted: 'المرحّل',
+        shortage: 'النقص', performer: 'المنفذة', chair: 'الكرسي', service: 'الخدمة', correct: 'تعديل الفعلي', empty: 'لا استهلاك مسجل.',
+        status: { pending: 'مخطط', posted: 'مرحّل', shortage: 'نقص', cancelled: 'ملغى' },
+        performance_note: 'استهلاك المواد وحده لا يصلح للحكم على أداء الموظفات؛ قد يختلف بحسب الشعر والخدمة والعميلة.',
+      },
+      tasks: {
+        empty: 'لا مهام مفتوحة.', post_remaining: 'ترحيل المتبقي', write_off: 'شطب النقص', dismiss: 'تجاهل', resolve: 'إغلاق', missing: 'الناقص',
+        kind: { shortage: 'نقص مواد', expiry: 'قرب انتهاء الصلاحية', reorder: 'إعادة طلب' },
+        status: { open: 'مفتوحة', resolved: 'محلولة', dismissed: 'متجاهلة', all: 'الكل' },
+      },
+      reports: {
+        choose: 'التقرير', from: 'من تاريخ', to: 'إلى تاريخ', group_by: 'التجميع حسب', advanced_needed: 'هذا التقرير ضمن تقارير المخزون المتقدمة في باقتك الأعلى.',
+        kind: {
+          balances: 'الأرصدة حسب الصنف والموقع', movements: 'سجل الحركات', transfers: 'المناقلات', consumption: 'الاستهلاك', expected_vs_actual: 'المتوقع مقابل الفعلي',
+          waste: 'الهدر', shortages: 'النواقص وإعادة الطلب', near_expiry: 'قرب انتهاء الصلاحية', service_material_cost: 'تكلفة المواد في الخدمات',
+          supplier_matching: 'مطابقة فواتير الموردين', valuation: 'قيمة المخزون والذمم',
+        },
+        group: { service: 'الخدمة', booking: 'الحجز', chair: 'الكرسي', performer: 'المنفذة', item: 'الصنف', location: 'الموقع' },
+        valuation: { inventory_value: 'قيمة المخزون', ledger: 'رصيد حساب المخزون', difference: 'الفرق', ap: 'الذمم الدائنة للموردين', grni: 'مستلم غير مفوتر', input_tax: 'ضريبة المدخلات', shrinkage: 'عجز وهدر المخزون' },
+        empty: 'لا بيانات في هذه الفترة.',
+      },
+      movement_kind: {
+        receipt: 'استلام', reservation: 'حجز', sale: 'بيع', release: 'فك حجز', return: 'مرتجع', adjustment: 'تسوية', consumption: 'استهلاك', opening: 'رصيد افتتاحي',
+        transfer_out: 'مناقلة صادرة', transfer_in: 'مناقلة واردة', transfer_dispatch: 'إرسال مناقلة', transfer_receive: 'استلام مناقلة', return_from_use: 'إرجاع من الاستخدام',
+        return_to_supplier: 'مرتجع للمورد', waste: 'هدر', count_adjustment: 'تسوية جرد', correction: 'عكس حركة',
+      },
+    },
+  },
+  en: {
+    errors: {
+      location_branch_mismatch: 'That location is in another branch than the item.', quarantine_location: 'Quarantined stock cannot be sold or used.', location_inactive: 'This location is inactive.',
+      location_not_empty: 'Move or count out the stock in this location first.', transfer_not_draft: 'This transfer was already executed or cancelled.', transfer_not_in_transit: 'This transfer is not in transit.',
+      same_location: 'Choose two different locations.',
+      receipt_not_draft: 'This receipt was already posted or voided.', invoice_not_draft: 'This invoice was already posted or voided.', duplicate_invoice_number: 'This supplier invoice number is already recorded.',
+      link_exceeds_received: 'More than the received, not yet invoiced quantity.', link_exceeds_invoiced: 'More than the invoice line quantity.', link_item_mismatch: 'The two lines are different items.',
+      overpayment: 'More than the invoice outstanding.', invoice_not_posted: 'Post the invoice before paying it.', already_reversed: 'This movement was already reversed.',
+      not_reversible: 'Correct the document that created this movement instead.', tool_not_consumable: 'Tools are reused, not consumed.', no_conversion_factor: 'No approved storage-unit factor.',
+      expiry_required: 'An expiry date is required for this item.', batches_not_tracked: 'This item does not track batches.', task_closed: 'This task is closed.',
+    },
+    catalog_team: {
+      caps: {
+        inventory: { transfer: 'Transfer stock between locations', count: 'Stock counts', adjust_usage: 'Adjust actual material usage' },
+        purchasing: { view: 'View purchasing', receive: 'Receive goods', manage: 'Supplier invoices and suppliers', pay: 'Pay suppliers' },
+      },
+    },
+    inventory_ops: {
+      tabs: {
+        items: 'Items', locations: 'Locations', balances: 'Balances', transfers: 'Transfers', receipts: 'Receiving', invoices: 'Supplier invoices',
+        suppliers: 'Suppliers', consumption: 'Issue & usage', counts: 'Counts', reports: 'Reports', tasks: 'Tasks', recipes: 'Recipes', capacity: 'Capacity',
+      },
+      common: {
+        location: 'Location', item: 'Item', quantity: 'Quantity', unit_cost: 'Unit cost', value: 'Value', status: 'Status', date: 'Date', reason: 'Reason',
+        supplier: 'Supplier', from: 'From', to: 'To', add_line: 'Add line', remove: 'Remove', save: 'Save', post: 'Post', create: 'Create', none: 'None',
+        all_locations: 'All locations', choose: 'Choose…', number: 'Number', note: 'Note', total: 'Total', branch: 'Branch', on_hand: 'On hand', available: 'Available',
+        in_transit: 'In transit', reserved: 'Reserved', reorder_level: 'Reorder level', below_reorder: 'Below reorder level', saved: 'Saved', no_costs: 'Costs are hidden for your role',
+      },
+      locations: {
+        hint: 'A location is where stock physically is. The chair is booked; its station holds the materials. Stock belongs to the location, not a person.',
+        new: 'New location', name: 'Location name', code: 'Code', kind_label: 'Type', staff: 'Staff member holding it (custody)', chairs: 'Chairs this station serves',
+        default: 'Branch default', items_in_stock: 'Items in stock', deactivate: 'Deactivate', activate: 'Activate', empty: 'No locations yet.',
+        kind: { main: 'Main warehouse', branch: 'Branch store', station: 'Chair station', custody: 'Staff custody', quarantine: 'Quarantine (damaged/held)' },
+        quarantine_hint: 'Quarantined stock is never sold or used.',
+        settings: 'Transfer settings', confirmation: 'Receipt confirmation', confirmation_immediate: 'Immediate (default)', confirmation_confirm: 'After the receiving location confirms',
+        confirmation_hint: 'With confirmation on, the quantity is "in transit" and available in neither location until received.',
+      },
+      item: {
+        code: 'Item code', category: 'Category', storage_unit: 'Storage unit', storage_hint: 'e.g. bottle, box', factor: 'Usage units per storage unit',
+        is_tool: 'Reusable tool', is_tool_hint: 'Counted, never consumed by services.', track_expiry: 'Track batch and expiry date',
+      },
+      balances: { hint: 'Balance of each item in each location, valued at weighted average cost.', nonzero: 'Non-zero balances only', empty: 'No balances.' },
+      transfers: {
+        new: 'New transfer', hint: 'A transfer is never a sale, a consumption or an expense: the total stays the same, only the distribution changes.',
+        dispatch: 'Execute', receive: 'Confirm receipt', cancel: 'Cancel', empty: 'No transfers yet.', lines: 'Lines',
+        status: { draft: 'Draft', in_transit: 'In transit', completed: 'Completed', cancelled: 'Cancelled' },
+        mode: { immediate: 'Immediate', confirm_receipt: 'Confirm receipt' },
+        done: 'Transfer done', received: 'Received',
+      },
+      receipts: {
+        new: 'New receipt', hint: 'A receipt adds goods to stock once. The supplier invoice is a separate document; linking it adds nothing.',
+        received_on: 'Received on', reference: 'Delivery note no.', uom: 'Entered in', uom_usage: 'Usage unit', uom_storage: 'Storage unit',
+        batch_no: 'Batch no.', expiry: 'Expiry date', post_now: 'Post now (add to stock)', empty: 'No receipts.',
+        matching: { not_invoiced: 'Received, not invoiced', partly_invoiced: 'Partly invoiced', invoiced: 'Invoiced' },
+        status: { draft: 'Draft', posted: 'Posted', void: 'Void' }, not_invoiced_only: 'Received but not invoiced only',
+      },
+      invoices: {
+        new: 'Supplier invoice', invoice_number: 'Supplier invoice no.', invoice_date: 'Invoice date', due_date: 'Due date', description: 'Description',
+        discount: 'Discount', tax: 'Tax', link_receipt: 'Match to a received line', matched: 'Matched', paid: 'Paid', outstanding: 'Outstanding', pay: 'Pay',
+        method: 'Payment method', method_cash: 'Cash', method_bank: 'Bank transfer', paid_on: 'Paid on', empty: 'No supplier invoices.',
+        status: { draft: 'Draft', posted: 'Posted', void: 'Void' },
+        matching: { matched: 'Matched', partly_matched: 'Partly matched', unmatched: 'Unmatched' },
+        payment: { unpaid: 'Unpaid', partly_paid: 'Partly paid', paid: 'Paid' },
+        hint: 'Posting records accounts payable; a price difference re-values stock still on hand or the cost of what was already used.',
+      },
+      suppliers: { new: 'New supplier', name: 'Supplier name', contact: 'Contact', phone: 'Phone', email: 'Email', tax_number: 'Tax number', terms: 'Payment terms (days)', balance: 'Balance owed', empty: 'No suppliers yet.' },
+      consumption: {
+        issue: 'Manual issue', issue_hint: 'Issue materials with a documented reason and no booking (training, maintenance…).', waste: 'Record waste', expected: 'Expected', actual: 'Actual', posted: 'Posted',
+        shortage: 'Short', performer: 'Performed by', chair: 'Chair', service: 'Service', correct: 'Correct actual', empty: 'No usage recorded.',
+        status: { pending: 'Planned', posted: 'Posted', shortage: 'Shortage', cancelled: 'Cancelled' },
+        performance_note: 'Material usage alone must not be used to judge staff performance; it varies with hair, service and client.',
+      },
+      tasks: {
+        empty: 'No open tasks.', post_remaining: 'Post remaining', write_off: 'Write off shortage', dismiss: 'Dismiss', resolve: 'Close', missing: 'Missing',
+        kind: { shortage: 'Material shortage', expiry: 'Near expiry', reorder: 'Reorder' },
+        status: { open: 'Open', resolved: 'Resolved', dismissed: 'Dismissed', all: 'All' },
+      },
+      reports: {
+        choose: 'Report', from: 'From', to: 'To', group_by: 'Group by', advanced_needed: 'This report is part of advanced inventory reports on a higher plan.',
+        kind: {
+          balances: 'Balance by item and location', movements: 'Movement history', transfers: 'Transfers', consumption: 'Consumption', expected_vs_actual: 'Expected vs actual',
+          waste: 'Waste', shortages: 'Shortages & reorder', near_expiry: 'Near expiry', service_material_cost: 'Material cost in services',
+          supplier_matching: 'Supplier invoice matching', valuation: 'Inventory value & payables',
+        },
+        group: { service: 'Service', booking: 'Booking', chair: 'Chair', performer: 'Performer', item: 'Item', location: 'Location' },
+        valuation: { inventory_value: 'Inventory value', ledger: 'Inventory account balance', difference: 'Difference', ap: 'Accounts payable', grni: 'Received not invoiced', input_tax: 'Input tax', shrinkage: 'Inventory shrinkage' },
+        empty: 'No data in this period.',
+      },
+      movement_kind: {
+        receipt: 'Receipt', reservation: 'Reservation', sale: 'Sale', release: 'Release', return: 'Return', adjustment: 'Adjustment', consumption: 'Consumption', opening: 'Opening stock',
+        transfer_out: 'Transfer out', transfer_in: 'Transfer in', transfer_dispatch: 'Transfer dispatched', transfer_receive: 'Transfer received', return_from_use: 'Returned from use',
+        return_to_supplier: 'Returned to supplier', waste: 'Waste', count_adjustment: 'Count adjustment', correction: 'Reversal',
+      },
+    },
+  },
+} as const;
