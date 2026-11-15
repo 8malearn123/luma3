@@ -699,11 +699,25 @@ export function TasksTab() {
 // ── Reports ─────────────────────────────────────────────────────────────────
 const REPORT_KINDS = ['balances', 'movements', 'transfers', 'consumption', 'expected_vs_actual', 'waste', 'shortages', 'near_expiry', 'service_material_cost', 'supplier_matching', 'valuation'] as const;
 const ADVANCED = new Set(['consumption', 'expected_vs_actual', 'waste', 'service_material_cost', 'supplier_matching']);
+/** Columns shown per report, in order (labels: inventory_ops.reports.col.*). Cost columns appear only when the server sent them. */
+const REPORT_COLUMNS: Record<Exclude<(typeof REPORT_KINDS)[number], 'valuation'>, string[]> = {
+  balances: ['name', 'location_name', 'location_kind', 'on_hand', 'reserved', 'in_transit', 'available', 'value_minor'],
+  movements: ['created_at', 'kind', 'item_name', 'location_name', 'quantity', 'location_on_hand_after', 'total_cost_minor', 'reason', 'actor_name'],
+  transfers: ['number', 'created_at', 'from_location_name', 'to_location_name', 'lines', 'mode', 'status'],
+  consumption: ['group_label', 'item_name', 'lines', 'expected_qty', 'actual_qty', 'posted_qty', 'waste_qty', 'shortage_qty', 'cost_minor'],
+  expected_vs_actual: ['service_name', 'item_name', 'visits', 'expected_qty', 'actual_qty', 'difference', 'difference_pct'],
+  waste: ['created_at', 'item_name', 'location_name', 'quantity', 'reason', 'cost_minor', 'actor_name'],
+  shortages: ['created_at', 'kind', 'item_name', 'location_name'],
+  near_expiry: ['item_name', 'batch_no', 'expiry_date', 'location_name', 'quantity', 'expired'],
+  service_material_cost: ['service_name', 'visits', 'cost_minor', 'cost_per_visit_minor'],
+  supplier_matching: ['invoice_number', 'invoice_date', 'supplier_name', 'total_minor', 'matching', 'status', 'payment_status', 'outstanding_minor'],
+};
+const QTY_COLUMNS = new Set(['on_hand', 'reserved', 'in_transit', 'available', 'quantity', 'location_on_hand_after', 'expected_qty', 'actual_qty', 'posted_qty', 'waste_qty', 'shortage_qty', 'difference']);
 
 export function ReportsTab() {
-  const { t } = useI18n();
+  const { t, pick } = useI18n();
   const access = useAccess();
-  const { money } = useFmt();
+  const { money, when, qty } = useFmt();
   const [kind, setKind] = useState<(typeof REPORT_KINDS)[number]>('balances');
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
@@ -712,8 +726,27 @@ export function ReportsTab() {
   const locked = ADVANCED.has(kind) && !access.hasFeature('feature.inventory_reports_advanced');
   const q = useApiQuery<Record<string, any>>(['inventory-report', access.slug, kind, from, to, group], locked ? null : access.api(`/inventory/reports/${kind}${qs({ from, to, group: kind === 'consumption' ? group : '' })}`));
   const rows: Array<Record<string, unknown>> = (q.data?.items ?? q.data?.invoices ?? q.data?.tasks ?? []) as Array<Record<string, unknown>>;
-  const cols = rows[0] ? Object.keys(rows[0]).filter((k) => !/(^|_)id$|payload|^ref_|document_|reversal_of|^unit$|version/.test(k)).slice(0, 9) : [];
-  const fmt = (k: string, v: unknown) => (v == null ? '—' : /_minor$/.test(k) && typeof v === 'number' ? money(v) : typeof v === 'object' ? JSON.stringify(v) : String(v));
+  // Rows carry service names in both languages; the column shows the reader's.
+  const shown = rows.map((r) => ('service_name_ar' in r || 'service_name_en' in r ? { ...r, service_name: pick(r.service_name_ar as string | null, r.service_name_en as string | null) || null } : r));
+  const cols = kind === 'valuation' ? [] : REPORT_COLUMNS[kind].filter((c) => shown.some((r) => c in r));
+  const enumLabel: Record<string, (v: string) => string> = {
+    kind: (v) => t(kind === 'shortages' ? `inventory_ops.tasks.kind.${v}` : `inventory_ops.movement_kind.${v}`),
+    location_kind: (v) => t(`inventory_ops.locations.kind.${v}`),
+    status: (v) => t(kind === 'supplier_matching' ? `inventory_ops.invoices.status.${v}` : `inventory_ops.transfers.status.${v}`),
+    mode: (v) => t(`inventory_ops.transfers.mode.${v}`),
+    matching: (v) => t(`inventory_ops.invoices.matching.${v}`),
+    payment_status: (v) => t(`inventory_ops.invoices.payment.${v}`),
+  };
+  const fmt = (k: string, v: unknown, r: Record<string, unknown>): ReactNode => {
+    if (v == null || v === '') return '—';
+    if (typeof v === 'boolean') return t(v ? 'inventory_ops.reports.yes' : 'inventory_ops.reports.no');
+    if (/_minor$/.test(k)) return <span dir="ltr">{money(Math.round(Number(v)))}</span>;
+    if (k === 'created_at') return when(String(v));
+    if (k === 'difference_pct') return <span dir="ltr">{qty(Number(v))}%</span>;
+    if (QTY_COLUMNS.has(k)) return <span dir="ltr">{qty(Number(v))}{typeof r.unit === 'string' ? ` ${t(`commerce.inventory.unit.${r.unit}`)}` : ''}</span>;
+    if (enumLabel[k]) return enumLabel[k](String(v));
+    return String(v);
+  };
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end">
@@ -746,8 +779,8 @@ export function ReportsTab() {
         <div className="overflow-x-auto rounded-xl border border-line">
           <table className="w-full text-sm">
             <caption className="sr-only">{t(`inventory_ops.reports.kind.${kind}`)}</caption>
-            <thead><tr>{cols.map((c) => <th key={c} scope="col" className="px-3 py-2 text-start font-medium text-ink-muted">{c}</th>)}</tr></thead>
-            <tbody>{rows.map((r, i) => <tr key={i} className="border-t border-line">{cols.map((c) => <td key={c} className="px-3 py-2">{fmt(c, r[c])}</td>)}</tr>)}</tbody>
+            <thead><tr>{cols.map((c) => <th key={c} scope="col" className="whitespace-nowrap px-3 py-2 text-start font-medium text-ink-muted">{t(`inventory_ops.reports.col.${c}`)}</th>)}</tr></thead>
+            <tbody>{shown.map((r, i) => <tr key={i} className="border-t border-line">{cols.map((c) => <td key={c} className="px-3 py-2">{fmt(c, r[c], r)}</td>)}</tr>)}</tbody>
           </table>
         </div>
       )}

@@ -87,6 +87,16 @@ export const inventoryOps = {
         group: { service: 'الخدمة', booking: 'الحجز', chair: 'الكرسي', performer: 'المنفذة', item: 'الصنف', location: 'الموقع' },
         valuation: { inventory_value: 'قيمة المخزون', ledger: 'رصيد حساب المخزون', difference: 'الفرق', ap: 'الذمم الدائنة للموردين', grni: 'مستلم غير مفوتر', input_tax: 'ضريبة المدخلات', shrinkage: 'عجز وهدر المخزون' },
         empty: 'لا بيانات في هذه الفترة.',
+        yes: 'نعم', no: 'لا',
+        col: {
+          name: 'الصنف', item_name: 'الصنف', location_name: 'الموقع', location_kind: 'نوع الموقع', on_hand: 'الرصيد', reserved: 'محجوز', in_transit: 'قيد النقل',
+          available: 'المتاح', value_minor: 'القيمة', created_at: 'التاريخ', kind: 'النوع', quantity: 'الكمية', location_on_hand_after: 'رصيد الموقع بعدها',
+          total_cost_minor: 'التكلفة', cost_minor: 'التكلفة', reason: 'السبب', actor_name: 'بواسطة', number: 'الرقم', from_location_name: 'من', to_location_name: 'إلى',
+          lines: 'الأسطر', mode: 'الطريقة', status: 'الحالة', group_label: 'المجموعة', expected_qty: 'المتوقع', actual_qty: 'الفعلي', posted_qty: 'المرحّل',
+          waste_qty: 'الهدر', shortage_qty: 'النقص', service_name: 'الخدمة', visits: 'الزيارات', difference: 'الفرق', difference_pct: 'الفرق %',
+          batch_no: 'التشغيلة', expiry_date: 'تاريخ الانتهاء', expired: 'منتهي', cost_per_visit_minor: 'التكلفة لكل زيارة', invoice_number: 'رقم الفاتورة',
+          invoice_date: 'تاريخ الفاتورة', supplier_name: 'المورد', total_minor: 'الإجمالي', matching: 'المطابقة', payment_status: 'السداد', outstanding_minor: 'المتبقي',
+        },
       },
       movement_kind: {
         receipt: 'استلام', reservation: 'حجز', sale: 'بيع', release: 'فك حجز', return: 'مرتجع', adjustment: 'تسوية', consumption: 'استهلاك', opening: 'رصيد افتتاحي',
@@ -182,6 +192,16 @@ export const inventoryOps = {
         group: { service: 'Service', booking: 'Booking', chair: 'Chair', performer: 'Performer', item: 'Item', location: 'Location' },
         valuation: { inventory_value: 'Inventory value', ledger: 'Inventory account balance', difference: 'Difference', ap: 'Accounts payable', grni: 'Received not invoiced', input_tax: 'Input tax', shrinkage: 'Inventory shrinkage' },
         empty: 'No data in this period.',
+        yes: 'Yes', no: 'No',
+        col: {
+          name: 'Item', item_name: 'Item', location_name: 'Location', location_kind: 'Location type', on_hand: 'On hand', reserved: 'Reserved', in_transit: 'In transit',
+          available: 'Available', value_minor: 'Value', created_at: 'Date', kind: 'Type', quantity: 'Quantity', location_on_hand_after: 'Location balance after',
+          total_cost_minor: 'Cost', cost_minor: 'Cost', reason: 'Reason', actor_name: 'By', number: 'Number', from_location_name: 'From', to_location_name: 'To',
+          lines: 'Lines', mode: 'Mode', status: 'Status', group_label: 'Group', expected_qty: 'Expected', actual_qty: 'Actual', posted_qty: 'Posted',
+          waste_qty: 'Waste', shortage_qty: 'Shortage', service_name: 'Service', visits: 'Visits', difference: 'Difference', difference_pct: 'Difference %',
+          batch_no: 'Batch', expiry_date: 'Expiry date', expired: 'Expired', cost_per_visit_minor: 'Cost per visit', invoice_number: 'Invoice number',
+          invoice_date: 'Invoice date', supplier_name: 'Supplier', total_minor: 'Total', matching: 'Matching', payment_status: 'Payment', outstanding_minor: 'Outstanding',
+        },
       },
       movement_kind: {
         receipt: 'Receipt', reservation: 'Reservation', sale: 'Sale', release: 'Release', return: 'Return', adjustment: 'Adjustment', consumption: 'Consumption', opening: 'Opening stock',
