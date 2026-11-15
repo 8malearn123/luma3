@@ -1,4 +1,4 @@
-import { afterAll, afterEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { withSystem, withTenant } from '@/server/db/client';
 import { analyzeNow, importDueOfficialSources, platformSettingsSchema, setRadarFetcher, timingContextFor } from '@/loom';
 import { addDays } from '@/loom/util/time';
@@ -15,6 +15,15 @@ import { expireStepUp, platformUser, stepUp } from '../helpers/platform';
 import { ok, useFakeRadar } from '../helpers/loom-radar';
 
 afterEach(() => setRadarFetcher(lumaRadarFetcher()));
+// The platform calendar is global (not per tenant): another file (e.g. the cron route's radar sweep)
+// may already have imported the starter calendar. Start from an empty calendar so the import counts are this file's.
+beforeAll(async () => {
+  await withSystem('test setup', async (trx) => {
+    await trx.deleteFrom('loom.calendar_choices').execute();
+    await trx.deleteFrom('loom.platform_calendar_events').execute();
+    await trx.deleteFrom('loom.official_source_state').execute();
+  });
+});
 afterAll(async () => {
   await cancelLeftoverMarketingJobs();
   await withSystem('test cleanup', async (trx) => {
