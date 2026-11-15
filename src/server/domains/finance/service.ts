@@ -7,7 +7,8 @@ import { Errors } from '../../http/errors';
 import { audit, type AuditActor } from '../../infra/audit';
 import { nextReadableNumber } from '../../infra/counters';
 import { storage } from '../../infra/storage';
-import type { TenantAccess } from '../../tenancy/access';
+import { featureEnabled, type TenantAccess } from '../../tenancy/access';
+import { inventoryValuation } from '../commerce';
 import { post } from './journal';
 
 // ── Expenses (void with reason; never deleted) ──────────────────────────────
@@ -85,14 +86,13 @@ export async function financeReport(access: TenantAccess, fromISO: string, toISO
       .where('incurred_on', '>=', fromISO).where('incurred_on', '<=', toISO).groupBy('category').execute();
     // Commission expense: posted when a payroll month closes (and, for history, by the retired per-booking engine).
     const commissions = { v: -(await acct('commissions_expense')) };
-    // Product cost: needs a unit cost on every sold line.
-    const cogs = await trx.selectFrom('order_items as i').innerJoin('orders as o', 'o.id', 'i.order_id')
-      .select([sql<number>`coalesce(sum(i.unit_cost_minor * i.quantity),0)::bigint`.as('v'), sql<number>`count(*) filter (where i.unit_cost_minor is null)::int`.as('missing')])
-      .where('o.status', 'in', ['paid', 'preparing', 'ready', 'collected']).where('o.created_at', '>=', from).where('o.created_at', '<=', to).executeTakeFirstOrThrow();
-    // Material cost: consumption movements need a cost per unit on the item.
-    const materials = await trx.selectFrom('stock_movements as m').innerJoin('inventory_items as it', 'it.id', 'm.inventory_item_id')
-      .select([sql<number>`coalesce(sum(-m.quantity * it.cost_per_unit_minor),0)::bigint`.as('v'), sql<number>`count(*) filter (where it.cost_per_unit_minor is null)::int`.as('missing')])
-      .where('m.kind', '=', 'consumption').where('m.created_at', '>=', from).where('m.created_at', '<=', to).executeTakeFirstOrThrow();
+    // Product and material costs: the cost frozen on each stock movement (weighted average at
+    // that moment, D15), never quantity × today's cost. Sales net of goods returned to stock.
+    const movCost = (kinds: string[]) => trx.selectFrom('stock_movements as m')
+      .select([sql<number>`coalesce(sum(-m.total_cost_minor), 0)::bigint`.as('v'), sql<number>`count(*) filter (where m.unit_cost_minor is null and m.quantity < 0)::int`.as('missing')])
+      .where('m.kind', 'in', kinds as never[]).where('m.created_at', '>=', from).where('m.created_at', '<=', to).executeTakeFirstOrThrow();
+    const cogs = await movCost(['sale', 'return']);
+    const materials = await movCost(['consumption', 'return_from_use']);
     const servicesWithoutCost = await trx.selectFrom('services').select(sql<number>`count(*)::int`.as('n')).where('archived_at', 'is', null).where('cost_minor', 'is', null).executeTakeFirstOrThrow();
 
     // Daily cash-basis series (business timezone) for charts; the totals above stay authoritative.
@@ -114,6 +114,7 @@ export async function financeReport(access: TenantAccess, fromISO: string, toISO
     const expenseTotal = expenses.reduce((a, e) => a + e.v, 0);
     // Closed payroll months: base salaries + bonuses − deductions (tips pass through to staff).
     const salaries = -(await acct('salaries_expense'));
+    const inventoryLink = featureEnabled(access, 'feature.inventory_finance_link') ? await inventoryValuation(trx) : null;
     const missing: string[] = [];
     if (cogs.missing > 0) missing.push('product_unit_costs');
     if (materials.missing > 0) missing.push('material_unit_costs');
@@ -131,13 +132,18 @@ export async function financeReport(access: TenantAccess, fromISO: string, toISO
       discounts: { amount_minor: discounts.v + orderDiscounts.v },
       provider_fees: { amount_minor: null, basis: 'Not reported by the sandbox provider; reconciled from settlements when a real provider is connected.' },
       expenses: { by_category: expenses, total_minor: expenseTotal },
-      product_costs: { amount_minor: cogs.v, complete: cogs.missing === 0, missing_lines: cogs.missing },
-      material_costs: { amount_minor: Math.round(materials.v), complete: materials.missing === 0 },
+      product_costs: { amount_minor: cogs.v, complete: cogs.missing === 0, missing_lines: cogs.missing, basis: 'Cost frozen on each sale movement (weighted average at the time).' },
+      material_costs: { amount_minor: Math.round(materials.v), complete: materials.missing === 0, basis: 'Cost frozen on each consumption movement (weighted average at the time).' },
       commissions: { amount_minor: commissions.v },
       salaries: { amount_minor: salaries, basis: 'Base salaries and bonuses minus deductions from closed payroll months. Tips are paid through to staff and are not an expense.' },
       profit: profit === null
         ? { status: 'costs_incomplete', missing, amount_minor: null }
         : { status: 'computed', amount_minor: profit, formula: 'service sales + product sales − expenses − product costs − material costs − commissions − salaries' },
+      inventory: inventoryLink ? {
+        value_minor: inventoryLink.inventory_value_minor, ledger_minor: inventoryLink.ledger_inventory_minor,
+        accounts_payable_minor: inventoryLink.accounts_payable_minor, received_not_invoiced_minor: inventoryLink.received_not_invoiced_minor,
+        shrinkage_minor: inventoryLink.shrinkage_minor, items_without_cost: inventoryLink.items_without_cost, basis: inventoryLink.basis,
+      } : null,
       tax: {
         collected_minor: await acct('tax_payable'), note: 'Configured tax rules only; no tax or e-invoicing compliance is claimed.',
         configured: await trx.selectFrom('tenant_settings').select(['tax_label', 'tax_rate_bp', 'prices_include_tax']).where('tenant_id', '=', access.tenantId).executeTakeFirst() ?? null,

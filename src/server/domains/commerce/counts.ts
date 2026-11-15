@@ -6,7 +6,8 @@ import { audit, type AuditActor } from '../../infra/audit';
 import { nextReadableNumber } from '../../infra/counters';
 import { notifyCapability } from '../../infra/notify';
 import { hasCapability, type TenantAccess } from '../../tenancy/access';
-import { moveStock, primaryBranchId, tenantSlug } from './stock';
+import { defaultLocationId, moveStock, primaryBranchId, tenantSlug } from './stock';
+import { loadLocation } from './locations';
 import { milli, round3 } from '@/shared/units';
 import type { stockCountInput, stockCountLinesInput } from '@/shared/schemas/commerce';
 
@@ -16,7 +17,8 @@ import type { stockCountInput, stockCountLinesInput } from '@/shared/schemas/com
  * Applying the count is the single moment of truth:
  *  - the system quantity is read under a row lock at that moment, so sales or
  *    consumptions recorded while counting are not double-counted;
- *  - each difference becomes one 'adjustment' movement (ref_type stock_count),
+ *  - each difference becomes one 'count_adjustment' movement at the count's
+ *    location (ref_type stock_count), valued at the weighted average (shrinkage),
  *    so the ledger, not the count, stays the source of stock;
  *  - lines left blank are not counted and change nothing;
  *  - a counted quantity below what is reserved for paid orders is refused
@@ -46,10 +48,12 @@ export function isFlagged(system: number, variance: number, tolerancePct: number
   return Math.abs(variance) * 100 > tolerancePct * Math.abs(system);
 }
 
-async function loadLines(trx: Tx, access: TenantAccess, countId: string, tolerancePct: number): Promise<Line[]> {
+async function loadLines(trx: Tx, access: TenantAccess, countId: string, tolerancePct: number, locationId: string): Promise<Line[]> {
   const rows = await trx.selectFrom('stock_count_lines as l').innerJoin('inventory_items as ii', 'ii.id', 'l.inventory_item_id')
     .leftJoin('product_variants as v', 'v.id', 'ii.variant_id')
-    .select(['l.inventory_item_id', 'ii.name', 'ii.kind', 'ii.unit', 'v.sku', 'ii.on_hand', 'ii.reserved', 'ii.cost_per_unit_minor',
+    .leftJoin('stock_balances as sb', (j) => j.onRef('sb.inventory_item_id', '=', 'l.inventory_item_id').on('sb.location_id', '=', locationId))
+    .select(['l.inventory_item_id', 'ii.name', 'ii.kind', 'ii.unit', 'v.sku', sql<number>`coalesce(sb.on_hand, 0)`.as('on_hand'), sql<number>`coalesce(sb.reserved, 0)`.as('reserved'),
+      sql<number | null>`coalesce(ii.avg_cost_minor, ii.cost_per_unit_minor)`.as('cost_per_unit_minor'),
       'l.counted_quantity', 'l.system_quantity', 'l.variance', 'l.variance_cost_minor', 'l.counted_at'])
     .where('l.count_id', '=', countId).orderBy('ii.name').orderBy('ii.id').execute();
   const costs = hasCapability(access, 'costs.view');
@@ -81,8 +85,8 @@ function serializeCount(c: Awaited<ReturnType<typeof loadCount>>) {
 
 export async function listCounts(access: TenantAccess) {
   return withTenant(access.tenantId, async (trx) => {
-    const rows = await trx.selectFrom('stock_counts as c').innerJoin('branches as b', 'b.id', 'c.branch_id')
-      .select(['c.id', 'c.number', 'c.status', 'c.note', 'c.tolerance_pct', 'c.created_at', 'c.applied_at', 'c.branch_id', 'b.name as branch_name',
+    const rows = await trx.selectFrom('stock_counts as c').innerJoin('branches as b', 'b.id', 'c.branch_id').innerJoin('stock_locations as sl', 'sl.id', 'c.location_id')
+      .select(['c.id', 'c.number', 'c.status', 'c.note', 'c.tolerance_pct', 'c.created_at', 'c.applied_at', 'c.branch_id', 'b.name as branch_name', 'c.location_id', 'sl.name as location_name',
         sql<number>`(select count(*)::int from stock_count_lines l where l.count_id = c.id)`.as('lines'),
         sql<number>`(select count(*)::int from stock_count_lines l where l.count_id = c.id and l.counted_quantity is not null)`.as('counted'),
         sql<number>`(select count(*)::int from stock_count_lines l where l.count_id = c.id and l.variance <> 0)`.as('differences'),
@@ -95,16 +99,24 @@ export async function listCounts(access: TenantAccess) {
 export async function getCount(access: TenantAccess, id: string) {
   return withTenant(access.tenantId, async (trx) => {
     const c = await loadCount(trx, id);
-    const lines = await loadLines(trx, access, id, Number(c.tolerance_pct));
+    const lines = await loadLines(trx, access, id, Number(c.tolerance_pct), c.location_id);
     return { ...serializeCount(c), summary: summarize(lines), lines };
   });
 }
 
 export async function createCount(access: TenantAccess, actor: AuditActor, input: z.infer<typeof stockCountInput>) {
   return withTenant(access.tenantId, async (trx) => {
-    const branchId = input.branch_id ?? await primaryBranchId(trx, access.tenantId);
-    const open = await trx.selectFrom('stock_counts').select(['id', 'number']).where('branch_id', '=', branchId).where('status', '=', 'draft').executeTakeFirst();
-    if (open) throw Errors.conflict('count_in_progress', 'A count is already open for this branch', { id: open.id, number: open.number });
+    let branchId = input.branch_id ?? await primaryBranchId(trx, access.tenantId);
+    let locationId: string;
+    if (input.location_id) {
+      const loc = await loadLocation(trx, input.location_id);
+      if (input.branch_id && loc.branch_id !== input.branch_id) throw Errors.invalid('location_branch_mismatch');
+      branchId = loc.branch_id; locationId = loc.id;
+    } else {
+      locationId = await defaultLocationId(trx, access.tenantId, branchId);
+    }
+    const open = await trx.selectFrom('stock_counts').select(['id', 'number']).where('location_id', '=', locationId).where('status', '=', 'draft').executeTakeFirst();
+    if (open) throw Errors.conflict('count_in_progress', 'A count is already open for this location', { id: open.id, number: open.number });
     let items = trx.selectFrom('inventory_items').select('id').where('branch_id', '=', branchId).where('is_active', '=', true);
     if (input.kind === 'retail') items = items.where('kind', 'in', ['retail', 'both']);
     if (input.kind === 'material') items = items.where('kind', 'in', ['material', 'both']);
@@ -112,7 +124,7 @@ export async function createCount(access: TenantAccess, actor: AuditActor, input
     if (!ids.length) throw Errors.invalid('nothing_to_count', 'This branch has no active items to count');
     const number = await nextReadableNumber(trx, access.tenantId, 'stock_count');
     const c = await trx.insertInto('stock_counts').values({
-      tenant_id: access.tenantId, branch_id: branchId, number, note: input.note || null, tolerance_pct: input.tolerance_pct, created_by: actor.userId,
+      tenant_id: access.tenantId, branch_id: branchId, location_id: locationId, number, note: input.note || null, tolerance_pct: input.tolerance_pct, created_by: actor.userId,
     }).returning('id').executeTakeFirstOrThrow();
     await trx.insertInto('stock_count_lines').values(ids.map((i) => ({ tenant_id: access.tenantId, count_id: c.id, inventory_item_id: i.id }))).execute();
     await audit(trx, actor, 'inventory.count_started', { tenantId: access.tenantId, targetType: 'stock_count', targetId: c.id, data: { number, items: ids.length, kind: input.kind } });
@@ -140,7 +152,7 @@ export async function saveCountLines(access: TenantAccess, actor: AuditActor, id
     }
     await trx.updateTable('stock_counts').set({ version: sql`version + 1`, ...(input.note !== undefined ? { note: input.note || null } : {}) }).where('id', '=', id).execute();
     const fresh = await loadCount(trx, id);
-    const lines = await loadLines(trx, access, id, Number(fresh.tolerance_pct));
+    const lines = await loadLines(trx, access, id, Number(fresh.tolerance_pct), fresh.location_id);
     return { ...serializeCount(fresh), summary: summarize(lines), lines };
   });
 }
@@ -165,8 +177,16 @@ export async function applyCount(access: TenantAccess, actor: AuditActor, id: st
       .where('l.count_id', '=', id).where('l.counted_quantity', 'is not', null).orderBy('l.inventory_item_id').execute();
     if (!counted.length) throw Errors.invalid('nothing_counted', 'Enter at least one counted quantity');
     // Lock the items in a stable order, then read the system quantity under the lock.
-    const items = new Map((await trx.selectFrom('inventory_items').select(['id', 'on_hand', 'reserved', 'cost_per_unit_minor'])
-      .where('id', 'in', counted.map((l) => l.inventory_item_id)).orderBy('id').forUpdate().execute()).map((i) => [i.id, i]));
+    const ids = counted.map((l) => l.inventory_item_id);
+    await trx.selectFrom('inventory_items').select('id').where('id', 'in', ids).orderBy('id').forUpdate().execute();
+    for (const itemId of ids) {
+      await trx.insertInto('stock_balances').values({ tenant_id: access.tenantId, inventory_item_id: itemId, location_id: c.location_id })
+        .onConflict((oc) => oc.columns(['tenant_id', 'inventory_item_id', 'location_id']).doNothing()).execute();
+    }
+    // System quantity = the location's balance, read under lock at apply time.
+    const items = new Map((await trx.selectFrom('stock_balances as sb').innerJoin('inventory_items as ii', 'ii.id', 'sb.inventory_item_id')
+      .select(['sb.inventory_item_id as id', 'sb.on_hand', 'sb.reserved'])
+      .where('sb.location_id', '=', c.location_id).where('sb.inventory_item_id', 'in', ids).orderBy('sb.inventory_item_id').forUpdate(['sb']).execute()).map((i) => [i.id, i]));
     const belowReserved = counted.filter((l) => milli(Number(l.counted_quantity)) < milli(Number(items.get(l.inventory_item_id)!.reserved)));
     if (belowReserved.length) {
       throw Errors.conflict('counted_below_reserved', 'Some counted quantities are below what is reserved for paid orders', {
@@ -180,13 +200,15 @@ export async function applyCount(access: TenantAccess, actor: AuditActor, id: st
       const it = items.get(l.inventory_item_id)!;
       const system = Number(it.on_hand), countedQty = Number(l.counted_quantity);
       const variance = round3(countedQty - system);
-      const cost = it.cost_per_unit_minor == null ? null : Math.round(variance * Number(it.cost_per_unit_minor));
+      let cost: number | null = 0;
       if (milli(variance) !== 0) {
         const r = await moveStock(trx, access.tenantId, l.inventory_item_id, {
-          kind: 'adjustment', quantity: variance, dOnHand: variance, dReserved: 0, reason: `جرد ${c.number} / stock count`,
-          refType: 'stock_count', refId: id, actorUserId: actor.userId,
+          kind: 'count_adjustment', quantity: variance, dOnHand: variance, dReserved: 0, reason: `جرد ${c.number} / stock count`,
+          refType: 'stock_count', refId: id, actorUserId: actor.userId, locationId: c.location_id, documentType: 'stock_count', documentId: id,
         });
         if (!r) throw Errors.conflict('concurrent_update', 'Stock changed while applying the count; retry');
+        // The variance is valued at the weighted average frozen on the movement.
+        cost = r.totalCostMinor;
         if (cost == null) costKnown = false; else if (cost < 0) shortageCost += -cost; else surplusCost += cost;
       }
       await trx.updateTable('stock_count_lines').set({ system_quantity: system, variance, variance_cost_minor: cost }).where('id', '=', l.id).execute();
@@ -204,7 +226,7 @@ export async function applyCount(access: TenantAccess, actor: AuditActor, id: st
 
 async function getCountIn(trx: Tx, access: TenantAccess, id: string) {
   const c = await loadCount(trx, id);
-  const lines = await loadLines(trx, access, id, Number(c.tolerance_pct));
+  const lines = await loadLines(trx, access, id, Number(c.tolerance_pct), c.location_id);
   return { ...serializeCount(c), summary: summarize(lines), lines };
 }
 

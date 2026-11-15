@@ -15,7 +15,7 @@ import { releaseSeats } from './domains/groups/service';
 import { paymentTargets } from './domains/payments/targets';
 import { recordServerEvent } from './domains/analytics/events';
 import { recordMarketplaceCommission } from './domains/marketplace/attribution';
-import { consumeMaterialsForBookingItem, markOrderPaid, releaseCouponRedemption } from './domains/commerce';
+import { cancelPlannedUsage, consumeMaterialsForBookingItem, markOrderPaid, releaseCouponRedemption } from './domains/commerce';
 import { onEventPaymentCaptured, onEventPaymentFailed, onEventRefunded } from './domains/events/service';
 // Loom: LUMA change events → Loom change signals, and the default plan-revision adapter.
 import './loom-host/changes';
@@ -66,6 +66,8 @@ if (!g.__lumaBooted) {
     await releaseForBooking(trx, bookingId);
     // A booking coupon is given back when the booking is cancelled or its hold expires (kept on a no-show).
     if (why !== 'no_show') await releaseCouponRedemption(trx, tenantId, { bookingId });
+    // Materials are not reserved for bookings: closing one without service only cancels planned usage.
+    await cancelPlannedUsage(trx, tenantId, bookingId);
   });
   onRefundSucceeded(async (trx, tenantId, refundId) => {
     await reverseForRefund(trx, tenantId, refundId);

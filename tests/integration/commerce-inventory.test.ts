@@ -128,7 +128,7 @@ describe('operational inventory', () => {
     const h1 = await m.owner.call(itemMoves.GET, { params: { ...m.p, id: m.dye.id }, query: { limit: '2' } });
     expect(h1.body.data.items).toHaveLength(2);
     const h2 = await m.owner.call(itemMoves.GET, { params: { ...m.p, id: m.dye.id }, query: { limit: '2', cursor: h1.body.data.next_cursor } });
-    expect(h2.body.data.items.map((x: any) => x.kind)).toEqual(['receipt', 'receipt']);
+    expect(h2.body.data.items.map((x: any) => x.kind)).toEqual(['receipt', 'opening']); // opening stock is its own movement kind
   });
 
   it('receptionist sees inventory without costs and cannot adjust; plan without inventory feature is gated', async () => {
