@@ -27,6 +27,11 @@ type Detail = Row & {
 type Listing = { id: string; code: string; title_ar: string | null; title_en: string | null; status: string; price_model: string; price_minor: number; booking_mode: string; version: number; resource_name: string; branch_name: string };
 
 const TABS = ['requests', 'bookings', 'spaces', 'chairs', 'money'] as const;
+/** The server records a late-fee line as «Late check-out: N min (grace G min)»; shown in the reader's language. */
+const lateFeeDetail = (d: string) => {
+  const m = /(\d+) min \(grace (\d+) min\)/.exec(d);
+  return m ? { over: m[1]!, grace: m[2]! } : null;
+};
 type Tab = (typeof TABS)[number];
 
 /** «المساحات والاستضافة»: requests, bookings, spaces for rent, chair links, revenue & settlements. */
@@ -137,7 +142,7 @@ function BookingDrawer({ id, onClose, onChanged }: { id: string; onClose: () => 
           ) : null}
           {manage ? b.statement.lines.filter((l) => l.kind === 'late_fee' && l.status === 'proposed').map((l) => (
             <Card key={l.id} title={t('hosting.late_fee')}>
-              <p className="mb-2">{l.description} · <span dir="ltr">{money(l.amount_minor)}</span></p>
+              <p className="mb-2">{lateFeeDetail(l.description) ? t('hosting.late_fee_detail', lateFeeDetail(l.description)!) : t('hosting.late_fee')} · <span dir="ltr">{money(l.amount_minor)}</span></p>
               <div className="flex gap-2"><Button size="sm" onClick={() => act.mutate({ path: `/late-fees/${l.id}`, body: { approve: true } })}>{t('hosting.approve_fee')}</Button>
                 <Button size="sm" variant="outline" onClick={() => act.mutate({ path: `/late-fees/${l.id}`, body: { approve: false } })}>{t('hosting.reject_fee')}</Button></div>
             </Card>
@@ -146,7 +151,7 @@ function BookingDrawer({ id, onClose, onChanged }: { id: string; onClose: () => 
             <Card title={t('hosting.materials')}>
               <ul className="flex flex-col gap-2">{b.material_requests.map((r) => (
                 <li key={r.id} className="flex flex-wrap items-center justify-between gap-2">
-                  <span>×{r.quantity} {r.note ? `— ${r.note}` : ''} <Badge>{r.status}</Badge></span>
+                  <span>×{r.quantity} {r.note ? `— ${r.note}` : ''} <Badge tone={TONE[r.status] ?? 'neutral'}>{t(`hosting.status.${r.status}`)}</Badge></span>
                   {manage && r.status === 'requested' ? <span className="flex gap-2">
                     <Button size="sm" onClick={() => act.mutate({ path: `/materials/${r.id}`, body: { approve: true } })}>{t('hosting.approve_material')}</Button>
                     <Button size="sm" variant="outline" onClick={() => act.mutate({ path: `/materials/${r.id}`, body: { approve: false } })}>{t('hosting.reject_material')}</Button></span> : null}
@@ -369,7 +374,7 @@ function Money() {
         <Stat label={t('hosting.money.receivable')} value={<span dir="ltr">{money(d.receivable_minor)}</span>} tone={d.receivable_minor > 0 ? 'warn' : undefined} />
         <Stat label={t('hosting.money.refunds')} value={<span dir="ltr">{money(d.refunds_minor)}</span>} />
       </div>
-      <p className="text-xs text-ink-muted">{t('hosting.money.basis')}: {d.basis}</p>
+      <p className="text-xs text-ink-muted">{t('hosting.money.basis')}: {t('hosting.money.basis_text')}</p>
       <p className="text-xs text-ink-muted">{t('hosting.statement.platform_fee')}: <span dir="ltr">{money(0)}</span></p>
     </div>
   );

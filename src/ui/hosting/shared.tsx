@@ -32,7 +32,7 @@ export function StatementTable({ s, as = 'host' }: { s: Statement; as?: 'host' |
       <tbody>
         {rows.filter(([k, v]) => v !== 0 || ['total', 'due', 'collected', 'rent'].includes(k)).map(([k, v, strong]) => (
           <tr key={k} className="border-b border-line last:border-0">
-            <th scope="row" className={`py-1.5 text-start font-normal ${strong ? 'font-semibold' : 'text-ink-muted'}`}>{t(`hosting.statement.${k}`)}</th>
+            <th scope="row" className={`py-1.5 text-start font-normal ${strong ? 'font-semibold' : 'text-ink-muted'}`}>{t(`hosting.statement.${k === 'tax' && s.tax_included ? 'tax_included' : k}`)}</th>
             <td className={`py-1.5 text-end ${strong ? 'font-semibold' : ''}`} dir="ltr">{money(v)}</td>
           </tr>
         ))}

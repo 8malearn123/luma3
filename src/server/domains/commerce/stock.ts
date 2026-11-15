@@ -48,7 +48,7 @@ import { milli, round3 } from '@/shared/units';
  * Contract for other domains (e.g. workspace hosting selling a whole product to
  * a guest freelancer, D5):
  *   moveStock(trx, tenantId, itemId, { kind: 'sale', quantity: -q, dOnHand: -q, dReserved: 0,
- *     refType: 'space_booking', refId, actorUserId, locationId? })
+ *     refType: 'workspace_booking_line', refId, actorUserId, locationId? })
  *   → { movementId, unitCostMinor, totalCostMinor (negative), … } | null (not enough stock)
  *   It posts Dr cogs / Cr inventory; the caller posts the revenue side.
  */

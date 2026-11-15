@@ -11,8 +11,9 @@ import { notifyCapability } from '../../infra/notify';
  *  - on_hand  vs the sum of the ledger's on_hand deltas;
  *  - reserved vs the sum of the ledger's reserved deltas;
  *  - reserved vs the sum of active stock_reservations.
- * Deltas follow stock.ts's sign convention (sale: on_hand += q, reserved += q
- * with q < 0; release: reserved -= q). Sums are used rather than the latest
+ * Deltas follow stock.ts's sign convention (order sale: on_hand += q, reserved
+ * += q with q < 0; release: reserved -= q). Only order sales consume a
+ * reservation: a direct sale (e.g. a workspace add-on, D5) moves on_hand only. Sums are used rather than the latest
  * on_hand_after because movements of one transaction share created_at.
  * Mismatches are reported, never auto-corrected: a person decides, then records
  * an adjustment with a reason. Alerts repeat at most once a day per item.
@@ -34,7 +35,7 @@ export async function findStockMismatches(tenantId?: string): Promise<StockMisma
       left join lateral (
         select
           sum(case when sm.kind in ('reservation', 'release') then 0 else sm.quantity end) as on_hand_after,
-          sum(case sm.kind when 'reservation' then sm.quantity when 'sale' then sm.quantity when 'release' then -sm.quantity else 0 end) as reserved_after
+          sum(case sm.kind when 'reservation' then sm.quantity when 'sale' then case when sm.ref_type = 'order' then sm.quantity else 0 end when 'release' then -sm.quantity else 0 end) as reserved_after
         from stock_movements sm where sm.inventory_item_id = ii.id
       ) m on true
       left join lateral (

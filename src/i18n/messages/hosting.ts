@@ -30,7 +30,7 @@ const ar = {
     status: {
       draft: 'مسودة', requested: 'مُرسل', pending_approval: 'بانتظار موافقتكِ', held: 'محجوز مؤقتاً', pending_payment: 'بانتظار الدفع', confirmed: 'مؤكد',
       checked_in: 'تم الوصول', in_use: 'قيد الاستخدام', completed: 'مكتمل', cancelled: 'ملغي', expired: 'منتهي', no_show: 'لم تحضر',
-      published: 'منشورة', paused: 'متوقفة', archived: 'مؤرشفة',
+      published: 'منشورة', paused: 'متوقفة', archived: 'مؤرشفة', approved: 'مقبول', rejected: 'مرفوض',
     },
     respond_by: 'الرد قبل {when}',
     approve: 'موافقة', reject: 'رفض', reject_reason: 'سبب الرفض',
@@ -39,12 +39,12 @@ const ar = {
     code_for_guest: 'رمز الدخول للخبيرة: {code}',
     guest: 'الخبيرة', space: 'المساحة', when: 'الوقت', total: 'الإجمالي',
     privacy_note: 'ترين حجز المساحة فقط؛ مواعيد عميلات الخبيرة خاصة بها.',
-    late_fee: 'رسوم تأخير مقترحة', approve_fee: 'اعتماد الرسوم', reject_fee: 'رفض الرسوم',
+    late_fee: 'رسوم تأخير مقترحة', approve_fee: 'اعتماد الرسوم', reject_fee: 'رفض الرسوم', late_fee_detail: 'مغادرة متأخرة {over} دقيقة (المهلة {grace} دقيقة)',
     materials: 'طلبات المواد', approve_material: 'موافقة وبيع', reject_material: 'رفض',
     settlement: 'التسوية', approve_settlement: 'اعتماد التسوية', correction: 'تصحيح', correction_desc: 'وصف التصحيح', correction_amount: 'المبلغ (موجب أو سالب)',
     statement: {
       rent: 'الإيجار', salon_percentage: 'نسبة الصالون (غير مفعّلة)', products: 'منتجات من المتجر', equipment: 'تأجير معدات', discounts: 'خصم الإضافات',
-      late_fees: 'رسوم تأخير معتمدة', corrections: 'تصحيحات', tax: 'الضريبة', total: 'إجمالي المستحق', collected: 'المحصّل', refunded: 'المسترد',
+      late_fees: 'رسوم تأخير معتمدة', corrections: 'تصحيحات', tax: 'الضريبة', tax_included: 'الضريبة (مشمولة في الأسعار)', total: 'إجمالي المستحق', collected: 'المحصّل', refunded: 'المسترد',
       due: 'المتبقي على الخبيرة', credit: 'رصيد للخبيرة', platform_fee: 'رسوم المنصة (غير مفعّلة)', host_net: 'صافي الصالون',
     },
     listing: {
@@ -65,7 +65,7 @@ const ar = {
     availability: 'التوفر', internal: 'استخدام داخلي', freelancer: 'خبيرة مستضافة', linked_staff: 'موظفة مرتبطة', blocked: 'محجوب', free: 'متاح للإيجار',
     chairs_hint: 'الكرسي المرتبط بموظفة يكون مشغولاً وقت حجوزاتها، والكرسي غير المرتبط متاح ضمن ساعات العمل.',
     linked_to: 'مرتبط بـ', save_links: 'حفظ الربط',
-    money: { revenue: 'إيراد الاستضافة', products: 'مبيعات منتجات للخبيرات', receivable: 'مستحقات على الخبيرات', refunds: 'المبالغ المستردة', basis: 'الأساس' },
+    money: { revenue: 'إيراد الاستضافة', products: 'مبيعات منتجات للخبيرات', receivable: 'مستحقات على الخبيرات', refunds: 'المبالغ المستردة', basis: 'الأساس', basis_text: 'قيود حجوزات المساحات فقط. إيراد خدمات عميلات الخبيرة لا يُسجَّل هنا أبداً.' },
     saved: 'تم الحفظ', done: 'تم',
   },
   workspace: {
@@ -122,7 +122,7 @@ const en: typeof ar = {
     status: {
       draft: 'Draft', requested: 'Submitted', pending_approval: 'Awaiting your approval', held: 'Held', pending_payment: 'Awaiting payment', confirmed: 'Confirmed',
       checked_in: 'Checked in', in_use: 'In use', completed: 'Completed', cancelled: 'Cancelled', expired: 'Expired', no_show: 'No-show',
-      published: 'Published', paused: 'Paused', archived: 'Archived',
+      published: 'Published', paused: 'Paused', archived: 'Archived', approved: 'Approved', rejected: 'Rejected',
     },
     respond_by: 'Respond by {when}',
     approve: 'Approve', reject: 'Reject', reject_reason: 'Reason',
@@ -131,12 +131,12 @@ const en: typeof ar = {
     code_for_guest: 'Check-in code for the expert: {code}',
     guest: 'Expert', space: 'Space', when: 'When', total: 'Total',
     privacy_note: "You see the space booking only; the expert's client appointments are private.",
-    late_fee: 'Proposed late fee', approve_fee: 'Approve fee', reject_fee: 'Reject fee',
+    late_fee: 'Proposed late fee', approve_fee: 'Approve fee', reject_fee: 'Reject fee', late_fee_detail: 'Late check-out: {over} min (grace {grace} min)',
     materials: 'Material requests', approve_material: 'Approve & sell', reject_material: 'Reject',
     settlement: 'Settlement', approve_settlement: 'Approve settlement', correction: 'Correction', correction_desc: 'Description', correction_amount: 'Amount (positive or negative)',
     statement: {
       rent: 'Rent', salon_percentage: 'Salon percentage (disabled)', products: 'Store products', equipment: 'Equipment rental', discounts: 'Add-ons discount',
-      late_fees: 'Approved late fees', corrections: 'Corrections', tax: 'Tax', total: 'Total charges', collected: 'Collected', refunded: 'Refunded',
+      late_fees: 'Approved late fees', corrections: 'Corrections', tax: 'Tax', tax_included: 'Tax (included in prices)', total: 'Total charges', collected: 'Collected', refunded: 'Refunded',
       due: 'Due from the expert', credit: 'Credit to the expert', platform_fee: 'Platform fee (disabled)', host_net: 'Salon net',
     },
     listing: {
@@ -157,7 +157,7 @@ const en: typeof ar = {
     availability: 'Availability', internal: 'Internal use', freelancer: 'Hosted expert', linked_staff: 'Linked staff', blocked: 'Blocked', free: 'Free to rent',
     chairs_hint: 'A chair linked to staff is busy while they have bookings; an unlinked chair is available within working hours.',
     linked_to: 'Linked to', save_links: 'Save links',
-    money: { revenue: 'Hosting revenue', products: 'Product sales to experts', receivable: 'Receivable from experts', refunds: 'Refunded', basis: 'Basis' },
+    money: { revenue: 'Hosting revenue', products: 'Product sales to experts', receivable: 'Receivable from experts', refunds: 'Refunded', basis: 'Basis', basis_text: 'Journal entries posted by space bookings only. The expert\'s client service revenue is never recorded here.' },
     saved: 'Saved', done: 'Done',
   },
   workspace: {
