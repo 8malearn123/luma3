@@ -27,13 +27,14 @@ import { loomRadar } from './messages/loom_radar';
 import { loomConnectors } from './messages/loom_connectors';
 import { loomModels } from './messages/loom_models';
 import { inventoryOps } from './messages/inventory_ops';
+import { hosting } from './messages/hosting';
 
 /**
  * Translation dictionary. Arabic is the primary language; English mirrors it.
  * Each domain owns one file in ./messages exporting { ar, en } with identical
  * keys (checked by tests/unit/i18n.test.ts).
  */
-export const dictionaries = [common, errors, auth, dashboard, onboarding, marketingSite, operations, commerce, policy, platform, builder, marketing, bookingsUi, catalogTeamUi, financeEngagementUi, payroll, hr, market, admin, customer, business, expert, loom, loomMemory, loomPlanner, loomRadar, loomConnectors, loomModels, inventoryOps] as const;
+export const dictionaries = [common, errors, auth, dashboard, onboarding, marketingSite, operations, commerce, policy, platform, builder, marketing, bookingsUi, catalogTeamUi, financeEngagementUi, payroll, hr, market, admin, customer, business, expert, loom, loomMemory, loomPlanner, loomRadar, loomConnectors, loomModels, inventoryOps, hosting] as const;
 
 export type Locale = 'ar' | 'en';
 export const LOCALES: Locale[] = ['ar', 'en'];

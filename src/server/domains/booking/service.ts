@@ -96,7 +96,23 @@ export type HoldInput = {
   idempotencyKey: string;
   actor: AuditActor;
   now?: Date;
+  /**
+   * Workspace hosting: place this appointment of the expert inside her confirmed
+   * space booking at a host salon (location = host branch). Only the guest's own
+   * confirmed space window, only her own provider profile, only inside the window.
+   */
+  workspaceBookingId?: string | null;
 };
+
+/** Validates that a guest appointment may be placed inside a confirmed space booking (guest tenant scope). */
+export async function linkableWorkspaceWindow(trx: Tx, guestTenantId: string, workspaceBookingId: string, staffIds: string[]) {
+  const w = await trx.selectFrom('workspace_bookings').select(['id', 'guest_tenant_id', 'guest_staff_id', 'status', 'starts_at', 'ends_at'])
+    .where('id', '=', workspaceBookingId).executeTakeFirst();
+  if (!w || w.guest_tenant_id !== guestTenantId) throw Errors.notFound('workspace_booking');
+  if (!['confirmed', 'checked_in', 'in_use'].includes(w.status)) throw Errors.conflict('workspace_not_confirmed', 'The space booking is not confirmed');
+  if (staffIds.some((s) => s !== w.guest_staff_id)) throw Errors.invalid('workspace_staff_mismatch', 'Only the expert who booked the space can work in it');
+  return w;
+}
 
 /** Releases expired holds that could block these staff/resources (same transaction, before allocating). */
 export async function releaseExpiredHolds(trx: Tx, staffIds: string[], resourceIds: string[]) {
@@ -155,7 +171,7 @@ type AllocationRow = { staffId: string | null; resourceId: string | null; itemKe
 export async function createHold(tenantId: string, input: HoldInput) {
   const now = input.now ?? new Date();
   const scope = `tenant:${tenantId}:actor:${input.actor.userId ?? 'anon'}`;
-  const hash = requestHash({ items: input.items, branch: input.branchId, customer: input.customer.kind === 'tenant_customer' ? input.customer.tenantCustomerId : input.customer.user.userId, source: input.source, coupon: input.couponCode ?? null });
+  const hash = requestHash({ items: input.items, branch: input.branchId, customer: input.customer.kind === 'tenant_customer' ? input.customer.tenantCustomerId : input.customer.user.userId, source: input.source, coupon: input.couponCode ?? null, ...(input.workspaceBookingId ? { ws: input.workspaceBookingId } : {}) });
   return withTenant(tenantId, (trx) => idempotent(trx, { scope, operation: 'booking.hold', key: input.idempotencyKey, hash }, async () => {
     const branch = input.branchId
       ? await trx.selectFrom('branches').select(['id', 'timezone']).where('id', '=', input.branchId).where('status', '=', 'active').executeTakeFirst()
@@ -168,10 +184,14 @@ export async function createHold(tenantId: string, input: HoldInput) {
     const firstDate = DateTime.fromMillis(Math.min(...startsMs), { zone: branch.timezone }).toISODate()!;
     const lastDate = DateTime.fromMillis(Math.max(...startsMs), { zone: branch.timezone }).toISODate()!;
     const staffIds = [...new Set(input.items.map((i) => i.staffId))];
+    const space = input.workspaceBookingId ? await linkableWorkspaceWindow(trx, tenantId, input.workspaceBookingId, staffIds) : null;
     await releaseExpiredHolds(trx, staffIds, []);
-    const engine = await loadEngineInput(trx, tenantId, branch.id, resolved, firstDate, lastDate, now);
+    const engine = await loadEngineInput(trx, tenantId, branch.id, resolved, firstDate, lastDate, now, { withinWorkspaceBookingId: space?.id ?? null });
     const check = validateItinerary(engine, resolved.map((r) => r.spec), input.items.map((i, idx) => ({ key: i.key, staffId: i.staffId, start: startsMs[idx]! })));
     if (!check.ok) throw new AppError(409, check.reason === 'slot_unavailable' || check.reason === 'resource_unavailable' ? 'slot_unavailable' : check.reason, 'The selected time is not available', { key: check.key });
+    if (space && check.plan.some((p) => p.occupied.start < space.starts_at.getTime() || p.occupied.end > space.ends_at.getTime())) {
+      throw Errors.invalid('outside_workspace_window', 'The appointment must fit inside the confirmed space booking');
+    }
 
     // Customer relationship (never browser-supplied ids for public bookings).
     const tenantCustomerId = input.customer.kind === 'user'
@@ -202,7 +222,7 @@ export async function createHold(tenantId: string, input: HoldInput) {
       deposit_due_minor: terms.depositMinor ?? 0, currency: 'SAR',
       policy_snapshot: JSON.stringify(policy), payment_terms: JSON.stringify({ ...terms, requiresManualApproval: requiresApproval }),
       hold_expires_at: holdExpires, customer_note: input.customerNote ?? null, internal_note: input.internalNote ?? null,
-      created_by: input.actor.userId, coupon_id: coupon?.couponId ?? null,
+      created_by: input.actor.userId, coupon_id: coupon?.couponId ?? null, workspace_booking_id: space?.id ?? null,
     }).returning(['id', 'number']).executeTakeFirstOrThrow();
     // Locks the coupon row and re-checks the global/per-customer limits (released if the hold expires or is cancelled).
     if (coupon) await redeemCoupon(trx, tenantId, coupon.couponId, { tenantCustomerId, bookingId: booking.id, discountMinor: totals.discount });
@@ -229,6 +249,7 @@ export async function createHold(tenantId: string, input: HoldInput) {
       await trx.insertInto('booking_allocations').values({
         tenant_id: tenantId, booking_id: booking.id, booking_item_id: a.itemKey, staff_id: a.staffId, resource_id: a.resourceId,
         during: `[${new Date(a.start).toISOString()},${new Date(a.end).toISOString()})`, state: 'held', expires_at: holdExpires,
+        within_workspace_booking_id: space && a.staffId ? space.id : null,
       }).execute();
     }
     await trx.insertInto('booking_events').values({
@@ -282,7 +303,7 @@ export async function applyHoldOutcome(trx: Tx, tenantId: string, bookingId: str
 export async function tryReallocateExpired(trx: Tx, tenantId: string, bookingId: string): Promise<boolean> {
   const b = await trx.selectFrom('bookings').select(['status']).where('id', '=', bookingId).forUpdate().executeTakeFirstOrThrow();
   if (!['expired', 'held', 'pending_payment'].includes(b.status)) return false;
-  const allocs = await trx.selectFrom('booking_allocations').select(['id', 'staff_id', 'resource_id', 'booking_item_id', sql<Date>`lower(during)`.as('s'), sql<Date>`upper(during)`.as('e')])
+  const allocs = await trx.selectFrom('booking_allocations').select(['id', 'staff_id', 'resource_id', 'booking_item_id', 'within_workspace_booking_id', sql<Date>`lower(during)`.as('s'), sql<Date>`upper(during)`.as('e')])
     .where('booking_id', '=', bookingId).execute();
   const sorted = [...allocs].sort((a, b2) => (a.staff_id ?? a.resource_id!).localeCompare(b2.staff_id ?? b2.resource_id!) || a.s.getTime() - b2.s.getTime());
   await sql`savepoint realloc`.execute(trx);
@@ -291,7 +312,7 @@ export async function tryReallocateExpired(trx: Tx, tenantId: string, bookingId:
     for (const a of sorted) {
       await trx.insertInto('booking_allocations').values({
         tenant_id: tenantId, booking_id: bookingId, booking_item_id: a.booking_item_id, staff_id: a.staff_id, resource_id: a.resource_id,
-        during: `[${a.s.toISOString()},${a.e.toISOString()})`, state: 'confirmed',
+        during: `[${a.s.toISOString()},${a.e.toISOString()})`, state: 'confirmed', within_workspace_booking_id: a.within_workspace_booking_id,
       }).execute();
     }
     await sql`release savepoint realloc`.execute(trx);
@@ -552,9 +573,14 @@ export async function reschedule(tenantId: string, bookingId: string, actor: Tra
     await trx.updateTable('booking_allocations').set({ state: 'released', released_at: now }).where('booking_id', '=', bookingId).where('state', '<>', 'released').execute();
     const firstDate = DateTime.fromMillis(Math.min(...startsMs), { zone: b.timezone }).toISODate()!;
     const lastDate = DateTime.fromMillis(Math.max(...startsMs), { zone: b.timezone }).toISODate()!;
-    const engine = await loadEngineInput(trx, tenantId, b.branch_id, resolved, firstDate, lastDate, now);
+    // An appointment placed inside a confirmed space booking stays inside it (workspace hosting).
+    const space = b.workspace_booking_id ? await linkableWorkspaceWindow(trx, tenantId, b.workspace_booking_id, [...new Set(input.items.map((i) => i.staffId))]).catch(() => null) : null;
+    const engine = await loadEngineInput(trx, tenantId, b.branch_id, resolved, firstDate, lastDate, now, { withinWorkspaceBookingId: space?.id ?? null });
     const check = validateItinerary(engine, resolved.map((r) => r.spec), input.items.map((i, idx) => ({ key: i.key, staffId: i.staffId, start: startsMs[idx]! })));
     if (!check.ok) throw new AppError(409, 'slot_unavailable', 'The new time is not available; your original appointment is unchanged', { key: check.key, reason: check.reason });
+    if (space && check.plan.some((p) => p.occupied.start < space.starts_at.getTime() || p.occupied.end > space.ends_at.getTime())) {
+      throw Errors.invalid('outside_workspace_window', 'The appointment must fit inside the confirmed space booking');
+    }
 
     const policy = b.policy_snapshot as { tax_rate_bp?: number; prices_include_tax?: boolean };
     const subtotal = check.plan.reduce((a, p) => a + resolved.find((r) => r.key === p.key)!.staffTerms[p.staffId]!.priceMinor, 0);
@@ -609,6 +635,7 @@ export async function reschedule(tenantId: string, bookingId: string, actor: Tra
       await trx.insertInto('booking_allocations').values({
         tenant_id: tenantId, booking_id: bookingId, booking_item_id: a.itemKey, staff_id: a.staffId, resource_id: a.resourceId,
         during: `[${new Date(a.start).toISOString()},${new Date(a.end).toISOString()})`, state: 'confirmed',
+        within_workspace_booking_id: space && a.staffId ? space.id : null,
       }).execute();
     }
     const paid = b.paid_minor - b.refunded_minor;

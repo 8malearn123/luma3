@@ -4,6 +4,7 @@ import { Errors } from '../../http/errors';
 import { getInvoice } from '../finance/service';
 import { cancellationRefund } from './pricing';
 import { TRANSITIONS, type BookingStatus } from './transitions';
+import { appointmentLocation } from '../hosting/bookings';
 
 /** Resolves the tenant of a booking that belongs to this customer, or 404. */
 export async function customerBookingTenant(userId: string, bookingId: string) {
@@ -47,12 +48,15 @@ export async function customerBookingDetail(userId: string, bookingId: string, n
       freeCancellationHours: policy.free_cancellation_hours ?? 24, lateFeeBp: policy.late_cancellation_fee_bp ?? 0,
     }) : null;
     const holdPending = ['held', 'pending_payment'].includes(status) && (!b.hold_expires_at || b.hold_expires_at > now);
+    // Workspace hosting: the expert works at a host salon; shown as confirmed only once the space is confirmed.
+    const location = b.workspace_booking_id ? await appointmentLocation(trx, ref.tenant_id, b.workspace_booking_id) : null;
     return {
       id: b.id, number: b.number, status: b.status, payment_status: b.payment_status, starts_at: b.starts_at, ends_at: b.ends_at, timezone: b.timezone, branch_id: b.branch_id,
       subtotal_minor: b.subtotal_minor, discount_minor: b.discount_minor, tax_minor: b.tax_minor, total_minor: b.total_minor, deposit_due_minor: b.deposit_due_minor,
       paid_minor: b.paid_minor, refunded_minor: b.refunded_minor, currency: b.currency, hold_expires_at: b.hold_expires_at, customer_note: b.customer_note,
       cancelled_at: b.cancelled_at, cancel_source: b.cancel_source,
       tenant: { name: tenant.name, slug: tenant.slug },
+      location,
       items: items.map((i) => ({ ...i, addon_ids: ((i.addons as Array<{ id?: string }> | null) ?? []).map((a) => a.id).filter((x): x is string => !!x), addons: undefined })),
       terms: {
         free_cancellation_hours: policy.free_cancellation_hours ?? null, late_cancellation_fee_bp: policy.late_cancellation_fee_bp ?? null,

@@ -88,6 +88,10 @@ export const CAPABILITIES = [
   'waitlist.manage',
   // Governance
   'audit.view',
+  // Workspace hosting: a salon hosting spaces / an expert booking them
+  'hosting.view',
+  'hosting.manage',
+  'workspace.book',
 ] as const;
 export type Capability = (typeof CAPABILITIES)[number];
 
@@ -103,12 +107,13 @@ const ROLE_DEFAULTS: Record<TenantRole, readonly Capability[]> = {
     'payments.collect', 'refunds.request',
     'schedule.manage', 'leave.approve', 'attendance.manage', 'attendance.own', 'schedule.view_own', 'payroll.view_own', 'hr.request',
     'marketing.view', 'analytics.view', 'waitlist.manage', 'giftcards.manage', 'loyalty.manage', 'memberships.manage',
+    'hosting.view', 'hosting.manage', 'workspace.book',
   ],
   receptionist: [
     'bookings.view_all', 'bookings.manage',
     'customers.view', 'customers.manage', 'customers.view_notes',
     'orders.view', 'orders.manage', 'inventory.view',
-    'payments.collect', 'waitlist.manage', 'giftcards.manage',
+    'payments.collect', 'waitlist.manage', 'giftcards.manage', 'hosting.view',
     'attendance.own', 'schedule.view_own', 'payroll.view_own', 'hr.request',
   ],
   specialist: [
@@ -118,7 +123,7 @@ const ROLE_DEFAULTS: Record<TenantRole, readonly Capability[]> = {
   finance: [
     'finance.view', 'finance.manage', 'finance.export', 'costs.view',
     'bookings.view_financial', 'orders.view', 'refunds.request', 'refunds.approve',
-    'attendance.own', 'schedule.view_own', 'payroll.view', 'payroll.manage', 'payroll.view_own', 'hr.request',
+    'attendance.own', 'schedule.view_own', 'payroll.view', 'payroll.manage', 'payroll.view_own', 'hr.request', 'hosting.view',
     // Accountant view of inventory: costs, supplier invoices and payments (read-mostly on stock).
     'inventory.view', 'purchasing.view', 'purchasing.manage', 'purchasing.pay',
   ],

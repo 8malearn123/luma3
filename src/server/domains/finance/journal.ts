@@ -32,7 +32,9 @@ export type Account =
   | 'material_costs' | 'commissions_expense' | 'commissions_payable' | 'operating_expenses' | 'owner_equity'
   | 'salaries_expense' | 'payroll_payable' | 'staff_advances' | 'tips_payable'
   // Inventory & purchasing (0800_inventory_locations.sql; rules in commerce/inventory-journal.ts).
-  | 'accounts_payable' | 'goods_received_not_invoiced' | 'input_tax' | 'inventory_shrinkage';
+  | 'accounts_payable' | 'goods_received_not_invoiced' | 'input_tax' | 'inventory_shrinkage'
+  // Workspace hosting (migration 0810; see domains/hosting/money.ts for the postings).
+  | 'hosting_revenue' | 'hosting_receivable' | 'hosting_expense' | 'hosting_payable';
 
 export type Line = { account: Account; debit?: number; credit?: number; memo?: string };
 

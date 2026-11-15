@@ -32,6 +32,11 @@ export const PLAN_FEATURES = {
   'feature.purchasing': { kind: 'switch', label_ar: 'المشتريات والموردون', label_en: 'Purchasing & suppliers' },
   'feature.inventory_finance_link': { kind: 'switch', label_ar: 'ربط المخزون بالمحاسبة', label_en: 'Inventory accounting link' },
   'feature.inventory_reports_advanced': { kind: 'switch', label_ar: 'تقارير المخزون المتقدمة', label_en: 'Advanced inventory reports' },
+  // Workspace hosting (migration 0810; distribution «مقترح — غير معتمد», D12)
+  'limit.hosting_spaces': { kind: 'limit', label_ar: 'المساحات المنشورة للإيجار', label_en: 'Spaces published for rent' },
+  'hosting.publish': { kind: 'switch', label_ar: 'نشر المساحات للإيجار', label_en: 'Publish spaces for rent' },
+  'hosting.reports': { kind: 'switch', label_ar: 'تقارير الاستضافة', label_en: 'Hosting reports' },
+  'workspace.book': { kind: 'switch', label_ar: 'حجز مساحة عمل', label_en: 'Book a workspace' },
 } as const;
 
 export type PlanFeatureKey = keyof typeof PLAN_FEATURES;
