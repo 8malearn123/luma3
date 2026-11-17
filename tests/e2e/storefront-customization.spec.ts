@@ -32,7 +32,7 @@ async function storefrontTheme(browser: Browser, baseURL: string, slug: string):
       buttonBg: btn ? getComputedStyle(btn).backgroundColor : null, h1Font: getComputedStyle(h1).fontFamily, h1: h1.textContent ?? '',
     };
   });
-  if (slug === 'lamar-makeup') { mkdirSync(EVIDENCE, { recursive: true }); await page.screenshot({ path: `${EVIDENCE}/lamar-storefront-customized.png` }); }
+  if (slug === 'lamar-makeup' && process.env.E2E_EVIDENCE) { mkdirSync(EVIDENCE, { recursive: true }); await page.screenshot({ path: `${EVIDENCE}/lamar-storefront-customized.png` }); }
   await ctx.close();
   return theme;
 }
@@ -71,7 +71,7 @@ test('the expert changes colour, heading font and her hero section, publishes; o
   await expect(drawer.getByText('Nothing blocks publishing.')).toBeVisible({ timeout: 30_000 });
   await drawer.getByRole('button', { name: 'Publish now' }).click();
   await expect(owner.getByText(/Version \d+ published/)).toBeVisible({ timeout: 30_000 });
-  await owner.screenshot({ path: `${EVIDENCE}/lamar-builder-published-en.png` });
+  if (process.env.E2E_EVIDENCE) await owner.screenshot({ path: `${EVIDENCE}/lamar-builder-published-en.png` });
 
   const lamar = await storefrontTheme(browser, baseURL!, 'lamar-makeup');
   expect(lamar.primary).toBe(NEW_PRIMARY);
@@ -99,7 +99,7 @@ test('natural-language assistant without an AI provider: honestly "Not connected
     await expect(owner.getByText('The AI assistant is not configured right now (no API key or model). The manual builder works fully.')).toBeVisible();
     await expect(owner.locator('#assistant-req')).toBeDisabled();
   }
-  await owner.screenshot({ path: `${EVIDENCE}/builder-assistant-not-connected-en.png` });
+  if (process.env.E2E_EVIDENCE) await owner.screenshot({ path: `${EVIDENCE}/builder-assistant-not-connected-en.png` });
 
   // The server refuses as well (a direct call cannot fake a proposal).
   const r = await owner.request.post('/api/v1/t/lamar-makeup/builder/proposals', { headers: { 'x-luma-csrf': '1' }, data: { request_text: 'Make the buttons pink and move reviews to the top' } });

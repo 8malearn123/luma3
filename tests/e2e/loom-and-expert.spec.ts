@@ -13,6 +13,9 @@ test.beforeEach(async ({ context, baseURL }) => {
 const main = (page: Page) => page.getByRole('main').first();
 const RAW = /ev_[0-9a-f]{6}|@item:|@offering:|"metric_key"|\{"/;
 
+/** Evidence screenshots are committed; refresh them only on purpose (E2E_EVIDENCE=1), never on every run. */
+const evidence = async (page: import('@playwright/test').Page, path: string) => { if (process.env.E2E_EVIDENCE === '1') await page.screenshot({ path }); };
+
 test('Loom: primary tabs first, analysis status is real and an analysis completes through the worker', async ({ page }) => {
   const done = failOnPageErrors(page);
   await signIn(page, 'owner@noura.demo', '/app/noura-salon/marketing');
@@ -32,7 +35,7 @@ test('Loom: primary tabs first, analysis status is real and an analysis complete
   await page.goto('/app/noura-salon/marketing?tab=advanced&section=status');
   // LUMA-AUDIT-043: the worker picks the job up and it succeeds.
   await expect(analysisRows.filter({ hasText: 'Succeeded' })).toHaveCount(before + 1, { timeout: 90_000 });
-  await page.screenshot({ path: 'docs/remediation/evidence/loom/loom-analysis-status-en.png' });
+  await evidence(page, 'docs/remediation/evidence/loom/loom-analysis-status-en.png');
   done();
 });
 
@@ -50,7 +53,7 @@ test('Loom: plans and opportunities show business labels, formatted money and En
   await expect(drawer).toContainText(/SAR\s?[\d,]+\.\d{2}/);
   await expect(drawer).not.toContainText(RAW);
   await expect(drawer).toContainText('Prepared by Loom with rules');
-  await page.screenshot({ path: 'docs/remediation/evidence/loom/loom-plan-en.png' });
+  await evidence(page, 'docs/remediation/evidence/loom/loom-plan-en.png');
   await page.keyboard.press('Escape');
 
   await page.goto('/app/noura-salon/marketing?tab=opportunities');
@@ -63,7 +66,7 @@ test('Loom: plans and opportunities show business labels, formatted money and En
   await expect(opp).toContainText(/Weekly usage — [A-Za-z]/);
   await expect(opp).toContainText(/On hand — [A-Za-z]/);
   await expect(opp).not.toContainText(RAW);
-  await page.screenshot({ path: 'docs/remediation/evidence/loom/loom-opportunity-evidence-en.png' });
+  await evidence(page, 'docs/remediation/evidence/loom/loom-opportunity-evidence-en.png');
   done();
 });
 
@@ -112,7 +115,7 @@ test('freelancer: own schedule is editable, team-admin areas hidden, hidden page
   await page.reload();
   await expect(page.getByLabel('Saturday To').first()).toHaveValue('20:00');
   await expect(main(page)).not.toContainText('Lateness and absence');
-  await page.screenshot({ path: 'docs/remediation/evidence/loom/expert-me-schedule-en.png' });
+  await evidence(page, 'docs/remediation/evidence/loom/expert-me-schedule-en.png');
 
   const nav = page.getByRole('navigation').first();
   await expect(nav.getByRole('link', { name: 'My assistants' })).toBeVisible();

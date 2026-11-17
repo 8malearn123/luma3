@@ -14,7 +14,7 @@ import { freshTotp } from './totp';
 test.describe.configure({ mode: 'serial' });
 
 const EVIDENCE = 'docs/remediation/evidence/verify';
-const shot = (page: Page, name: string) => page.screenshot({ path: `${EVIDENCE}/${name}.png` });
+const shot = async (page: Page, name: string) => { if (process.env.E2E_EVIDENCE) await page.screenshot({ path: `${EVIDENCE}/${name}.png` }); };
 
 async function englishPage(browser: Browser, baseURL: string) {
   const ctx = await browser.newContext({ baseURL, viewport: { width: 1280, height: 900 }, deviceScaleFactor: 1 });
@@ -100,7 +100,7 @@ test('businesses, plans and integrations render for the platform owner; provider
   await shot(admin, 'platform-integrations-en');
   // Evidence for the provider-status check: what the server itself reports.
   const st = (await (await admin.request.get('/api/v1/platform/integrations')).json()).data;
-  writeFileSync(`${EVIDENCE}/integrations-status.json`, JSON.stringify({ messaging: st.messaging, ai: { status: st.ai.status }, payments: { live_accounts: st.payments.live_accounts, sandbox_accounts: st.payments.sandbox_accounts, accounts: st.payments.accounts }, storage: st.storage }, null, 2));
+  if (process.env.E2E_EVIDENCE) writeFileSync(`${EVIDENCE}/integrations-status.json`, JSON.stringify({ messaging: st.messaging, ai: { status: st.ai.status }, payments: { live_accounts: st.payments.live_accounts, sandbox_accounts: st.payments.sandbox_accounts, accounts: st.payments.accounts }, storage: st.storage }, null, 2));
   expect(st.payments.live_accounts).toBe(0);
   expect(st.ai.status.state).toBe('disconnected'); // no AI key in this environment
   for (const ch of ['email', 'sms', 'whatsapp']) expect(st.messaging[ch]).not.toBe('connected');

@@ -17,7 +17,7 @@ test.use({ ...(chromium ? { launchOptions: { executablePath: chromium } } : {}),
 
 const EVIDENCE = 'docs/remediation/evidence/shop';
 mkdirSync(EVIDENCE, { recursive: true });
-const shot = (page: Page, name: string) => page.screenshot({ path: `${EVIDENCE}/${name}.png`, fullPage: false });
+const shot = async (page: Page, name: string) => { if (process.env.E2E_EVIDENCE) await page.screenshot({ path: `${EVIDENCE}/${name}.png`, fullPage: false }); };
 
 async function db<T extends pg.QueryResultRow = Record<string, unknown>>(q: string, params: unknown[] = []) {
   const c = new pg.Client({ connectionString: e2eEnv.DATABASE_OWNER_URL });

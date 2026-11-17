@@ -90,7 +90,7 @@ test('customer buys a product online; points are earned only when the owner mark
   await shopper.goto('/account/loyalty');
   const card = shopper.locator('li', { hasText: /الروشة|Rawsha/ }).first();
   await expect(card).toContainText(String(before + earned));
-  await shopper.screenshot({ path: `${EVIDENCE}/account-loyalty-after-collection-en.png` });
+  if (process.env.E2E_EVIDENCE) await shopper.screenshot({ path: `${EVIDENCE}/account-loyalty-after-collection-en.png` });
   expect(await nouraBalance(shopper)).toBe(before + earned);
   done();
 });
