@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { localizedTaxLabel } from '@/shared/tax-label';
 import { useQueryClient } from '@tanstack/react-query';
 import { DateTime } from 'luxon';
 import { Ban, CalendarClock, CircleCheck, Download, FileText, HandCoins, LogIn, Play, Printer, Undo2, UserX, Wallet, XCircle } from 'lucide-react';
@@ -149,7 +150,7 @@ export function BookingDrawer({ bookingId, onClose }: { bookingId: string; onClo
               <dl className="mt-3 flex flex-col gap-1 text-sm">
                 {b.subtotal_minor != null ? <Row label={t('commerce.orders.subtotal')} value={money(b.subtotal_minor)} /> : null}
                 {b.discount_minor ? <Row label={t('commerce.orders.discount')} value={`−${money(b.discount_minor)}`} /> : null}
-                {b.tax_minor ? <Row label={b.policy_snapshot?.tax_label || t('booking.checkout.tax')} value={money(b.tax_minor)} /> : null}
+                {b.tax_minor ? <Row label={localizedTaxLabel(b.policy_snapshot?.tax_label, locale, t('booking.checkout.tax'))} value={money(b.tax_minor)} /> : null}
                 <div className="flex justify-between border-t border-line pt-1 font-semibold"><dt>{t('fields.total')}</dt><dd dir="ltr">{money(b.total_minor)}</dd></div>
                 {b.deposit_due_minor ? <Row muted label={t('bookings_ui.detail.deposit_due')} value={money(b.deposit_due_minor)} /> : null}
                 <Row muted label={t('booking.checkout.paid')} value={money(b.paid_minor)} />

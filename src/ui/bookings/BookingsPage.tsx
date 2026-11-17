@@ -43,7 +43,7 @@ function qs(p: Record<string, string | number | null | undefined>) {
 }
 
 export function BookingsPage() {
-  const { t, locale } = useI18n();
+  const { t, locale, pick } = useI18n();
   const access = useAccess();
   const router = useRouter();
   const pathname = usePathname();
@@ -124,6 +124,11 @@ export function BookingsPage() {
   const Next = locale === 'ar' ? ChevronLeft : ChevronRight;
   const canCreate = access.can('bookings.manage') && !access.readOnly;
 
+  // Localized names in the table (LUMA-AUDIT-039): services from the bilingual item snapshot,
+  // specialists from their profile's display_name / display_name_en.
+  const staffName = (id: string, fallback: string) => { const s = staffList.data?.find((x) => x.id === id); return s ? pick(s.display_name, s.display_name_en) : fallback; };
+  const servicesOf = (r: BookingRow) => (r.segments?.length ? r.segments.map((x) => pick(x.service_name_ar, x.service_name_en)).join(' + ') : r.services);
+  const staffOf = (r: BookingRow) => (r.segments?.length ? [...new Map(r.segments.map((x) => [x.staff_id, staffName(x.staff_id, x.staff_name)])).values()].join(locale === 'ar' ? '، ' : ', ') : r.staff_names);
   const columns: Column<BookingRow>[] = [
     {
       key: 'when', header: t('booking.dashboard.when'), cell: (r) => (
@@ -132,10 +137,10 @@ export function BookingsPage() {
     },
     {
       key: 'customer', header: t('booking.dashboard.customer'), cell: (r) => (
-        <div className="min-w-0"><p className="font-medium">{r.customer_name}</p><p className="text-xs text-ink-muted">{r.services}</p><p className="text-xs text-ink-muted sm:hidden">{r.staff_names}</p></div>
+        <div className="min-w-0"><p className="font-medium">{r.customer_name}</p><p className="text-xs text-ink-muted">{servicesOf(r)}</p><p className="text-xs text-ink-muted sm:hidden">{staffOf(r)}</p></div>
       ),
     },
-    { key: 'staff', header: t('booking.dashboard.staff'), className: 'hidden sm:table-cell', cell: (r) => <span className="text-sm">{r.staff_names}</span> },
+    { key: 'staff', header: t('booking.dashboard.staff'), className: 'hidden sm:table-cell', cell: (r) => <span className="text-sm">{staffOf(r)}</span> },
     {
       key: 'status', header: t('booking.dashboard.status_filter'), cell: (r) => (
         <span className="flex flex-wrap gap-1"><BookingStatusBadge status={r.status} />{financial ? <span className="hidden sm:inline-flex"><PaymentStatusBadge status={r.payment_status} /></span> : null}</span>
