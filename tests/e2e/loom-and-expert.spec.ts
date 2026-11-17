@@ -78,10 +78,19 @@ test('Loom: converting an opportunity already in the plan does not duplicate it'
     await page.waitForLoadState('networkidle');
     return { drawer, n: await drawer.getByText('Fill quiet periods', { exact: true }).count(), versions: await drawer.getByRole('combobox').first().locator('option').count() };
   };
+  // Convert once (adds it, or reports it is already there — depends on earlier specs' analyses), then convert the
+  // SAME card again: the second conversion must add nothing (LUMA-AUDIT-038).
+  const convert = async () => {
+    await page.goto('/app/noura-salon/marketing?tab=opportunities');
+    const opp = page.locator('li').filter({ hasText: 'Fill quiet periods' }).first();
+    const res = page.waitForResponse((r) => /\/loom\/opportunities\/[^/]+\/convert/.test(r.url()) && r.request().method() === 'POST');
+    await opp.getByRole('button', { name: 'To a monthly plan item' }).click();
+    expect((await res).status()).toBeLessThan(300);
+  };
+  await convert();
+  await page.goto('/app/noura-salon/marketing?tab=monthly');
   const before = await openPlan();
-  await page.goto('/app/noura-salon/marketing?tab=opportunities');
-  const opp = page.locator('li').filter({ hasText: 'Fill quiet periods' }).first();
-  await opp.getByRole('button', { name: 'To a monthly plan item' }).click();
+  await convert();
   await expect(page.getByText('already in this month’s plan')).toBeVisible();
   await page.goto('/app/noura-salon/marketing?tab=monthly');
   const after = await openPlan();
