@@ -126,8 +126,12 @@ test('variant + two add-ons: the slot length and total follow the server quote',
     await page.getByLabel('Option').selectOption(made[0]!.id);
     await page.getByLabel('Keratin mask').check();
     await page.getByLabel('Blow-dry finish').check();
+    // Each add-on re-quotes availability; while loading every day tab is enabled, so wait until the
+    // search for the full 120-minute selection has settled before choosing a day that has times.
+    await page.waitForLoadState('networkidle');
     await timeButton(page).waitFor();
-    await dayFromEnd(page, 3).click();
+    const days = page.locator('[role="tab"]:not([disabled])');
+    await days.nth(Math.max(0, (await days.count()) - 4)).click();
     await timeButton(page).click();
     const summary = page.locator('section[aria-labelledby="rev-h"]');
     await expect(summary).toContainText('Long hair · + Keratin mask · + Blow-dry finish');

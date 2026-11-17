@@ -73,33 +73,29 @@ test('Loom: plans and opportunities show business labels, formatted money and En
 test('Loom: converting an opportunity already in the plan does not duplicate it', async ({ page }) => {
   await signIn(page, 'owner@noura.demo', '/app/noura-salon/marketing?tab=monthly');
   await page.waitForURL(/\/marketing/);
-  const openPlan = async () => {
-    await page.getByRole('button', { name: /Marketing plan/ }).first().click();
-    const drawer = page.getByRole('dialog');
-    await expect(drawer.getByText('Fill quiet periods', { exact: true }).first()).toBeVisible();
-    await expect(drawer.getByText('Loading…')).toHaveCount(0); // the Loom actions card loads after the version content
-    await page.waitForLoadState('networkidle');
-    return { drawer, n: await drawer.getByText('Fill quiet periods', { exact: true }).count(), versions: await drawer.getByRole('combobox').first().locator('option').count() };
-  };
-  // Convert once (adds it, or reports it is already there — depends on earlier specs' analyses), then convert the
-  // SAME card again: the second conversion must add nothing (LUMA-AUDIT-038).
+  // Convert the same card twice through the UI; the server must report the second one as already in the
+  // plan and add no plan version (LUMA-AUDIT-038). Checked through the API so earlier specs' plans don't matter.
   const convert = async () => {
     await page.goto('/app/noura-salon/marketing?tab=opportunities');
     const opp = page.locator('li').filter({ hasText: 'Fill quiet periods' }).first();
     const res = page.waitForResponse((r) => /\/loom\/opportunities\/[^/]+\/convert/.test(r.url()) && r.request().method() === 'POST');
     await opp.getByRole('button', { name: 'To a monthly plan item' }).click();
-    expect((await res).status()).toBeLessThan(300);
+    const r = await res;
+    expect(r.status()).toBeLessThan(300);
+    return (await r.json()).data.result as { ref_id: string; status?: string };
   };
-  await convert();
-  await page.goto('/app/noura-salon/marketing?tab=monthly');
-  const before = await openPlan();
-  await convert();
+  const versions = async (planId: string) => {
+    const r = await page.request.get(`/api/v1/t/noura-salon/marketing/plans/${planId}`);
+    expect(r.status()).toBe(200);
+    return ((await r.json()).data.versions as unknown[]).length;
+  };
+  const first = await convert();
+  const before = await versions(first.ref_id);
+  const second = await convert();
+  expect(second.status).toBe('already_in_plan');
+  expect(second.ref_id).toBe(first.ref_id);
   await expect(page.getByText('already in this month’s plan')).toBeVisible();
-  await page.goto('/app/noura-salon/marketing?tab=monthly');
-  const after = await openPlan();
-  expect(after.n).toBe(before.n);
-  expect(after.versions).toBe(before.versions);
-  await expect(after.drawer).not.toContainText('Edited by you');
+  expect(await versions(first.ref_id)).toBe(before);
 });
 
 test('freelancer: own schedule is editable, team-admin areas hidden, hidden pages say not available', async ({ page }) => {
