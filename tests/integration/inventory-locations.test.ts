@@ -471,7 +471,7 @@ describe('manual issue idempotency (LUMA-AUDIT-011)', () => {
 
     // Two genuinely separate concurrent issues both succeed.
     const sep = await Promise.all([1, 2].map(() => s.owner.call(issue.POST, { params: s.p, body, idempotencyKey: `issue-${randomUUID()}` })));
-    expect(sep.map((r) => r.status)).toEqual([201, 201]);
+    expect(sep.map((r) => r.status), JSON.stringify(sep.map((r) => r.body))).toEqual([201, 201]);
     expect(await consumptionsOf(s.biz.tenantId, dye)).toHaveLength(3);
     expect(await onHand(s.biz.tenantId, dye)).toBe(44);
   });

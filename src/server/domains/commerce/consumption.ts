@@ -283,7 +283,9 @@ export async function issueMaterial(access: TenantAccess, actor: AuditActor, inp
 
 async function issueIn(trx: Tx, access: TenantAccess, actor: AuditActor, input: z.infer<typeof issueInput>) {
   {
-    const it = await trx.selectFrom('inventory_items').select(['id', 'unit', 'kind', 'is_tool', 'branch_id']).where('id', '=', input.inventory_item_id).executeTakeFirst();
+    // Lock the item first: the consumption row's foreign key would otherwise take a KEY SHARE
+    // lock that two parallel issues then both try to upgrade in moveStock (deadlock → 409).
+    const it = await trx.selectFrom('inventory_items').select(['id', 'unit', 'kind', 'is_tool', 'branch_id']).where('id', '=', input.inventory_item_id).forUpdate().executeTakeFirst();
     if (!it) throw Errors.notFound('inventory_item');
     if (it.is_tool) throw Errors.invalid('tool_not_consumable', 'Tools are reused, not consumed');
     const loc = input.location_id ? await loadLocation(trx, input.location_id) : null;
