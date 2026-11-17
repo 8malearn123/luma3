@@ -1,7 +1,7 @@
 /**
  * Demo seed (development/review only). Creates clearly fictional data:
- *  - LUMA platform owner, Noura Salon (multi-staff, multi-specialty), a second
- *    business with a different identity, team roles, customers (ordinary, one
+ *  - LUMA platform owner, «الروشة» (slug noura-salon; multi-staff, multi-specialty),
+ *    a second business with a different identity, team roles, customers (ordinary, one
  *    with an explicitly EXPERIMENTAL require_full_payment decision, one new),
  *    several weeks of historical bookings with consistent payments, expenses
  *    with deliberately missing costs.
@@ -39,6 +39,11 @@ const { post } = await import('../src/server/domains/finance/journal');
 const { ensureTenantCustomerForUser } = await import('../src/server/domains/customers/relationship');
 const { nextReadableNumber } = await import('../src/server/infra/counters');
 const { createProduct } = await import('../src/server/domains/commerce/products');
+const { createMaterial } = await import('../src/server/domains/commerce/inventory');
+const { createLocation } = await import('../src/server/domains/commerce/locations');
+const { createTransfer } = await import('../src/server/domains/commerce/transfers');
+const { createResourceType, createResource } = await import('../src/server/domains/catalog/service');
+const { createListing, setListingStatus, setLinks } = await import('../src/server/domains/hosting/listings');
 const { seedIncident, seedAppeal } = await import('../src/server/domains/policy/seed');
 const { publish } = await import('../src/server/domains/builder/publish');
 const { createExamplePlan } = await import('../src/server/domains/marketing/plans');
@@ -101,9 +106,9 @@ async function main() {
   const customerFull = await demoUser('restricted@demo.test', 'عميلة بقرار تجريبي — دانة', { phone: '+966500000002' });
   const customerNew = await demoUser('new@demo.test', 'عميلة جديدة — لين');
 
-  // ── Noura Salon ───────────────────────────────────────────────────────────
+  // ── «الروشة» (slug noura-salon) ───────────────────────────────────────────────────────────
   const owner = await sessionFor(ownerId);
-  const noura = await createBusiness(owner, { name: 'صالون نورة', slug: 'noura-salon', business_type: 'salon', city: 'الرياض', branch_name: 'فرع العليا', plan_code: 'wahaj' }, { userId: ownerId, kind: 'user' });
+  const noura = await createBusiness(owner, { name: 'الروشة', slug: 'noura-salon', business_type: 'salon', city: 'الرياض', branch_name: 'فرع العليا', plan_code: 'wahaj' }, { userId: ownerId, kind: 'user' });
   const access = await resolveTenantAccess(owner, 'noura-salon');
   const actor = { userId: ownerId, kind: 'user' as const };
 
@@ -112,7 +117,7 @@ async function main() {
     [3, { traits: ['elegant', 'warm'], reference_style: 'classic_luxury', description: 'صالون نسائي هادئ بلمسة فاخرة' }],
     [4, { existing_colors: ['#7A4E5B'], excluded_colors: ['#00FF00'] }],
     [6, { priorities: ['booking', 'portfolio', 'team', 'offers', 'reviews', 'products'] }],
-    [7, { tagline: 'جمالك بلمسة نورة', intro: 'نقدم خدمات الشعر والأظافر والمكياج بأيدي خبيرات معتمدات في بيئة مريحة.', phone: '0550000000', whatsapp: '0550000000', email: 'hello@noura.demo', address: 'الرياض، حي العليا (عنوان تجريبي)', latitude: 24.6911, longitude: 46.6857, hours: [0, 1, 2, 3, 4, 6].map((d) => ({ weekday: d, opens: '10:00', closes: '22:00' })), social: { instagram: 'noura.demo' } }],
+    [7, { tagline: 'جمالك بلمسة الروشة', intro: 'نقدم خدمات الشعر والأظافر والمكياج بأيدي خبيرات معتمدات في بيئة مريحة.', phone: '0550000000', whatsapp: '0550000000', email: 'hello@noura.demo', address: 'الرياض، حي العليا (عنوان تجريبي)', latitude: 24.6911, longitude: 46.6857, hours: [0, 1, 2, 3, 4, 6].map((d) => ({ weekday: d, opens: '10:00', closes: '22:00' })), social: { instagram: 'noura.demo' } }],
   ] as const) {
     const r = await saveStep(access, actor, step, answers, ob.version);
     ob = { version: r.version };
@@ -148,7 +153,7 @@ async function main() {
     await trx.updateTable('tenant_settings').set({
       deposit_mode: 'percent', deposit_percent_bp: 2000, allow_pay_on_site: true, free_cancellation_hours: 24, late_cancellation_fee_bp: 5000,
       booking_policy_text_ar: 'يمكن الإلغاء مجاناً قبل ٢٤ ساعة من الموعد. بعد ذلك تُحتسب رسوم ٥٠٪ من قيمة الحجز. (نص تجريبي)',
-      booking_policy_confirmed_at: new Date(), legal_name: 'مؤسسة صالون نورة (اسم تجريبي)', tax_rate_bp: 1500, prices_include_tax: true, tax_label: 'ضريبة القيمة المضافة (إعداد تجريبي)',
+      booking_policy_confirmed_at: new Date(), legal_name: 'مؤسسة الروشة (اسم تجريبي)', tax_rate_bp: 1500, prices_include_tax: true, tax_label: 'ضريبة القيمة المضافة (إعداد تجريبي)',
       notify_channels: ['in_app', 'sms', 'email'],
     }).where('tenant_id', '=', noura.tenantId).execute();
     await trx.updateTable('tenants').set({ status: 'active' }).where('id', '=', noura.tenantId).execute();
@@ -263,17 +268,50 @@ async function main() {
     { name_ar: 'مبرد أظافر', name_en: 'Nail file', variants: [{ price_minor: 1500, cost_minor: 400, initial_stock: 60, sku: 'NF-01' }] },
   ]) await createProduct(access, actor, { status: 'active', is_visible: true, ...pr });
 
+  // ── Workspace hosting fixtures (LUMA-AUDIT-047) ─────────────────────────
+  // «كرسي 1» is linked to the specialist Huda (busy while she has bookings, D1b), served by the
+  // station «محطة كرسي 1» (stock moved there by a transfer, so service consumption on that chair
+  // is deducted from the station), and listed for rent with a store-product add-on (D5, store
+  // price with a 10% add-ons discount, D5b) and an equipment add-on (a shared resource, D6).
+  // «كرسي 2» stays unlisted so a demo (and tests/e2e/hosting-journey.spec.ts) can list it in the UI.
+  // The sandbox payment account connected above is what lets the salon publish (D3c).
+  const chairType = await createResourceType(access, actor, { name_ar: 'كرسي', name_en: 'Chair' });
+  const deviceType = await createResourceType(access, actor, { name_ar: 'جهاز', name_en: 'Device' });
+  const chair1 = await createResource(access, actor, { branch_id: noura.branchId, resource_type_id: chairType.id, name: 'كرسي 1' });
+  await createResource(access, actor, { branch_id: noura.branchId, resource_type_id: chairType.id, name: 'كرسي 2' });
+  const steamer = await createResource(access, actor, { branch_id: noura.branchId, resource_type_id: deviceType.id, name: 'جهاز بخار للبشرة' });
+  await setLinks(access, actor, { resource_id: chair1.id, staff_ids: [huda] });
+  const station = await createLocation(access, actor, { kind: 'station', name: 'محطة كرسي 1', code: 'ST-1', resource_ids: [chair1.id] });
+  const shampoo = await withTenant(noura.tenantId, (trx) => trx.selectFrom('product_variants').select('id').where('sku', '=', 'SH-250').executeTakeFirstOrThrow());
+  const listing = await createListing(access, actor, {
+    branch_id: noura.branchId, resource_id: chair1.id, code: 'K-1', title_ar: 'كرسي تجميل بإضاءة', title_en: 'Beauty chair with lighting', space_type: 'chair',
+    description_ar: 'كرسي قريب من النافذة بإضاءة طبيعية ومرآة كبيرة (بيانات تجريبية).', price_model: 'fixed_hour', price_minor: 5000,
+    min_duration_min: 60, max_duration_min: 480, setup_buffer_min: 0, cleanup_buffer_min: 15, booking_mode: 'instant', addons_discount_bp: 1000,
+    cancellation_terms: { free_until_hours: 24, fee_bp: 5000 }, late_terms: { grace_min: 10, mode: 'per_15min', amount_minor: 1000 },
+    access_instructions_ar: 'استقبال الفرع، الدور الأرضي. أبرزي رمز QR عند الوصول. (تعليمات تجريبية)', own_materials_policy_ar: 'يسمح بإحضار موادكِ الخاصة.',
+    specialties: ['مكياج', 'شعر'], windows: [0, 1, 2, 3, 4, 6].map((d) => ({ weekday: d, start_time: '10:00', end_time: '22:00' })),
+    addons: [
+      { kind: 'product', product_variant_id: shampoo.id, max_quantity: 3 },
+      { kind: 'equipment', resource_id: steamer.id, name_ar: 'جهاز بخار للبشرة', name_en: 'Facial steamer', rental_price_minor: 2000, rental_unit: 'booking' },
+    ],
+  });
+  await setListingStatus(access, actor, listing.id, { status: 'published', version: listing.version });
+
   // Loom Marketing: consumption recipes (colour dye is short of stock and has no unit cost, so the
   // colour margin stays "costs incomplete"; manicure polish is costed and sufficient), marketing
   // consent for some walk-in customers, the business dated to its first historical booking, and a
   // first rules-based analysis so the «الفرص» tab has explained opportunities.
   await withSystem('seed loom: business age', (trx) => trx.updateTable('tenants').set({ created_at: DateTime.now().minus({ days: 60 }).toJSDate() }).where('id', '=', noura.tenantId).execute());
+  // Opening stock goes through the inventory service: an `opening` movement per material
+  // (frozen cost; Dr inventory / Cr owner_equity when the cost is known), so history = balance
+  // and the valuation reconciles with the ledger (LUMA-AUDIT-036). The dye has no unit cost on
+  // purpose ("costs incomplete"), so its opening movement carries no value.
+  const material = async (name: string, onHand: number, unitCost: number | null, threshold: number) => (await createMaterial(access, actor, {
+    name, unit: 'ml', initial_quantity: onHand, cost_per_unit_minor: unitCost, low_stock_threshold: threshold,
+  }) as unknown as { id: string }).id;
+  const dye = await material('صبغة شعر (مادة تشغيل)', 120, null, 100);
+  const polish = await material('طلاء أظافر (مادة تشغيل)', 400, 15, 50);
   await withTenant(noura.tenantId, async (trx) => {
-    const material = async (name: string, onHand: number, unitCost: number | null, threshold: number) => (await trx.insertInto('inventory_items').values({
-      tenant_id: noura.tenantId, branch_id: noura.branchId, name, kind: 'material', unit: 'ml', on_hand: onHand, cost_per_unit_minor: unitCost, low_stock_threshold: threshold,
-    }).returning('id').executeTakeFirstOrThrow()).id;
-    const dye = await material('صبغة شعر (مادة تشغيل)', 120, null, 100);
-    const polish = await material('طلاء أظافر (مادة تشغيل)', 400, 15, 50);
     await trx.insertInto('service_material_recipes').values([
       { tenant_id: noura.tenantId, service_id: color, inventory_item_id: dye, quantity: 60, unit: 'ml', approved_by: ownerId, approved_at: new Date() },
       { tenant_id: noura.tenantId, service_id: mani, inventory_item_id: polish, quantity: 5, unit: 'ml', approved_by: ownerId, approved_at: new Date() },
@@ -283,6 +321,9 @@ async function main() {
       await trx.insertInto('customer_consents').values({ tenant_id: noura.tenantId, tenant_customer_id: c, channel: 'push', purpose: 'marketing', granted: true, source: 'dashboard' }).execute();
     }
   });
+  // Polish at the chair station (an atomic transfer, D4/req. 5): manicures on «كرسي 1» consume from there.
+  await createTransfer(access, actor, { from_location_id: (await withTenant(noura.tenantId, (trx) => trx.selectFrom('stock_locations').select('id').where('branch_id', '=', noura.branchId).where('is_default', '=', true).executeTakeFirstOrThrow())).id,
+    to_location_id: station.id, lines: [{ inventory_item_id: polish, quantity: 100 }], note: 'تزويد محطة كرسي 1 (تجريبي)', execute: true }, `seed-transfer-${noura.tenantId}`);
   try { await analyzeNow(noura.tenantId, { trigger: 'seed', requestedBy: ownerId }); } catch (e) { console.warn(`[seed] loom analysis skipped: ${(e as Error).message}`); }
   // Loom phase 3: knowledge library mirror + a rules-based monthly plan from the opportunities (no AI in the demo).
   try {

@@ -19,6 +19,8 @@ export type Report = {
   period: { from: string; to: string; timezone: string };
   booking_value: Amount & { count: number };
   completed_service_sales: Amount; product_sales: Amount;
+  hosting_revenue?: Amount & { product_addons_minor: number; discounts_minor: number; refunds_minor: number; net_minor: number };
+  hosting_expense?: Amount & { dues_minor: number };
   collections: { by_method: Array<{ method: string; v: number }>; total_minor: number };
   deposits_outstanding: Amount; receivables: Amount;
   refunds: { completed_minor: number; pending_minor: number };
@@ -77,6 +79,13 @@ export function OverviewTab() {
           <section aria-label={t('fe.overview.summary')} className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
             <Tile label={t('finance.service_sales')} value={money(r.completed_service_sales.amount_minor)} hint={t('fe.basis.service_sales')} />
             <Tile label={t('finance.product_sales')} value={money(r.product_sales.amount_minor)} hint={t('fe.basis.product_sales')} />
+            {r.hosting_revenue && (r.hosting_revenue.net_minor || r.hosting_revenue.amount_minor || access.can('hosting.view', 'hosting.manage')) ? (
+              <Tile label={t('hosting.finance.revenue')} value={money(r.hosting_revenue.net_minor)}
+                hint={t('hosting.finance.revenue_basis', { gross: money(r.hosting_revenue.amount_minor), discounts: money(r.hosting_revenue.discounts_minor), refunds: money(r.hosting_revenue.refunds_minor), products: money(r.hosting_revenue.product_addons_minor) })} />
+            ) : null}
+            {r.hosting_expense && (r.hosting_expense.amount_minor || access.businessType === 'expert') ? (
+              <Tile label={t('hosting.finance.expense')} value={money(r.hosting_expense.amount_minor)} hint={t('hosting.finance.expense_basis', { dues: money(r.hosting_expense.dues_minor) })} />
+            ) : null}
             <Tile label={t('finance.collections')} value={money(r.collections.total_minor)} hint={t('fe.basis.collections')} />
             <Tile label={t('finance.booking_value')} value={money(r.booking_value.amount_minor)} hint={t('fe.basis.booking_value', { n: r.booking_value.count })} />
             <Tile label={t('fe.overview.tax_collected')} value={money(r.tax.collected_minor)} hint={t('fe.basis.tax')} />

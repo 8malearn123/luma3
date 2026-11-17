@@ -109,6 +109,22 @@ export async function financeReport(access: TenantAccess, fromISO: string, toISO
       daily.push({ date, collections_minor: Number(dailyCollections.find((r) => r.day === date)?.v ?? 0), expenses_minor: Number(dailyExpenses.find((r) => r.day === date)?.v ?? 0) });
     }
 
+    // Workspace hosting (LUMA-AUDIT-010). Same ledger, same accrual basis as the rest of the report:
+    // the salon recognises hosting revenue when the space booking is paid or an extra charge is
+    // approved (net of tax); the expert records her hosting expense at the same moments. The cash
+    // collected for a space booking is a COLLECTION (cash basis, below) — never a second revenue event.
+    const wsAcct = async (account: string) => {
+      const r = await trx.selectFrom('financial_entries').select([sql<number>`coalesce(sum(credit_minor - debit_minor), 0)::bigint`.as('net')])
+        .where('account', '=', account as never).where('ref_type', 'like', 'workspace\\_%').where('occurred_at', '>=', from).where('occurred_at', '<=', to).executeTakeFirstOrThrow();
+      return Number(r.net);
+    };
+    const hostingRevenue = Number(await acct('hosting_revenue'));
+    const hostingProducts = await wsAcct('product_revenue');
+    const hostingDiscounts = 0 - (await wsAcct('discounts'));
+    const hostingRefunds = 0 - (await wsAcct('refunds'));
+    const hostingExpense = 0 - Number(await acct('hosting_expense'));
+    const hostingNetRevenue = hostingRevenue - hostingDiscounts - hostingRefunds;
+
     const serviceRevenue = await acct('service_revenue');
     const productRevenue = await acct('product_revenue');
     const expenseTotal = expenses.reduce((a, e) => a + e.v, 0);
@@ -119,12 +135,21 @@ export async function financeReport(access: TenantAccess, fromISO: string, toISO
     if (cogs.missing > 0) missing.push('product_unit_costs');
     if (materials.missing > 0) missing.push('material_unit_costs');
     if (servicesWithoutCost.n > 0 && materials.v === 0) missing.push('service_costs_or_recipes');
-    const profit = missing.length ? null : serviceRevenue + productRevenue - expenseTotal - cogs.v - Math.round(materials.v) - commissions.v - salaries;
+    const profit = missing.length ? null
+      : Number(serviceRevenue) + Number(productRevenue) + hostingNetRevenue - Number(expenseTotal) - hostingExpense - Number(cogs.v) - Math.round(materials.v) - Number(commissions.v) - salaries;
     return {
       period: { from: fromISO, to: toISO, timezone: tz },
       booking_value: { amount_minor: bookingValue.v, count: bookingValue.n, basis: 'Total of confirmed/attended/completed bookings starting in the period (not revenue).' },
       completed_service_sales: { amount_minor: serviceRevenue, basis: 'Service revenue recognised at completion (net of tax), plus fees retained under booking policy, delivered membership sessions and expired gift-card balances.' },
-      product_sales: { amount_minor: productRevenue, basis: 'Product revenue recognised when an order is paid (net of tax).' },
+      product_sales: { amount_minor: productRevenue, basis: 'Product revenue recognised when an order is paid, and whole products sold to hosted experts as space add-ons when the space booking is paid (net of tax).' },
+      hosting_revenue: {
+        amount_minor: hostingRevenue, product_addons_minor: hostingProducts, discounts_minor: hostingDiscounts, refunds_minor: hostingRefunds, net_minor: hostingNetRevenue,
+        basis: 'Salon hosting: rent, equipment rental, approved late fees and corrections from space bookings, recognised when the booking is paid or an extra charge is approved (accrual, net of tax; journal account hosting_revenue). Less the add-ons discount and refunds to experts (net of the tax reversed). Product add-ons are inside product sales and are shown here for reference only. The expert\'s client services are never the salon\'s revenue. The cash received is counted under collections, not again as revenue.',
+      },
+      hosting_expense: {
+        amount_minor: hostingExpense, dues_minor: await balance('hosting_payable', 1),
+        basis: 'Expert hosting: rent, add-ons, approved fees and corrections paid or owed to host salons for space bookings, less refunds (accrual; journal account hosting_expense; tax included as invoiced by the salon). Unpaid dues are included and also shown separately.',
+      },
       collections: { by_method: collections, total_minor: collections.reduce((a, c) => a + c.v, 0), basis: 'Money captured in the period (cash basis), including deposits.' },
       deposits_outstanding: { amount_minor: await balance('customer_deposits', 1), basis: 'Customer prepayments for services not yet delivered (a liability, not revenue).' },
       receivables: { amount_minor: await balance('accounts_receivable', -1), basis: 'Completed services not yet fully paid.' },
@@ -138,7 +163,7 @@ export async function financeReport(access: TenantAccess, fromISO: string, toISO
       salaries: { amount_minor: salaries, basis: 'Base salaries and bonuses minus deductions from closed payroll months. Tips are paid through to staff and are not an expense.' },
       profit: profit === null
         ? { status: 'costs_incomplete', missing, amount_minor: null }
-        : { status: 'computed', amount_minor: profit, formula: 'service sales + product sales − expenses − product costs − material costs − commissions − salaries' },
+        : { status: 'computed', amount_minor: profit, formula: 'service sales + product sales + net hosting revenue − expenses − hosting expense − product costs − material costs − commissions − salaries' },
       inventory: inventoryLink ? {
         value_minor: inventoryLink.inventory_value_minor, ledger_minor: inventoryLink.ledger_inventory_minor,
         accounts_payable_minor: inventoryLink.accounts_payable_minor, received_not_invoiced_minor: inventoryLink.received_not_invoiced_minor,
@@ -241,12 +266,41 @@ export async function listExports(access: TenantAccess) {
   });
 }
 
-export async function createExport(access: TenantAccess, actor: AuditActor, kind: 'bookings' | 'payments' | 'journal' | 'expenses', fromISO: string, toISO: string) {
+/** The period report as rows (line, amount, basis) — the same figures as the Finance page, hosting lines included. */
+export async function reportRows(access: TenantAccess, fromISO: string, toISO: string) {
+  const r = await financeReport(access, fromISO, toISO);
+  const row = (line: string, amount: number | null, basis = '') => ({ line, amount_minor: amount, currency: 'SAR', basis });
+  return [
+    row('booking_value', r.booking_value.amount_minor, r.booking_value.basis),
+    row('completed_service_sales', r.completed_service_sales.amount_minor, r.completed_service_sales.basis),
+    row('product_sales', r.product_sales.amount_minor, r.product_sales.basis),
+    row('hosting_revenue', r.hosting_revenue.amount_minor, r.hosting_revenue.basis),
+    row('hosting_product_addons_in_product_sales', r.hosting_revenue.product_addons_minor, 'Reference only; already inside product_sales.'),
+    row('hosting_addons_discount', r.hosting_revenue.discounts_minor, 'Listing-wide add-ons discount (D5b).'),
+    row('hosting_refunds', r.hosting_revenue.refunds_minor, 'Refunds to experts, net of the tax reversed.'),
+    row('hosting_net_revenue', r.hosting_revenue.net_minor, 'hosting_revenue − hosting_addons_discount − hosting_refunds'),
+    row('hosting_expense', r.hosting_expense.amount_minor, r.hosting_expense.basis),
+    row('hosting_dues_unpaid', r.hosting_expense.dues_minor, 'Approved space charges not paid yet (included in hosting_expense).'),
+    row('collections', r.collections.total_minor, r.collections.basis),
+    row('deposits_outstanding', r.deposits_outstanding.amount_minor, r.deposits_outstanding.basis),
+    row('receivables', r.receivables.amount_minor, r.receivables.basis),
+    row('refunds_completed', r.refunds.completed_minor, r.refunds.basis),
+    row('expenses', r.expenses.total_minor),
+    row('product_costs', r.product_costs.amount_minor, r.product_costs.basis),
+    row('material_costs', r.material_costs.amount_minor, r.material_costs.basis),
+    row('commissions', r.commissions.amount_minor),
+    row('salaries', r.salaries.amount_minor, r.salaries.basis),
+    row('tax_collected', r.tax.collected_minor, r.tax.note),
+    row('profit', r.profit.amount_minor, r.profit.status === 'computed' ? r.profit.formula : `costs incomplete: ${(r.profit.missing ?? []).join(', ')}`),
+  ];
+}
+
+export async function createExport(access: TenantAccess, actor: AuditActor, kind: 'bookings' | 'payments' | 'journal' | 'expenses' | 'summary', fromISO: string, toISO: string) {
   const from = DateTime.fromISO(fromISO, { zone: access.timezone }).startOf('day').toJSDate();
   const to = DateTime.fromISO(toISO, { zone: access.timezone }).endOf('day').toJSDate();
   const exp = await withTenant(access.tenantId, (trx) => trx.insertInto('finance_exports').values({ tenant_id: access.tenantId, kind, period_start: fromISO, period_end: toISO, status: 'running', requested_by: actor.userId }).returning('id').executeTakeFirstOrThrow());
   try {
-    const rows = await withTenant(access.tenantId, async (trx): Promise<Array<Record<string, unknown>>> => {
+    const rows = kind === 'summary' ? await reportRows(access, fromISO, toISO) : await withTenant(access.tenantId, async (trx): Promise<Array<Record<string, unknown>>> => {
       if (kind === 'bookings') return trx.selectFrom('bookings').select(['number', 'status', 'payment_status', 'starts_at', 'subtotal_minor', 'discount_minor', 'tax_minor', 'total_minor', 'paid_minor', 'refunded_minor', 'source']).where('starts_at', '>=', from).where('starts_at', '<=', to).orderBy('starts_at').execute();
       if (kind === 'payments') return trx.selectFrom('payments').select(['id', 'purpose', 'kind', 'method', 'amount_minor', 'currency', 'status', 'captured_at', 'provider', 'needs_reconciliation']).where('created_at', '>=', from).where('created_at', '<=', to).orderBy('created_at').execute();
       if (kind === 'journal') return trx.selectFrom('financial_entries').select(['entry_group_id', 'account', 'debit_minor', 'credit_minor', 'ref_type', 'ref_id', 'occurred_at', 'memo']).where('occurred_at', '>=', from).where('occurred_at', '<=', to).orderBy('occurred_at').execute();

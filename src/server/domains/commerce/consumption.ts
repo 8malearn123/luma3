@@ -4,6 +4,7 @@ import type { z } from 'zod';
 import { withTenant, type Tx } from '../../db/client';
 import { Errors } from '../../http/errors';
 import { audit, type AuditActor } from '../../infra/audit';
+import { idempotent, requestHash } from '../../infra/idempotency';
 import { notifyCapability } from '../../infra/notify';
 import { hasCapability, type TenantAccess } from '../../tenancy/access';
 import { moveStock, tenantSlug } from './stock';
@@ -261,10 +262,30 @@ export async function recordConsumptionWaste(access: TenantAccess, actor: AuditA
   });
 }
 
-/** Manual issue with a documented reason (no booking): posted at once from the chosen location. */
-export async function issueMaterial(access: TenantAccess, actor: AuditActor, input: z.infer<typeof issueInput>) {
+/**
+ * Manual issue with a documented reason (no booking): posted at once from the chosen location.
+ *
+ * Operation idempotency (LUMA-AUDIT-011): one user operation = one Idempotency-Key.
+ * The same key with the same payload replays the first result (a double click,
+ * a retry after a timeout or two concurrent retries post exactly one consumption
+ * movement); the same key with a different payload is refused with 422
+ * `idempotency_key_reused`; two genuinely separate issues carry different keys
+ * and both post. The key record lives in the same transaction, so a refused
+ * issue (e.g. insufficient stock) leaves nothing behind and may be retried.
+ */
+export async function issueMaterial(access: TenantAccess, actor: AuditActor, input: z.infer<typeof issueInput>, idempotencyKey: string) {
   return withTenant(access.tenantId, async (trx) => {
-    const it = await trx.selectFrom('inventory_items').select(['id', 'unit', 'kind', 'is_tool', 'branch_id']).where('id', '=', input.inventory_item_id).executeTakeFirst();
+    const r = await idempotent(trx, { scope: `tenant:${access.tenantId}`, operation: 'inventory.manual_issue', key: idempotencyKey, hash: requestHash(input) },
+      async () => ({ status: 201, body: await issueIn(trx, access, actor, input) }));
+    return r.body;
+  });
+}
+
+async function issueIn(trx: Tx, access: TenantAccess, actor: AuditActor, input: z.infer<typeof issueInput>) {
+  {
+    // Lock the item first: the consumption row's foreign key would otherwise take a KEY SHARE
+    // lock that two parallel issues then both try to upgrade in moveStock (deadlock → 409).
+    const it = await trx.selectFrom('inventory_items').select(['id', 'unit', 'kind', 'is_tool', 'branch_id']).where('id', '=', input.inventory_item_id).forUpdate().executeTakeFirst();
     if (!it) throw Errors.notFound('inventory_item');
     if (it.is_tool) throw Errors.invalid('tool_not_consumable', 'Tools are reused, not consumed');
     const loc = input.location_id ? await loadLocation(trx, input.location_id) : null;
@@ -291,7 +312,7 @@ export async function issueMaterial(access: TenantAccess, actor: AuditActor, inp
     await trx.updateTable('material_consumptions').set({ posted_qty: qty, total_cost_minor: -(r.totalCostMinor ?? 0), status: 'posted', posted_at: new Date(), posted_by: actor.userId, movement_ids: [r.movementId] }).where('id', '=', row.id).execute();
     await audit(trx, actor, 'inventory.manual_issue', { tenantId: access.tenantId, targetType: 'material_consumption', targetId: row.id, data: { quantity: qty, reason: input.reason } });
     return loadConsumption(trx, row.id);
-  });
+  }
 }
 
 /** Shortage task actions: post what is still missing (when stock arrived) or write it off. */

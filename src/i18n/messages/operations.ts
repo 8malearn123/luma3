@@ -53,7 +53,7 @@ const ar = {
     profit: 'الربح', costs_incomplete: 'التكاليف غير مكتملة — لا يمكن حساب الربح بدقة.', missing: 'البيانات الناقصة', basis: 'أساس الحساب', formula: 'المعادلة', not_reported: 'غير متاح',
     add_expense: 'إضافة مصروف', category: 'التصنيف', incurred_on: 'التاريخ', void: 'إلغاء القيد', voided: 'ملغى', add_rule: 'إضافة قاعدة عمولة', rule_scope: 'النطاق', percent: 'نسبة', fixed: 'مبلغ ثابت',
     all_staff: 'كل الأخصائيات', all_services: 'كل الخدمات', issue_receipt: 'إصدار إيصال', download_pdf: 'تنزيل PDF', print: 'عرض للطباعة', approve: 'اعتماد', export: 'إنشاء ملف تصدير', export_ready: 'الملف جاهز للتنزيل',
-    export_kinds: { bookings: 'الحجوزات', payments: 'المدفوعات', journal: 'دفتر القيود', expenses: 'المصروفات' }, tax_note: 'الضرائب حسب الإعدادات فقط؛ لا يُدّعى الامتثال الضريبي.',
+    export_kinds: { bookings: 'الحجوزات', payments: 'المدفوعات', journal: 'دفتر القيود', expenses: 'المصروفات', summary: 'ملخص التقرير مع الأساس' }, tax_note: 'الضرائب حسب الإعدادات فقط؛ لا يُدّعى الامتثال الضريبي.',
     categories: { rent: 'إيجار', salaries: 'رواتب', supplies: 'مستلزمات', marketing: 'تسويق', utilities: 'خدمات', equipment: 'معدات', fees: 'رسوم', other: 'أخرى' },
   },
   engagement: {
@@ -134,7 +134,7 @@ const en: Shape<typeof ar> = {
     profit: 'Profit', costs_incomplete: 'Costs incomplete — profit cannot be calculated reliably.', missing: 'Missing data', basis: 'Basis', formula: 'Formula', not_reported: 'Not available',
     add_expense: 'Add expense', category: 'Category', incurred_on: 'Date', void: 'Void entry', voided: 'Voided', add_rule: 'Add commission rule', rule_scope: 'Scope', percent: 'Percent', fixed: 'Fixed amount',
     all_staff: 'All specialists', all_services: 'All services', issue_receipt: 'Issue receipt', download_pdf: 'Download PDF', print: 'Print view', approve: 'Approve', export: 'Create export', export_ready: 'File ready to download',
-    export_kinds: { bookings: 'Bookings', payments: 'Payments', journal: 'Journal', expenses: 'Expenses' }, tax_note: 'Taxes follow your settings only; no tax compliance is claimed.',
+    export_kinds: { bookings: 'Bookings', payments: 'Payments', journal: 'Journal', expenses: 'Expenses', summary: 'Report summary with basis' }, tax_note: 'Taxes follow your settings only; no tax compliance is claimed.',
     categories: { rent: 'Rent', salaries: 'Salaries', supplies: 'Supplies', marketing: 'Marketing', utilities: 'Utilities', equipment: 'Equipment', fees: 'Fees', other: 'Other' },
   },
   engagement: {

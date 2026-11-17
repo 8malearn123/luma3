@@ -76,9 +76,20 @@ export function splitLines(lines: Moneyish[]) {
   const included = taxLines.some((l) => l.tax_included);
   let hostingNet = hosting, productNet = product;
   if (included && tax > 0) {
-    // Tax-inclusive prices: take the tax out of each revenue stream proportionally.
-    const gross = hosting + product;
-    const tP = gross > 0 ? Math.round((tax * product) / gross) : 0;
+    // Tax-inclusive prices: the tax was computed ONCE on the booking base (after
+    // the add-ons discount, half-up to the halala — see quote/taxOf) and is taken
+    // out of each revenue stream in proportion to what that stream actually
+    // charges. The add-ons discount (D5b) reduces the add-on streams only
+    // (products and equipment), never the rent, so it is allocated to products
+    // and equipment by their amounts before the split (LUMA-AUDIT-037: splitting
+    // by the pre-discount gross under-taxed the rent, e.g. 8713 instead of 8696).
+    const equipment = sum(['equipment']);
+    const addons = product + equipment;
+    const dP = addons > 0 ? Math.round((discount * product) / addons) : 0;
+    const productBase = product - dP;
+    const hostingBase = hosting - (discount - dP);
+    const base = productBase + hostingBase;
+    const tP = base > 0 ? Math.round((tax * productBase) / base) : 0;
     productNet -= tP; hostingNet -= tax - tP;
   }
   return { hosting, product, discount, tax, included, hostingNet, productNet, total: hosting + product - discount + (included ? 0 : tax) };
@@ -117,8 +128,17 @@ export async function postExtraPaid(trx: Tx, w: W, paymentId: string, amount: nu
   await post(trx, w.guest_tenant_id, { type: 'workspace_payment', id: paymentId }, [{ account: 'hosting_payable', debit: amount }, { account: 'bank', credit: amount }], { memo: `space dues ${w.number}` });
 }
 
-export async function postRefund(trx: Tx, w: W, refundId: string, amount: number) {
-  await post(trx, w.host_tenant_id, { type: 'workspace_refund', id: refundId }, [{ account: 'refunds', debit: amount }, { account: 'provider_clearing', credit: amount }], { memo: `space refund ${w.number}` });
+/**
+ * A refund to the expert. The amount is tax-inclusive money; the host takes the
+ * tax share out of tax_payable at the booking's frozen rate (the same rule that
+ * charged it), so a full refund leaves no revenue and no tax behind
+ * (LUMA-AUDIT-037). The expert's side reverses her expense in full: her input
+ * tax is carried inside the expense (requirement 17).
+ */
+export async function postRefund(trx: Tx, w: W, refundId: string, amount: number, tax?: TaxRule | null) {
+  const taxPart = tax && tax.rate_bp > 0 ? Math.round((amount * tax.rate_bp) / (10000 + tax.rate_bp)) : 0;
+  await post(trx, w.host_tenant_id, { type: 'workspace_refund', id: refundId },
+    [{ account: 'refunds', debit: amount - taxPart }, { account: 'tax_payable', debit: taxPart }, { account: 'provider_clearing', credit: amount }], { memo: `space refund ${w.number}` });
   await post(trx, w.guest_tenant_id, { type: 'workspace_refund', id: refundId }, [{ account: 'bank', debit: amount }, { account: 'hosting_expense', credit: amount }], { memo: `space refund ${w.number}` });
 }
 
@@ -172,7 +192,10 @@ export async function statement(trx: Tx, w: { id: string; currency: string; paid
   const s = splitLines(lines);
   const fee = await platformFeeSetting(trx);
   const collected = w.paid_minor - w.refunded_minor;
-  const platformFee = fee.enabled ? Math.round((collected * fee.bp) / 10000) : 0;
+  // LUMA-AUDIT-037: the salon's net is what this booking earns it (total charges
+  // under the saved terms, less the platform fee — 0 and disabled, D11), not the
+  // cash collected so far; collected/due/credit are shown separately.
+  const platformFee = fee.enabled ? Math.round((s.total * fee.bp) / 10000) : 0;
   const taxExtra = s.included ? 0 : s.tax;
   return {
     currency: w.currency, booking_status: w.status, settlement_status: w.settlement_status,
@@ -188,7 +211,8 @@ export async function statement(trx: Tx, w: { id: string; currency: string; paid
     due_from_guest_minor: Math.max(0, s.total - collected),
     credit_to_guest_minor: Math.max(0, collected - s.total),
     platform_fee: { enabled: fee.enabled, bp: fee.enabled ? fee.bp : 0, amount_minor: platformFee },
-    host_net_minor: collected - platformFee,
+    host_net_minor: s.total - platformFee,
+    collected_net_minor: collected,
     tax_extra_minor: taxExtra,
     lines: lines.map((l) => ({ id: l.id, kind: l.kind, status: l.status, charge_group: l.charge_group, description: l.description, quantity: l.quantity, unit_price_minor: l.unit_price_minor, amount_minor: l.amount_minor, tax_included: l.tax_included, paid: !!l.payment_id, invoice_id: l.invoice_id })),
   };

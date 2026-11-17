@@ -1,7 +1,8 @@
 import { sql } from 'kysely';
 import { withTenant } from '../../db/client';
 import type { TenantAccess } from '../../tenancy/access';
-import { listForGuest, listForHost } from './bookings';
+import { listForHost } from './bookings';
+import { hostingTx } from './scope';
 
 /**
  * Hosting money summaries from the journal (one source of truth) plus open
@@ -33,19 +34,57 @@ export async function hostSummary(access: TenantAccess) {
   };
 }
 
+/**
+ * The expert's hosting expense from HER journal (one source of truth), split per
+ * space booking by mapping each posting back to the booking it came from:
+ * payments (rent/add-ons, dues), extra-charge lines and refunds. The per-salon
+ * figures therefore always add up to the total (LUMA-AUDIT-037: the per-salon
+ * list used to be paid−refunded, a cash figure, while the total was accrual).
+ */
+export async function guestExpenseByBooking(guestTenantId: string) {
+  return hostingTx('expert reads her hosting expense per space booking', async (trx) => {
+    const wbs = await trx.selectFrom('workspace_bookings').select(['id', 'number', 'host_snapshot', 'host_tenant_id']).where('guest_tenant_id', '=', guestTenantId).execute();
+    const refToBooking = new Map<string, string>();
+    if (wbs.length) {
+      const ids = wbs.map((w) => w.id);
+      const pays = await trx.selectFrom('payments').select(['id', 'workspace_booking_id']).where('workspace_booking_id', 'in', ids).execute();
+      for (const p of pays) refToBooking.set(p.id, p.workspace_booking_id!);
+      const lines = await trx.selectFrom('workspace_booking_lines').select(['id', 'workspace_booking_id']).where('workspace_booking_id', 'in', ids).execute();
+      for (const l of lines) refToBooking.set(l.id, l.workspace_booking_id);
+      if (pays.length) {
+        const refunds = await trx.selectFrom('refunds').select(['id', 'payment_id']).where('payment_id', 'in', pays.map((p) => p.id)).execute();
+        for (const r of refunds) refToBooking.set(r.id, refToBooking.get(r.payment_id)!);
+      }
+    }
+    const entries = await trx.selectFrom('financial_entries').select(['ref_id', sql<number>`sum(debit_minor - credit_minor)::bigint`.as('n')])
+      .where('tenant_id', '=', guestTenantId).where('account', '=', 'hosting_expense').where('ref_type', 'like', 'workspace_%').groupBy('ref_id').execute();
+    const perBooking = new Map<string, number>();
+    let unmapped = 0;
+    for (const e of entries) {
+      const wb = e.ref_id ? refToBooking.get(e.ref_id) : undefined;
+      if (wb) perBooking.set(wb, (perBooking.get(wb) ?? 0) + Number(e.n));
+      else unmapped += Number(e.n);
+    }
+    return { bookings: wbs, perBooking, unmapped, total: entries.reduce((a, e) => a + Number(e.n), 0) };
+  });
+}
+
 export async function guestSummary(access: TenantAccess) {
-  const bookings = await withTenant(access.tenantId, (trx) => listForGuest(trx, access.tenantId));
+  const x = await guestExpenseByBooking(access.tenantId);
   const perHost = new Map<string, { host: string; total_minor: number; count: number }>();
-  for (const b of bookings.filter((x) => ['confirmed', 'checked_in', 'in_use', 'completed', 'no_show', 'cancelled'].includes(x.status) && x.paid_minor > 0)) {
-    const name = (b.host as { name?: string }).name ?? '';
-    const cur = perHost.get(name) ?? { host: name, total_minor: 0, count: 0 };
-    cur.total_minor += b.paid_minor - b.refunded_minor; cur.count += 1;
-    perHost.set(name, cur);
+  for (const w of x.bookings) {
+    const amount = x.perBooking.get(w.id);
+    if (amount === undefined) continue;
+    const name = (w.host_snapshot as { name?: string }).name ?? '';
+    const cur = perHost.get(w.host_tenant_id) ?? { host: name, total_minor: 0, count: 0 };
+    cur.total_minor += amount; cur.count += 1;
+    perHost.set(w.host_tenant_id, cur);
   }
   return {
-    hosting_expense_minor: -(await balance(access, 'hosting_expense')),
+    hosting_expense_minor: x.total,
     dues_minor: await balance(access, 'hosting_payable'),
     per_host: [...perHost.values()].sort((a, b) => b.total_minor - a.total_minor),
-    basis: 'Journal entries posted by your space bookings (rent and add-ons paid to host salons).',
+    unmapped_minor: x.unmapped,
+    basis: 'Journal entries posted by your space bookings (rent, add-ons, approved fees and corrections, less refunds), tax included as charged by the salon. Accrual: unpaid dues are included and also shown as dues.',
   };
 }
