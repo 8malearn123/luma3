@@ -1,5 +1,7 @@
 # LUMA Audit Report
 
+> **Remediation status (2026-11-17):** findings were remediated on revision `0dcfb84` — see [LUMA_REMEDIATION_REPORT.md](LUMA_REMEDIATION_REPORT.md) for the per-finding tracker (38 fixed, 3 partial, 3 blocked, 4 open, 1 decision), evidence, and updated readiness verdicts. The text below is the original audit of `6455e2c`, unchanged.
+
 | | |
 |---|---|
 | Revision audited | `6455e2c61eef363f171991f1acc58b2deedd8b42` (branch `claude/clever-ptolemy-cxzufg`, PR 8malearn123/luma3#11) |
