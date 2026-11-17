@@ -84,7 +84,7 @@ export function AssistantPanel({ slug, status, pages, beforePropose, onApplied }
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center gap-2">
-        <Sparkles className="size-4 text-luma-700" aria-hidden />
+        <Sparkles className="size-4 text-link" aria-hidden />
         <span className="text-sm font-semibold">{t('builder.assistant.title')}</span>
         <Badge tone={connected ? 'ok' : 'warn'}>{connected ? t('builder.assistant.connected') : t('builder.assistant.disconnected')}</Badge>
       </div>
@@ -94,7 +94,7 @@ export function AssistantPanel({ slug, status, pages, beforePropose, onApplied }
       <Button icon={<Sparkles className="size-4" />} disabled={!connected || text.trim().length < 3} loading={busy === 'propose'} onClick={propose}>{t('builder.assistant.propose')}</Button>
       {err ? <Alert tone="danger">{msg(err)}</Alert> : null}
       {proposal ? (
-        <div className="flex flex-col gap-2 rounded-xl border border-line bg-white p-3">
+        <div className="flex flex-col gap-2 rounded-xl border border-line bg-surface p-3">
           {proposal.explanation ? <p className="text-sm">{proposal.explanation}</p> : null}
           {proposal.diff.length ? (
             <>

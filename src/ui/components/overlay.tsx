@@ -38,9 +38,9 @@ export function Drawer({ open, onClose, title, children, footer, wide }: { open:
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50">
-      <div className="absolute inset-0 bg-ink/30" onClick={onClose} aria-hidden />
+      <div className="absolute inset-0 bg-scrim/30" onClick={onClose} aria-hidden />
       <div ref={ref} role="dialog" aria-modal="true" aria-labelledby={titleId}
-        className={cx('absolute inset-y-0 end-0 flex w-full flex-col bg-white shadow-2xl', wide ? 'max-w-3xl' : 'max-w-lg')}>
+        className={cx('absolute inset-y-0 end-0 flex w-full flex-col bg-surface shadow-2xl', wide ? 'max-w-3xl' : 'max-w-lg')}>
         <header className="flex items-center justify-between border-b border-line px-5 py-3">
           <h2 id={titleId} className="text-lg font-semibold">{title}</h2>
           <IconButton label={t('actions.close')} onClick={onClose}><X className="size-5" /></IconButton>
@@ -58,8 +58,8 @@ export function Dialog({ open, onClose, title, children, footer }: { open: boole
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-ink/40" onClick={onClose} aria-hidden />
-      <div ref={ref} role="dialog" aria-modal="true" aria-labelledby={titleId} className="relative w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl">
+      <div className="absolute inset-0 bg-scrim/40" onClick={onClose} aria-hidden />
+      <div ref={ref} role="dialog" aria-modal="true" aria-labelledby={titleId} className="relative w-full max-w-md rounded-2xl bg-surface p-5 shadow-2xl">
         <h2 id={titleId} className="mb-3 text-lg font-semibold">{title}</h2>
         <div className="text-sm">{children}</div>
         {footer ? <div className="mt-5 flex justify-end gap-2">{footer}</div> : null}
@@ -68,11 +68,12 @@ export function Dialog({ open, onClose, title, children, footer }: { open: boole
   );
 }
 
-export function ConfirmDialog({ open, onClose, onConfirm, title, body, confirmLabel, danger, loading }: { open: boolean; onClose: () => void; onConfirm: () => void; title: ReactNode; body?: ReactNode; confirmLabel?: string; danger?: boolean; loading?: boolean }) {
+/** `cancelLabel` names the safe choice when "Cancel" would be ambiguous (e.g. "Keep booking" vs "Cancel booking"). */
+export function ConfirmDialog({ open, onClose, onConfirm, title, body, confirmLabel, cancelLabel, danger, loading }: { open: boolean; onClose: () => void; onConfirm: () => void; title: ReactNode; body?: ReactNode; confirmLabel?: string; cancelLabel?: string; danger?: boolean; loading?: boolean }) {
   const { t } = useI18n();
   return (
     <Dialog open={open} onClose={onClose} title={title} footer={<>
-      <Button variant="ghost" onClick={onClose}>{t('actions.cancel')}</Button>
+      <Button variant="ghost" onClick={onClose}>{cancelLabel ?? t('actions.cancel')}</Button>
       <Button variant={danger ? 'danger' : 'primary'} loading={loading} onClick={onConfirm}>{confirmLabel ?? t('actions.confirm')}</Button>
     </>}>{body}</Dialog>
   );

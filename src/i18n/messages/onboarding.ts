@@ -2,6 +2,9 @@ export const onboarding = {
   ar: {
     onboarding: {
       title: 'لنجهّز متجركِ', subtitle: 'سبع خطوات قصيرة. يمكنكِ الحفظ والعودة في أي وقت.', step_of: 'الخطوة {n} من ٧',
+      resume_note: 'أنجزتِ {done} من ٧ خطوات، وفتحنا لكِ الخطوة التالية. الخطوات المنجزة عليها علامة ✓ ويمكنكِ مراجعتها في أي وقت.', step_done: '(مكتملة)', step_current: '(الحالية)',
+      hours_mismatch: 'في {branch}: سيظهر المتجر «مغلق» يوم {days}، لكن لدى أخصائيات مواعيد عمل فيه وستظهر أوقات للحجز. أضيفي هذه الأيام لساعات العمل، أو عدّلي جداول الأخصائيات من صفحة الفريق.',
+      hours_note: 'هذه الساعات تظهر في متجرك فقط. أوقات الحجز تأتي من جدول كل أخصائية (صفحة الفريق).',
       steps: {
         1: { title: 'النشاط والفرع', hint: 'الاسم، النوع، المدينة والفرع الرئيسي.' },
         2: { title: 'هويتك الحالية', hint: 'ارفعي شعارك أو ابدئي باسم نصي فقط — لن نخترع شعاراً نهائياً.' },
@@ -34,6 +37,9 @@ export const onboarding = {
   en: {
     onboarding: {
       title: "Let's set up your storefront", subtitle: 'Seven short steps. Save and come back any time.', step_of: 'Step {n} of 7',
+      resume_note: 'You have completed {done} of 7 steps, so we opened the next one. Completed steps are marked ✓ and you can review them any time.', step_done: '(completed)', step_current: '(current)',
+      hours_mismatch: 'At {branch}: the store will show “Closed” on {days}, but specialists work then and customers will see times to book. Add these days to the opening hours, or adjust the specialists’ schedules on the Team page.',
+      hours_note: 'These hours are shown on your store only. Booking times come from each specialist’s schedule (Team page).',
       steps: {
         1: { title: 'Business & branch', hint: 'Name, type, city and main branch.' },
         2: { title: 'Existing identity', hint: 'Upload your logo or start with a text name — we will not invent a final logo.' },

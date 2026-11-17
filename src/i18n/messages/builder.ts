@@ -92,6 +92,7 @@ const ar = {
     },
     brand: {
       colors_title: 'الألوان', fonts_title: 'الخطوط', shape_title: 'الأشكال والمسافات', identity_title: 'الشعار والنصوص',
+      color_picker: 'اختيار لون {name}', color_hex: 'رمز لون {name} (hex)',
       colors: { primary: 'الأساسي', on_primary: 'النص على الأساسي', secondary: 'الثانوي', accent: 'المميز', background: 'الخلفية', surface: 'البطاقات', text: 'النص', muted: 'النص الثانوي', border: 'الحدود' },
       contrast: 'تباين ضعيف بين «{a}» و«{b}»: {ratio}:1 (المطلوب {min}:1)', contrast_ok: 'تباين الألوان جيد للقراءة.',
       font_heading: 'خط العناوين', font_body: 'خط النصوص', sample: 'جمالكِ بلمسة خبيرة — Your beauty', radius: 'الزوايا', button_style: 'شكل الأزرار', card_style: 'شكل البطاقات', density: 'الكثافة', spacing: 'مقياس المسافات',
@@ -253,6 +254,7 @@ const en: Shape<typeof ar> = {
     },
     brand: {
       colors_title: 'Colours', fonts_title: 'Fonts', shape_title: 'Shapes & spacing', identity_title: 'Logo & text',
+      color_picker: '{name} colour picker', color_hex: '{name} colour code (hex)',
       colors: { primary: 'Primary', on_primary: 'Text on primary', secondary: 'Secondary', accent: 'Accent', background: 'Background', surface: 'Cards', text: 'Text', muted: 'Secondary text', border: 'Borders' },
       contrast: 'Low contrast between “{a}” and “{b}”: {ratio}:1 (needs {min}:1)', contrast_ok: 'Colour contrast is good for reading.',
       font_heading: 'Heading font', font_body: 'Body font', sample: 'جمالكِ بلمسة خبيرة — Your beauty', radius: 'Corners', button_style: 'Button style', card_style: 'Card style', density: 'Density', spacing: 'Spacing scale',

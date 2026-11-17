@@ -193,10 +193,10 @@ export function BuilderApp({ slug, initial }: { slug: string; initial: BuilderSt
 
   const leftPanel = (
     <div className="flex flex-col gap-3">
-      <div role="tablist" aria-label={t('builder.tabs.label')} className="grid grid-cols-5 gap-1 rounded-lg bg-luma-100 p-1">
+      <div role="tablist" aria-label={t('builder.tabs.label')} className="grid grid-cols-5 gap-1 rounded-lg bg-accent-soft p-1">
         {leftTabs.map((x) => (
           <button key={x.key} role="tab" type="button" aria-selected={left === x.key} onClick={() => setLeft(x.key)} title={x.label}
-            className={cx('flex flex-col items-center gap-0.5 rounded-md px-1 py-1.5 text-[11px]', left === x.key ? 'bg-white font-semibold text-luma-800 shadow-sm' : 'text-ink-muted hover:text-ink')}>
+            className={cx('flex flex-col items-center gap-0.5 rounded-md px-1 py-1.5 text-[11px]', left === x.key ? 'bg-surface font-semibold text-heading shadow-sm' : 'text-ink-muted hover:text-ink')}>
             <x.icon className="size-4" aria-hidden /><span className="truncate">{x.label}</span>
           </button>
         ))}
@@ -227,8 +227,8 @@ export function BuilderApp({ slug, initial }: { slug: string; initial: BuilderSt
       {blocks.length ? (
         <ul className="mt-2 flex w-full flex-col gap-1 text-start">
           {blocks.map((x) => (
-            <li key={x.id}><button type="button" onClick={() => setSelected(x.id)} className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 hover:bg-luma-100">
-              <BlockIcon name={BLOCKS[x.type].icon} className="size-4 text-luma-700" /><span className="flex-1 truncate">{BLOCKS[x.type].label[locale]}</span>
+            <li key={x.id}><button type="button" onClick={() => setSelected(x.id)} className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 hover:bg-accent-soft">
+              <BlockIcon name={BLOCKS[x.type].icon} className="size-4 text-link" /><span className="flex-1 truncate">{BLOCKS[x.type].label[locale]}</span>
               {!x.visibility.enabled ? <Badge>{t('builder.canvas.hidden_badge')}</Badge> : null}
             </button></li>
           ))}
@@ -241,7 +241,7 @@ export function BuilderApp({ slug, initial }: { slug: string; initial: BuilderSt
     <div className="flex flex-col gap-3">
       <link rel="stylesheet" href={fontHref(b.doc.brand)} precedence="default" />
       {/* Toolbar */}
-      <div className="sticky top-14 z-20 flex flex-wrap items-center gap-2 rounded-xl border border-line bg-white/95 p-2 shadow-sm backdrop-blur">
+      <div className="sticky top-14 z-20 flex flex-wrap items-center gap-2 rounded-xl border border-line bg-surface/95 p-2 shadow-sm backdrop-blur">
         <label className="sr-only" htmlFor="builder-page">{t('builder.page')}</label>
         <Select id="builder-page" className="!h-9 !w-auto min-w-36" value={page.id} onChange={(e) => { setPageId(e.target.value); setSelected(null); }}>
           {pages.filter((p) => p.status === 'active').map((p) => <option key={p.id} value={p.id}>{pick(p.title_ar, p.title_en)}</option>)}
@@ -250,9 +250,9 @@ export function BuilderApp({ slug, initial }: { slug: string; initial: BuilderSt
         <IconButton label={`${t('builder.redo')} (Ctrl+Shift+Z)`} disabled={!b.canRedo} onClick={b.redo}><Redo2 className="size-4 flip-rtl" /></IconButton>
         <SaveIndicator b={b} />
         <div className="flex-1" />
-        <div role="group" aria-label={t('builder.device')} className="flex rounded-lg bg-luma-100 p-0.5">
-          <button type="button" aria-pressed={device === 'desktop'} onClick={() => setDevice('desktop')} className={cx('rounded-md p-1.5', device === 'desktop' && 'bg-white shadow-sm')} title={t('builder.desktop')} aria-label={t('builder.desktop')}><Monitor className="size-4" /></button>
-          <button type="button" aria-pressed={device === 'mobile'} onClick={() => setDevice('mobile')} className={cx('rounded-md p-1.5', device === 'mobile' && 'bg-white shadow-sm')} title={t('builder.mobile')} aria-label={t('builder.mobile')}><Smartphone className="size-4" /></button>
+        <div role="group" aria-label={t('builder.device')} className="flex rounded-lg bg-accent-soft p-0.5">
+          <button type="button" aria-pressed={device === 'desktop'} onClick={() => setDevice('desktop')} className={cx('rounded-md p-1.5', device === 'desktop' && 'bg-surface shadow-sm')} title={t('builder.desktop')} aria-label={t('builder.desktop')}><Monitor className="size-4" /></button>
+          <button type="button" aria-pressed={device === 'mobile'} onClick={() => setDevice('mobile')} className={cx('rounded-md p-1.5', device === 'mobile' && 'bg-surface shadow-sm')} title={t('builder.mobile')} aria-label={t('builder.mobile')}><Smartphone className="size-4" /></button>
         </div>
         <Button size="sm" variant="ghost" icon={<ExternalLink className="size-4" />} loading={previewBusy} onClick={openPreview}>{t('builder.preview')}</Button>
         <Button size="sm" variant="ghost" icon={<LayoutTemplate className="size-4" />} onClick={() => setDrawer('templates')} className="hidden sm:inline-flex">{t('builder.templates.title')}</Button>
@@ -263,14 +263,14 @@ export function BuilderApp({ slug, initial }: { slug: string; initial: BuilderSt
       {!canEdit ? <Alert tone="info">{t('builder.read_only')}</Alert> : null}
       <BookingStatusBanner slug={slug} />
       {server.published.version_number ? (
-        <p className="text-xs text-ink-muted">{t('builder.live_version', { n: server.published.version_number })} · <a className="text-luma-700 underline" href={`/s/${slug}`} target="_blank" rel="noreferrer">{t('builder.open_live')}</a></p>
+        <p className="text-xs text-ink-muted">{t('builder.live_version', { n: server.published.version_number })} · <a className="text-link underline" href={`/s/${slug}`} target="_blank" rel="noreferrer">{t('builder.open_live')}</a></p>
       ) : <p className="text-xs text-ink-muted">{t('builder.not_published')}</p>}
 
       {/* Mobile tabs */}
-      <div role="tablist" aria-label={t('builder.areas')} className="grid grid-cols-3 gap-1 rounded-lg bg-luma-100 p-1 lg:hidden">
+      <div role="tablist" aria-label={t('builder.areas')} className="grid grid-cols-3 gap-1 rounded-lg bg-accent-soft p-1 lg:hidden">
         {(['library', 'canvas', 'properties'] as const).map((k) => (
           <button key={k} role="tab" type="button" aria-selected={mobileTab === k} onClick={() => setMobileTab(k)}
-            className={cx('flex items-center justify-center gap-1 rounded-md py-1.5 text-sm', mobileTab === k ? 'bg-white font-semibold shadow-sm' : 'text-ink-muted')}>
+            className={cx('flex items-center justify-center gap-1 rounded-md py-1.5 text-sm', mobileTab === k ? 'bg-surface font-semibold shadow-sm' : 'text-ink-muted')}>
             {k === 'library' ? <Plus className="size-4" aria-hidden /> : k === 'canvas' ? <LayoutList className="size-4" aria-hidden /> : <MousePointerClick className="size-4" aria-hidden />}{t(`builder.areas_${k}`)}
           </button>
         ))}
@@ -279,7 +279,7 @@ export function BuilderApp({ slug, initial }: { slug: string; initial: BuilderSt
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={onDragStart} onDragEnd={onDragEnd} onDragCancel={() => setDragType(null)}
         accessibility={{ screenReaderInstructions: { draggable: t('builder.canvas.instructions') } }}>
         <div className="grid gap-3 lg:grid-cols-[260px_minmax(0,1fr)_300px]">
-          <aside aria-label={t('builder.areas_library')} className={cx('max-h-[calc(100dvh-10rem)] overflow-y-auto rounded-xl border border-line bg-white/70 p-3 lg:sticky lg:top-32 lg:block', mobileTab === 'library' ? 'block' : 'hidden')}>
+          <aside aria-label={t('builder.areas_library')} className={cx('max-h-[calc(100dvh-10rem)] overflow-y-auto rounded-xl border border-line bg-surface/70 p-3 lg:sticky lg:top-32 lg:block', mobileTab === 'library' ? 'block' : 'hidden')}>
             {leftPanel}
           </aside>
           <div data-builder-canvas className={cx('min-w-0 lg:block', mobileTab === 'canvas' ? 'block' : 'hidden')}>
@@ -291,11 +291,11 @@ export function BuilderApp({ slug, initial }: { slug: string; initial: BuilderSt
               onDelete={del}
               onAddAt={() => { setLeft('library'); setMobileTab('library'); }} />
           </div>
-          <aside aria-label={t('builder.areas_properties')} className={cx('max-h-[calc(100dvh-10rem)] overflow-y-auto rounded-xl border border-line bg-white p-3 lg:sticky lg:top-32 lg:block', mobileTab === 'properties' ? 'block' : 'hidden')}>
+          <aside aria-label={t('builder.areas_properties')} className={cx('max-h-[calc(100dvh-10rem)] overflow-y-auto rounded-xl border border-line bg-surface p-3 lg:sticky lg:top-32 lg:block', mobileTab === 'properties' ? 'block' : 'hidden')}>
             {propsPanel}
           </aside>
         </div>
-        <DragOverlay>{dragType ? <div className="flex items-center gap-2 rounded-lg border border-luma-300 bg-white px-3 py-2 text-sm shadow-lg"><BlockIcon name={BLOCKS[dragType].icon} className="size-4" />{BLOCKS[dragType].label[locale]}</div> : null}</DragOverlay>
+        <DragOverlay>{dragType ? <div className="flex items-center gap-2 rounded-lg border border-luma-300 bg-surface px-3 py-2 text-sm shadow-lg"><BlockIcon name={BLOCKS[dragType].icon} className="size-4" />{BLOCKS[dragType].label[locale]}</div> : null}</DragOverlay>
       </DndContext>
 
       <Dialog open={!!b.conflict} onClose={() => {}} title={t('builder.conflict.title')} footer={<>

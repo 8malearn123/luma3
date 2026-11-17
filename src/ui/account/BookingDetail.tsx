@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { localizedTaxLabel } from '@/shared/tax-label';
 import { useMemo, useState } from 'react';
 import { DateTime } from 'luxon';
 import { ArrowLeft, ArrowRight, CalendarClock, CreditCard, ExternalLink, FileText, Store } from 'lucide-react';
@@ -88,7 +89,7 @@ export function BookingDetail({ id }: { id: string }) {
         {b.group_session ? <p className="text-xs text-ink-muted">{t('fe.account.group_seats', { n: b.group_session.seats })}</p> : null}
         <div className="mt-2 border-t border-line pt-2">
           {b.discount_minor ? <Row label={t('fe.account.discount')}><span dir="ltr">−{money(b.discount_minor)}</span></Row> : null}
-          {b.tax_minor ? <Row label={b.terms.tax_label || t('booking.checkout.tax')}><span dir="ltr">{money(b.tax_minor)}</span></Row> : null}
+          {b.tax_minor ? <Row label={localizedTaxLabel(b.terms.tax_label, locale, t('booking.checkout.tax'))}><span dir="ltr">{money(b.tax_minor)}</span></Row> : null}
           <Row label={t('booking.flow.total')} className="text-base"><span dir="ltr">{money(b.total_minor)}</span></Row>
           <Row label={t('booking.checkout.paid')}><span dir="ltr">{money(b.paid_minor)}</span></Row>
           {b.refunded_minor ? <Row label={t('fe.account.refunded')}><span dir="ltr">{money(b.refunded_minor)}</span></Row> : null}
@@ -152,7 +153,7 @@ export function BookingDetail({ id }: { id: string }) {
         </Card>
       ) : null}
 
-      <ReasonDialog open={cancelling} onClose={() => setCancelling(false)} title={t('fe.account.cancel_title')} confirmLabel={t('fe.account.cancel_booking')} maxLength={500}
+      <ReasonDialog open={cancelling} onClose={() => setCancelling(false)} title={t('fe.account.cancel_title')} confirmLabel={t('fe.account.cancel_booking')} cancelLabel={t('fe.account.keep_booking')} maxLength={500}
         body={<CancelTerms b={b} money={money} />}
         onConfirm={async (reason) => {
           const r = await api<{ refund_due_minor: number }>(`/api/v1/account/bookings/${b.id}/cancel`, { body: { reason } });

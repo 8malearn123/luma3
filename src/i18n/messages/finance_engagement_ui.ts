@@ -124,7 +124,7 @@ const ar = {
     },
     account: {
       back: 'كل حجوزاتي', hold_pending: 'الحجز بانتظار الدفع', hold_until: 'الموعد محجوز لكِ حتى {time}.', complete_payment: 'إكمال الدفع',
-      discount: 'الخصم', refunded: 'المسترد', your_note: 'ملاحظتك', group_seats: 'عدد المقاعد: {n}', cancel_booking: 'إلغاء الحجز',
+      discount: 'الخصم', refunded: 'المسترد', your_note: 'ملاحظتك', group_seats: 'عدد المقاعد: {n}', keep_booking: 'الإبقاء على الحجز', cancel_booking: 'إلغاء الحجز',
       started_contact: 'بدأ موعد هذا الحجز؛ للتعديل تواصلي مع الصالون.', terms_snapshot: 'هذه الشروط كما كانت وقت الحجز، وهي التي تُطبَّق على حجزك.',
       payments: 'المدفوعات والإيصالات', receipts: 'الإيصالات', no_receipts: 'لا إيصالات صادرة بعد.',
       cancel_title: 'إلغاء الحجز', refund_preview: 'المبلغ الذي سيُسترد', fee_retained: 'رسوم الإلغاء المحتجزة',
@@ -268,7 +268,7 @@ const en: typeof ar = {
     },
     account: {
       back: 'All my bookings', hold_pending: 'This booking is waiting for payment', hold_until: 'Your time is held until {time}.', complete_payment: 'Complete payment',
-      discount: 'Discount', refunded: 'Refunded', your_note: 'Your note', group_seats: 'Seats: {n}', cancel_booking: 'Cancel booking',
+      discount: 'Discount', refunded: 'Refunded', your_note: 'Your note', group_seats: 'Seats: {n}', keep_booking: 'Keep booking', cancel_booking: 'Cancel booking',
       started_contact: 'This appointment has started; please contact the salon for changes.', terms_snapshot: 'These are the terms as they were when you booked; they are the ones that apply.',
       payments: 'Payments and receipts', receipts: 'Receipts', no_receipts: 'No receipts issued yet.',
       cancel_title: 'Cancel booking', refund_preview: 'Amount to be refunded', fee_retained: 'Cancellation fee retained',

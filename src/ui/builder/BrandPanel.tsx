@@ -17,9 +17,10 @@ function ColorField({ token, value, onChange }: { token: ColorToken; value: stri
   const id = `color-${token}`;
   return (
     <div className="flex items-center gap-2">
-      <input type="color" aria-label={t(`builder.brand.colors.${token}`)} value={value} onChange={(e) => onChange(e.target.value.toUpperCase())} className="h-9 w-10 shrink-0 cursor-pointer rounded border border-line bg-white" />
-      <label htmlFor={id} className="flex-1 text-sm">{t(`builder.brand.colors.${token}`)}</label>
-      <input id={id} dir="ltr" value={text} maxLength={7} onChange={(e) => { const v = e.target.value; setText(v); if (/^#[0-9a-fA-F]{6}$/.test(v)) onChange(v.toUpperCase()); }}
+      {/* Distinct accessible names: picker vs hex field (LUMA-AUDIT-041). */}
+      <input type="color" aria-label={t('builder.brand.color_picker', { name: t(`builder.brand.colors.${token}`) })} value={value} onChange={(e) => onChange(e.target.value.toUpperCase())} className="h-9 w-10 shrink-0 cursor-pointer rounded border border-line bg-surface" />
+      <span className="flex-1 text-sm" aria-hidden>{t(`builder.brand.colors.${token}`)}</span>
+      <input id={id} aria-label={t('builder.brand.color_hex', { name: t(`builder.brand.colors.${token}`) })} dir="ltr" value={text} maxLength={7} onChange={(e) => { const v = e.target.value; setText(v); if (/^#[0-9a-fA-F]{6}$/.test(v)) onChange(v.toUpperCase()); }}
         aria-invalid={!/^#[0-9a-fA-F]{6}$/.test(text)} className="h-9 w-24 rounded-md border border-line px-2 font-mono text-xs aria-[invalid=true]:border-danger" />
     </div>
   );
@@ -33,7 +34,7 @@ function Segmented<T extends string>({ label, value, options, onChange }: { labe
       <div className="flex flex-wrap gap-1">
         {options.map((o) => (
           <button key={o} type="button" role="radio" aria-checked={value === o} onClick={() => onChange(o)}
-            className={cx('rounded-md border px-2.5 py-1 text-xs', value === o ? 'border-luma-700 bg-luma-700 text-white' : 'border-line bg-white hover:border-luma-300')}>{t(`builder.o.${o}`)}</button>
+            className={cx('rounded-md border px-2.5 py-1 text-xs', value === o ? 'border-link bg-primary text-on-primary' : 'border-line bg-surface hover:border-luma-300')}>{t(`builder.o.${o}`)}</button>
         ))}
       </div>
     </div>
@@ -68,7 +69,7 @@ export function BrandPanel({ slug, brand, onChange, assets, onAssetsChange }: { 
             </Select>
           )}</Field>
         ))}
-        <p className="rounded-lg border border-line bg-white p-3 text-lg" style={{ fontFamily: FONTS[brand.fonts.heading].css }}>{t('builder.brand.sample')}</p>
+        <p className="rounded-lg border border-line bg-surface p-3 text-lg" style={{ fontFamily: FONTS[brand.fonts.heading].css }}>{t('builder.brand.sample')}</p>
       </section>
       <section className="flex flex-col gap-3">
         <h3 className="text-sm font-semibold">{t('builder.brand.shape_title')}</h3>

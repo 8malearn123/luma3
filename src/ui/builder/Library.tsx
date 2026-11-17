@@ -28,10 +28,10 @@ function Item({ type, check, onAdd }: { type: BlockType; check: AddCheck; onAdd:
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: `lib:${type}`, disabled: !check.ok, data: { type } });
   const reason = check.ok ? null : t(`builder.library.cannot.${check.reason}`);
   return (
-    <li className={cx('flex items-center gap-2 rounded-lg border border-line bg-white p-2 text-sm', isDragging && 'opacity-50', !check.ok && 'opacity-60')}>
+    <li className={cx('flex items-center gap-2 rounded-lg border border-line bg-surface p-2 text-sm', isDragging && 'opacity-50', !check.ok && 'opacity-60')}>
       <span ref={setNodeRef} {...listeners} {...attributes} className={cx('flex min-w-0 flex-1 items-center gap-2', check.ok && 'cursor-grab active:cursor-grabbing')}
         aria-label={t('builder.library.drag', { name: d.label[locale] })} title={reason ?? t('builder.library.drag_hint')}>
-        <BlockIcon name={d.icon} className="size-4 shrink-0 text-luma-700" />
+        <BlockIcon name={d.icon} className="size-4 shrink-0 text-link" />
         <span className="flex min-w-0 flex-col">
           <span className="truncate">{d.label[locale]}</span>
           {/* Why it cannot be added is visible, not only on hover (LUMA-AUDIT-019). */}
@@ -39,7 +39,7 @@ function Item({ type, check, onAdd }: { type: BlockType; check: AddCheck; onAdd:
         </span>
       </span>
       <button type="button" disabled={!check.ok} onClick={() => onAdd(type)} title={reason ?? t('builder.library.add')}
-        aria-label={`${t('builder.library.add')}: ${d.label[locale]}`} aria-describedby={reason ? `lib-reason-${type}` : undefined} className="rounded-md p-1 text-luma-700 hover:bg-luma-100 disabled:cursor-not-allowed">
+        aria-label={`${t('builder.library.add')}: ${d.label[locale]}`} aria-describedby={reason ? `lib-reason-${type}` : undefined} className="rounded-md p-1 text-link hover:bg-accent-soft disabled:cursor-not-allowed">
         <Plus className="size-4" />
       </button>
     </li>
@@ -57,7 +57,7 @@ export function Library({ check, onAdd }: { check: (t: BlockType) => AddCheck; o
         if (!types.length) return null;
         return (
           <section key={c} aria-labelledby={`lib-${c}`}>
-            <h3 id={`lib-${c}`} className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-luma-500">{t(`builder.library.cat.${c}`)}</h3>
+            <h3 id={`lib-${c}`} className="mb-1.5 text-xs font-semibold text-ink-muted">{t(`builder.library.cat.${c}`)}</h3>
             <ul className="flex flex-col gap-1.5">{types.map((x) => <Item key={x} type={x} check={check(x)} onAdd={onAdd} />)}</ul>
           </section>
         );

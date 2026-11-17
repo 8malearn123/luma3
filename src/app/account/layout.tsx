@@ -13,7 +13,7 @@ export default async function AccountLayout({ children }: { children: React.Reac
   const user = await requireUser('/account');
   const { t } = await getT();
   return (
-    <div className="min-h-dvh bg-luma-50">
+    <div className="luma-app min-h-dvh bg-canvas">
       <header className="border-b border-line bg-white">
         <div className="mx-auto flex max-w-6xl items-center gap-3 px-3 py-3 sm:px-6">
           <Link href="/" aria-label="LUMA"><LumaLogo className="h-9 w-auto" /></Link>

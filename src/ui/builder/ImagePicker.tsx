@@ -39,11 +39,11 @@ export function ImagePicker({ slug, purpose, value, onChange, label, assets, onU
         {value ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={`/api/v1/media/${value}`} alt="" className="size-16 rounded-lg border border-line object-cover" />
-        ) : <div className="flex size-16 items-center justify-center rounded-lg border border-dashed border-luma-300 bg-luma-50"><ImagePlus className="size-5 text-luma-300" aria-hidden /></div>}
+        ) : <div className="flex size-16 items-center justify-center rounded-lg border border-dashed border-luma-300 bg-surface-muted"><ImagePlus className="size-5 text-luma-300" aria-hidden /></div>}
         <div className="flex flex-col gap-1">
-          <Button size="sm" variant="outline" onClick={() => setOpen(true)}>{value ? t('builder.image.change') : t('builder.image.choose')}</Button>
+          <Button size="sm" variant="outline" onClick={() => setOpen(true)} aria-label={`${value ? t('builder.image.change') : t('builder.image.choose')}: ${label}`}>{value ? t('builder.image.change') : t('builder.image.choose')}</Button>
           {value && crop.canCrop ? <Button size="sm" variant="ghost" icon={<Crop className="size-4" />} onClick={() => crop.recrop(value)}>{t('business.crop.edit')}</Button> : null}
-          {value ? <Button size="sm" variant="ghost" icon={<Trash2 className="size-4" />} onClick={() => onChange(null)}>{t('builder.image.remove')}</Button> : null}
+          {value ? <Button size="sm" variant="ghost" icon={<Trash2 className="size-4" />} onClick={() => onChange(null)} aria-label={`${t('builder.image.remove')}: ${label}`}>{t('builder.image.remove')}</Button> : null}
         </div>
       </div>
       {!open && err ? <p className="text-xs text-danger" role="alert">{msg(err)}</p> : null}
@@ -51,7 +51,7 @@ export function ImagePicker({ slug, purpose, value, onChange, label, assets, onU
       <Dialog open={open} onClose={() => setOpen(false)} title={label} footer={<Button variant="ghost" onClick={() => setOpen(false)}>{t('actions.close')}</Button>}>
         <div className="flex flex-col gap-3">
           <Button variant="primary" size="sm" icon={busy ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />} disabled={busy} onClick={() => input.current?.click()}>{busy ? t('builder.image.uploading') : t('builder.image.upload')}</Button>
-          <input ref={input} type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif" className="sr-only" aria-label={t('builder.image.upload')}
+          <input ref={input} type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif" className="sr-only" tabIndex={-1} aria-hidden
             onChange={(e) => { const f = e.target.files?.[0]; if (f) { if (crop.canCrop) setOpen(false); crop.pick(f); } e.target.value = ''; }} />
           <p className="text-xs text-ink-muted">{t('builder.image.hint')}</p>
           {err ? <p className="text-xs text-danger" role="alert">{msg(err)}</p> : null}
@@ -60,7 +60,7 @@ export function ImagePicker({ slug, purpose, value, onChange, label, assets, onU
               {assets.map((a) => (
                 <li key={a.id}>
                   <button type="button" onClick={() => { onChange(a.id); setOpen(false); }} aria-pressed={value === a.id}
-                    className={cx('block w-full overflow-hidden rounded-lg border-2', value === a.id ? 'border-luma-700' : 'border-transparent hover:border-luma-300')}
+                    className={cx('block w-full overflow-hidden rounded-lg border-2', value === a.id ? 'border-link' : 'border-transparent hover:border-luma-300')}
                     aria-label={a.alt_ar || a.alt_en || t('builder.image.untitled')}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={`/api/v1/media/${a.id}`} alt="" loading="lazy" className="aspect-square w-full object-cover" />
@@ -86,7 +86,7 @@ export function AssetAltEditor({ slug, asset, onSaved }: { slug: string; asset: 
   const [ok, setOk] = useState(false);
   if (!asset) return null;
   return (
-    <div className="flex flex-col gap-1.5 rounded-lg bg-luma-50 p-2">
+    <div className="flex flex-col gap-1.5 rounded-lg bg-surface-muted p-2">
       <span className="text-xs font-medium">{t('builder.image.alt')}</span>
       <input aria-label={`${t('builder.image.alt')} (ع)`} dir="rtl" className="h-9 rounded-md border border-line px-2 text-sm" maxLength={160} value={ar} onChange={(e) => { setAr(e.target.value); setOk(false); }} />
       <input aria-label={`${t('builder.image.alt')} (EN)`} dir="ltr" className="h-9 rounded-md border border-line px-2 text-sm" maxLength={160} value={en} onChange={(e) => { setEn(e.target.value); setOk(false); }} />

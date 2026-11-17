@@ -17,6 +17,7 @@ export async function getOnboarding(access: TenantAccess) {
     const brand = await trx.selectFrom('brand_settings').select(['pending_palette']).where('tenant_id', '=', access.tenantId).executeTakeFirst();
     return {
       answers: row.answers as OnboardingAnswers,
+      hours_check: await hoursCheck(trx, access.tenantId),
       completed_steps: row.completed_steps,
       current_step: row.current_step,
       draft_generated_at: row.draft_generated_at,
@@ -201,4 +202,31 @@ export async function storefrontBookingStatus(access: TenantAccess, opts: { excl
     const live = !!t.published_version_id;
     return { live, bookable_services: bookable, booking_available: bookable > 0, warn: live && bookable === 0, services_path: `/app/${access.slug}/services` };
   });
+}
+
+/**
+ * Opening hours (branch_hours, shown on the storefront) and specialist
+ * schedules (working_hours, which produce booking slots) are separate by
+ * design: a salon may open before its first specialist starts. They are NOT
+ * synced automatically; instead the owner is warned when the store would say
+ * "Closed" on a day a specialist works (customers would see "Closed" yet find
+ * slots) — LUMA-AUDIT-049. Branches without any opening hours are skipped
+ * (the storefront shows no hours table then).
+ */
+export async function hoursCheck(trx: Tx, tenantId: string) {
+  const branches = await trx.selectFrom('branches').select(['id', 'name']).where('tenant_id', '=', tenantId).where('status', '=', 'active').execute();
+  if (!branches.length) return [];
+  const open = await trx.selectFrom('branch_hours').select(['branch_id', 'weekday']).where('tenant_id', '=', tenantId).execute();
+  const staffed = await sql<{ branch_id: string; weekday: number }>`
+    select distinct w.branch_id, w.weekday::int as weekday from working_hours w join staff_profiles sp on sp.id = w.staff_id
+    where w.tenant_id = ${tenantId} and sp.is_active and sp.archived_at is null
+      and (w.effective_to is null or w.effective_to >= current_date)`.execute(trx);
+  const out: Array<{ branch_id: string; branch_name: string; closed_but_staffed: number[] }> = [];
+  for (const b of branches) {
+    const openDays = new Set(open.filter((h) => h.branch_id === b.id).map((h) => h.weekday));
+    if (!openDays.size) continue;
+    const days = [...new Set(staffed.rows.filter((w) => w.branch_id === b.id).map((w) => w.weekday))].filter((d) => !openDays.has(d)).sort();
+    if (days.length) out.push({ branch_id: b.id, branch_name: b.name, closed_but_staffed: days });
+  }
+  return out;
 }
