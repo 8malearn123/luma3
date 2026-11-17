@@ -146,6 +146,9 @@ test('expert searches, sees the price breakdown, books and pays in the sandbox',
   await result.click();
   const drawer = expert.getByRole('dialog');
   await expect(drawer.getByText('No materials are included', { exact: false })).toBeVisible();
+  // Both add-on kinds configured by the salon are offered to the expert (LUMA-AUDIT-009).
+  await expect(drawer.getByText('Facial steamer')).toBeVisible();
+  await expect(drawer.getByLabel('Quantity')).toHaveCount(2);
   await drawer.getByLabel('Quantity').first().fill('1');
   await drawer.getByRole('button', { name: 'Total with add-ons' }).click();
   const breakdown = drawer.getByTestId('price-breakdown');

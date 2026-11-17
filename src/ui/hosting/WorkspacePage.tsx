@@ -89,7 +89,7 @@ function SearchPanel({ onBooked }: { onBooked: (id: string) => void }) {
               <p className="font-semibold">{r.host.name} · {pick(r.title_ar, r.title_en) || r.code}</p>
               <p className="flex items-center gap-1 text-sm text-ink-muted"><MapPin className="size-4" aria-hidden />{r.branch.name}{r.branch.city ? ` — ${r.branch.city}` : ''}{r.distance_km != null ? ` · ${t('workspace.km', { n: r.distance_km })}` : ''}</p>
               <p className="text-sm">{t('workspace.base_price')}: <span dir="ltr">{money(r.price_minor)}</span> {t(`workspace.per.${r.price_model}`)}</p>
-              <p className="text-sm">{t('workspace.price_label_base')} ({t('workspace.minutes', { n: Number(f.duration_min) || 0 })}): <span dir="ltr" className="font-semibold">{money(r.base_total_minor)}</span></p>
+              <p className="text-sm">{t('workspace.price_label_base')} ({t('workspace.minutes', { n: Number(new URLSearchParams(query ?? '').get('duration_min')) || 120 })}): <span dir="ltr" className="font-semibold">{money(r.base_total_minor)}</span></p>
               <p className="flex items-center gap-1 text-xs text-ink-muted"><Star className="size-3.5" aria-hidden />{r.rating.average != null ? t('workspace.rating', { avg: r.rating.average, n: r.rating.count }) : t('workspace.no_rating')} · {t(`workspace.${r.booking_mode}`)}</p>
               {r.availability.free.slice(0, 3).map((w, i) => <p key={i} className="text-xs"><Badge tone="ok">{t('hosting.free')}</Badge> {when(w.start)} → {when(w.end)}</p>)}
             </button>
