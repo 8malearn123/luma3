@@ -2,15 +2,18 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
-import { CheckCircle2, Clock, Hourglass, Store } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Clock, Hourglass, Store } from 'lucide-react';
 import { useI18n } from '@/i18n/client';
-import { api, newIdempotencyKey } from '../api';
+import { api, ApiError, newIdempotencyKey } from '../api';
 import { useErrorMessage } from '../hooks';
-import { formatMoney } from '@/shared/format';
+import { formatDateTime, formatMoney } from '@/shared/format';
 
 type Order = {
   id: string; number: string; status: string; fulfillment_method: string; subtotal_minor: number; discount_minor: number; tax_minor: number;
   total_minor: number; paid_minor: number; currency: string; expires_at: string | null;
+  payment_choice: 'online' | 'on_site';
+  /** Payment paths open right now (null once the order is no longer pending). */
+  payment: { online: boolean; pay_at_pickup: boolean; accepting_orders: boolean; simulation: boolean } | null;
   items: Array<{ id: string; name_ar: string | null; name_en: string | null; variant_name_ar: string | null; variant_name_en: string | null; unit_price_minor: number; quantity: number; line_total_minor: number }>;
 };
 
@@ -25,7 +28,9 @@ export function OrderCheckout({ slug, orderId, returningPaymentId }: { slug: str
   const [busy, setBusy] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   const [polling, setPolling] = useState(!!returningPaymentId);
-  const [key] = useState(newIdempotencyKey);
+  const [key, setKey] = useState(newIdempotencyKey);
+  // Outcome of the provider round trip, from the SERVER's payment status (never the redirect).
+  const [failure, setFailure] = useState<'failed' | 'cancelled' | null>(null);
 
   const load = useCallback(async () => {
     try { setO(await api<Order>(`/api/v1/s/${slug}/orders/${orderId}`)); } catch (e) { setError(e); }
@@ -41,6 +46,7 @@ export function OrderCheckout({ slug, orderId, returningPaymentId }: { slug: str
     const tick = async (n: number) => {
       try {
         const s = await api<{ status: string }>(`/api/v1/s/${slug}/payments/${returningPaymentId}`);
+        if (s.status === 'failed' || s.status === 'cancelled') { setFailure(s.status); setKey(newIdempotencyKey()); }
         if (s.status === 'captured' || s.status === 'failed' || s.status === 'cancelled' || n > 20) { setPolling(false); await load(); return; }
       } catch { /* keep polling briefly */ }
       if (!stop) setTimeout(() => tick(n + 1), 1500);
@@ -64,14 +70,30 @@ export function OrderCheckout({ slug, orderId, returningPaymentId }: { slug: str
       const url = new URL(r.payment.checkout_url, window.location.origin);
       url.searchParams.set('return', `/s/${slug}/checkout/order/${orderId}?payment=${r.payment.id}`);
       window.location.assign(url.toString());
-    } catch (e) { setError(e); setBusy(false); }
+    } catch (e) {
+      setError(e); setBusy(false); setKey(newIdempotencyKey());
+      // Online payment disappeared (or the order was cancelled for lack of any payment path): show the server's current state.
+      if (e instanceof ApiError && ['online_payment_unavailable', 'payment_unavailable'].includes(e.code)) await load();
+    }
+  }
+
+  async function payAtPickup() {
+    setBusy(true); setError(null);
+    try { await api(`/api/v1/s/${slug}/orders/${orderId}/pay-at-pickup`, { body: {} }); setFailure(null); await load(); }
+    catch (e) { setError(e); } finally { setBusy(false); }
   }
 
   return (
     <div className="storefront mx-auto max-w-2xl px-4 py-6 text-sf-text">
       <h1 className="font-sf-heading text-2xl">{paid ? t('order_checkout.paid_title') : t('order_checkout.title')}</h1>
       <p className="text-sm text-sf-muted" dir="ltr">{o.number}</p>
-      {error ? <div role="alert" className="my-3 rounded-[var(--radius-sf)] border border-red-200 bg-red-50 p-3 text-sm text-red-800">{msg(error)}</div> : null}
+      {error ? <div role="alert" className="my-3 rounded-[var(--radius-sf)] border border-danger/30 bg-danger-bg p-3 text-sm text-danger">{msg(error)}</div> : null}
+      {failure && !paid && o.status === 'pending_payment' ? (
+        <div role="alert" className="my-3 flex gap-2 rounded-[var(--radius-sf)] border border-danger/30 bg-danger-bg p-3 text-sm text-danger">
+          <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden />
+          <div><p className="font-medium">{t('order_checkout.payment_failed_title')}</p><p>{failure === 'cancelled' ? t('order_checkout.payment_cancelled') : t('order_checkout.payment_failed_body')}</p></div>
+        </div>
+      ) : null}
       {polling ? <p role="status" className="my-3 inline-flex items-center gap-2 text-sm"><Hourglass className="size-4 animate-pulse" />{t('booking.checkout.processing')}</p> : null}
 
       <section className="my-4 rounded-[var(--radius-sf)] border border-sf-border bg-sf-surface p-4">
@@ -109,13 +131,53 @@ export function OrderCheckout({ slug, orderId, returningPaymentId }: { slug: str
           <Link className="underline" href={`/s/${slug}/cart`}>{t('order_checkout.back_to_cart')}</Link>
         </div>
       ) : (
-        <section className="flex flex-col gap-3">
-          {o.expires_at ? <p className="inline-flex items-center gap-2 text-sm text-sf-muted"><Clock className="size-4" />{t('order_checkout.reserved_for', { time: `${mm}:${String(ss).padStart(2, '0')}` })}</p> : null}
-          <button className={`${sfBtn} bg-sf-primary text-sf-on-primary`} disabled={busy || polling} onClick={pay}>{t('order_checkout.pay_now')} · {formatMoney(o.total_minor - o.paid_minor, o.currency, locale)}</button>
-          <p className="text-center text-[11px] text-sf-muted">{t('booking.checkout.sandbox_badge')}</p>
-        </section>
+        <PendingPayment o={o} busy={busy || polling} left={`${mm}:${String(ss).padStart(2, '0')}`} onPay={pay} onPayAtPickup={payAtPickup} />
       )}
     </div>
+  );
+}
+
+/** What the customer can do with a pending order, from the server's current payment paths. */
+function PendingPayment({ o, busy, left, onPay, onPayAtPickup }: { o: Order; busy: boolean; left: string; onPay: () => void; onPayAtPickup: () => void }) {
+  const { t, locale } = useI18n();
+  const due = formatMoney(o.total_minor - o.paid_minor, o.currency, locale);
+  const p = o.payment;
+  if (p && !p.accepting_orders) {
+    return <p role="status" className="rounded-[var(--radius-sf)] border border-warn/30 bg-warn-bg p-3 text-sm">{t('order_checkout.not_accepting')}</p>;
+  }
+  const until = o.expires_at ? formatDateTime(o.expires_at, { locale, weekday: true }) : null;
+  if (o.payment_choice === 'on_site') {
+    return (
+      <section className="flex flex-col gap-3 rounded-[var(--radius-sf)] border border-sf-border bg-sf-surface p-4">
+        <p className="inline-flex items-center gap-2 font-medium"><Store className="size-4" aria-hidden />{t('order_checkout.pay_at_pickup_title')}</p>
+        <p className="text-sm">{t('order_checkout.pay_at_pickup_body', { amount: due })}</p>
+        <p className="text-sm text-sf-muted">{t('order_checkout.pickup_confirmed')}</p>
+        {until ? <p className="inline-flex items-center gap-2 text-xs text-sf-muted"><Clock className="size-4" aria-hidden />{t('order_checkout.pickup_reserved_until', { time: until })}</p> : null}
+        {p?.online ? (
+          <div className="flex flex-col gap-1 border-t border-sf-border pt-3">
+            <button className={`${sfBtn} self-start border border-sf-border`} disabled={busy} onClick={onPay}>{t('order_checkout.pay_online_instead')} · {due}</button>
+            {p.simulation ? <p className="text-[11px] text-sf-muted">{t('booking.checkout.sandbox_badge')}</p> : null}
+          </div>
+        ) : null}
+      </section>
+    );
+  }
+  return (
+    <section className="flex flex-col gap-3">
+      {o.expires_at ? <p className="inline-flex items-center gap-2 text-sm text-sf-muted"><Clock className="size-4" aria-hidden />{t('order_checkout.reserved_for', { time: left })}</p> : null}
+      {p && !p.online ? (
+        <div className="flex flex-col gap-2 rounded-[var(--radius-sf)] border border-warn/30 bg-warn-bg p-3 text-sm">
+          <p>{t('order_checkout.online_unavailable')}</p>
+          {p.pay_at_pickup ? <button className={`${sfBtn} self-start bg-sf-primary text-sf-on-primary`} disabled={busy} onClick={onPayAtPickup}>{t('order_checkout.switch_to_pickup')}</button> : null}
+        </div>
+      ) : (
+        <>
+          <button className={`${sfBtn} bg-sf-primary text-sf-on-primary`} disabled={busy} onClick={onPay}>{t('order_checkout.pay_now')} · {due}</button>
+          {p?.pay_at_pickup ? <button className={`${sfBtn} border border-sf-border`} disabled={busy} onClick={onPayAtPickup}>{t('order_checkout.switch_to_pickup')}</button> : null}
+          {p?.simulation ? <p className="text-center text-[11px] text-sf-muted">{t('booking.checkout.sandbox_badge')}</p> : null}
+        </>
+      )}
+    </section>
   );
 }
 

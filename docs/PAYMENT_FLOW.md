@@ -29,7 +29,7 @@ Only registered adapters can be resolved by `provider(name)`. Connecting any pro
 
 **Inputs**
 
-1. **Available methods** (`enabledMethods`): the `enabled_methods` of active payment accounts, plus `cash` and `pos_terminal` when `tenant_settings.allow_pay_on_site` is set.
+1. **Available methods** (`enabledMethods`): the `enabled_methods` of active payment accounts **whose provider has a working adapter** (the sandbox never counts in production), plus `cash` and `pos_terminal` when `tenant_settings.allow_pay_on_site` is set. The same list drives the publish-readiness item `payment_method` (Settings → Payments).
 2. **Business policy**: `deposit_mode` (`none`, `percent`, `fixed`), `deposit_percent_bp`, `deposit_fixed_minor`, `allow_full_prepay`, `allow_pay_on_site`, `hold_ttl_sec`.
 3. **Active decisions** for the customer: tenant-scope rows in `policy_decisions` (by `tenant_customer_id` or `customer_user_id`), plus platform-scope decisions through `app.platform_decisions_for_customer()`. That function exposes only the action and the customer-facing explanation. Only `status = 'active'` decisions inside their effective/expiry window count; superseded, revoked and expired decisions are ignored.
 
@@ -72,6 +72,14 @@ When ranks tie, a platform decision is preferred as the decisive one (for the ex
 5. `full` / `deposit`: the **server** computes the amount (the deposit or the full balance). It creates a `payments` row (`pending`, then `requires_action`), calls `provider.createCheckout()`, stores `provider_payment_id` and `checkout_url`, adds a `payment_attempts` row, and moves the booking to `pending_payment`. The hold and its allocations are kept, and the payment `expires_at` equals the hold expiry.
 
 Order checkout (`checkoutOrder`) follows the same pattern for a `pending_payment` order. It is always full payment and must happen before the order expires (30-minute window, `ORDER_PAYMENT_TTL_MIN`).
+
+**Product orders need a payment path (owner decision R2, 2026-11-17).** `createOrderFromCart` computes the order terms (context `order`, including the customer's restrictions) **before** any order row or stock reservation:
+
+- `blocked` (no online method and no pay-on-site, or a restriction that removes the only path) → 422 `payment_unavailable`; nothing is created or reserved.
+- `orders.payment_choice` is `online` (needs `full`) or `on_site` = **pay at pickup** (needs `on_site`). Omitted → online when available, else pay at pickup. A choice the terms do not allow → 422 `payment_option_not_allowed`.
+- Pay-at-pickup orders keep the reservation for `ORDER_PICKUP_HOLD_HOURS` (24 h, a product default pending an owner decision); the expiry sweep then cancels them and releases stock exactly once. Staff collect with `POST /payments/on-site` (`order_id`), which marks the order paid.
+- **Revalidated at payment**: if online payment disappeared since the cart, `checkoutOrder` returns 409 `online_payment_unavailable` (`pay_at_pickup_available: true`) when pay at pickup is allowed — the customer can switch with `POST /api/v1/s/{slug}/orders/{id}/pay-at-pickup` (reservation extended, never shortened) — otherwise it cancels the order, releases the reservation at once and returns 422 `payment_unavailable`.
+- The storefront cart (`GET /api/v1/s/{slug}/cart` → `payment: { online, pay_at_pickup, accepting_orders, simulation }`) and the customer order view show the honest state; the "test payment environment" note appears only when the sandbox is actually connected.
 
 ### The redirect is never proof of payment
 
@@ -131,7 +139,7 @@ If a capture arrives after the hold expired (`applyHoldOutcome` throws `hold_exp
 - **Cap under concurrency**: `requestRefundInternal` locks the payment row (`FOR UPDATE`) and checks `amount + sum(non-failed, non-cancelled refunds) <= payment.amount_minor`. Otherwise it returns 422 `refund_exceeds_payment` with the refundable amount. Concurrent requests serialise on that lock. The idempotency key (unique per tenant) deduplicates retries. Only captured payments can be refunded.
 - **Sending**: cash, terminal and gift-card refunds succeed immediately. Cash is handed back at the counter, and gift-card refunds restore the card balance (never cash). Provider refunds go to `provider.refund()` and stay `pending` until the `refund.succeeded` webhook.
 - **`refund_pending` is not refunded**: booking `payment_status` / order `refund_status` show pending while any refund is `requested` or `pending`. Only `succeeded` refunds move `refunded_minor` and post to the journal.
-- When money actually moves back, the `onRefundSucceeded` hooks reverse loyalty points proportionally and restore gift-card balances.
+- When money actually moves back, the `onRefundSucceeded` hooks reverse loyalty points proportionally, restore gift-card balances and, for a completed marketplace booking, reverse the LUMA commission proportionally (MARKETPLACE §7).
 
 ## 6. Reconciliation
 
@@ -177,7 +185,7 @@ A failed payment does not cancel the order; the customer may retry until the ord
 - `memberships.expire` (hourly) expires memberships past `ends_at`.
 - **Not implemented**: online membership purchase. `GET /api/v1/s/{slug}/membership-plans` lists plans publicly, but there is no purchase endpoint.
 
-**Loyalty** (`feature.loyalty`): points are earned once on a **paid, completed booking**, using `floor(SAR × points_per_currency_unit)`. They are reversed proportionally on refund, expire after a period of inactivity (`loyalty.expire-inactive`, every 6 h), and are redeemed into single-use coupons under a row lock. The service comment mentions earning on collected orders, but **no order earning is wired**.
+**Loyalty** (`feature.loyalty`): points are earned once on a **paid, completed booking**, using `floor(SAR × points_per_currency_unit)`. They are reversed proportionally on refund, expire after a period of inactivity (`loyalty.expire-inactive`, every 6 h), and are redeemed into single-use coupons under a row lock. **Product orders** (owner decision R6) earn with the same rule on `paid − refunded` when the order is **collected** (once per order, `ref_type = 'order'`); refunds of an order reverse proportionally. Reversals of one source never exceed what it earned in total, even across several partial refunds.
 
 ## 9. Journal postings
 

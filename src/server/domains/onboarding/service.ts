@@ -9,6 +9,7 @@ import { readBrand, writeBrand } from '../builder/brand';
 import { STEP_SCHEMAS, type OnboardingAnswers, type StepNumber } from '@/shared/onboarding';
 import { paletteFromSeeds, type ThemeColors } from '@/shared/builder/theme';
 import { normalizePhone } from '@/shared/phone';
+import { enabledMethods } from '../booking/service';
 
 export async function getOnboarding(access: TenantAccess) {
   return withTenant(access.tenantId, async (trx) => {
@@ -170,12 +171,15 @@ export async function readiness(access: TenantAccess): Promise<{ ready: boolean;
       where w.tenant_id = ${access.tenantId} and sp.is_active and sp.archived_at is null`.execute(trx);
     const settings = await trx.selectFrom('tenant_settings').select(['contact_phone', 'contact_email', 'contact_whatsapp', 'booking_policy_confirmed_at'])
       .where('tenant_id', '=', access.tenantId).executeTakeFirstOrThrow();
+    // A usable way to get paid: an active, integrated provider or pay-on-site (PAYMENT_FLOW §1).
+    const methods = await enabledMethods(trx, access.tenantId);
     const items: ReadinessItem[] = [
       { key: 'bookable_service', ok: (bookable.rows[0]?.n ?? 0) > 0, action_path: `${base}/services` },
       { key: 'provider', ok: (staffWithHours.rows[0]?.n ?? 0) > 0, action_path: `${base}/team` },
       { key: 'working_schedule', ok: (staffWithHours.rows[0]?.n ?? 0) > 0, action_path: `${base}/team` },
       { key: 'contact_details', ok: !!(settings.contact_phone || settings.contact_email || settings.contact_whatsapp), action_path: `${base}/settings` },
       { key: 'booking_policy', ok: !!settings.booking_policy_confirmed_at, action_path: `${base}/settings` },
+      { key: 'payment_method', ok: methods.length > 0, action_path: `${base}/settings?tab=payments` },
     ];
     return { ready: items.every((i) => i.ok), items };
   });

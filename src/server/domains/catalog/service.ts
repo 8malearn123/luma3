@@ -7,7 +7,7 @@ import { hasCapability, requireWithinLimit, type TenantAccess } from '../../tena
 import { assertTenantAssets } from '../assets/service';
 import { emitDomainEvent } from '../../infra/domain-events';
 import type {
-  addonInput, categoryInput, categoryPatch, packageInput, priceProposalInput, serviceInput, servicePatch, variantInput,
+  addonInput, categoryInput, categoryPatch, packageInput, packagePatch, priceProposalInput, serviceInput, servicePatch, variantInput,
 } from '@/shared/schemas/catalog';
 
 // ── Categories ──────────────────────────────────────────────────────────────
@@ -300,6 +300,35 @@ export async function createPackage(access: TenantAccess, actor: AuditActor, inp
     const p = await trx.insertInto('service_packages').values({ tenant_id: access.tenantId, ...fields, name_ar: fields.name_ar ?? null, name_en: fields.name_en ?? null, description_ar: fields.description_ar ?? null, description_en: fields.description_en ?? null }).returningAll().executeTakeFirstOrThrow();
     await trx.insertInto('service_package_items').values(service_ids.map((sid, i) => ({ tenant_id: access.tenantId, package_id: p.id, service_id: sid, sequence: i }))).execute();
     await audit(trx, actor, 'package.created', { tenantId: access.tenantId, targetType: 'package', targetId: p.id });
+    return { ...p, service_ids };
+  });
+}
+
+/**
+ * Edits a package in place for NEW sales (owner decision R7). The id is kept,
+ * so storefront offer blocks and links that reference it keep working. Nothing
+ * already sold changes: bookings snapshot their own lines and prices, and
+ * membership/prepaid entitlements carry their own plan snapshot.
+ */
+export async function updatePackage(access: TenantAccess, actor: AuditActor, id: string, input: z.infer<typeof packagePatch>) {
+  return withTenant(access.tenantId, async (trx) => {
+    const cur = await trx.selectFrom('service_packages').selectAll().where('id', '=', id).where('archived_at', 'is', null).forUpdate().executeTakeFirst();
+    if (!cur) throw Errors.notFound('package');
+    if (new Date(input.updated_at).getTime() !== cur.updated_at.getTime()) throw Errors.versionConflict();
+    const { service_ids, updated_at: _u, ...fields } = input;
+    if (new Set(service_ids).size !== service_ids.length) throw Errors.invalid('duplicate_service', 'Each service can appear once');
+    const svc = await trx.selectFrom('services').select('id').where('id', 'in', service_ids).where('archived_at', 'is', null).execute();
+    if (svc.length !== service_ids.length) throw Errors.invalid('invalid_reference', 'Every package service must exist in your catalog');
+    const before = await trx.selectFrom('service_package_items').select('service_id').where('package_id', '=', id).orderBy('sequence').execute();
+    const p = await trx.updateTable('service_packages').set({
+      name_ar: fields.name_ar ?? null, name_en: fields.name_en ?? null, description_ar: fields.description_ar ?? null, description_en: fields.description_en ?? null,
+      price_minor: fields.price_minor, is_active: fields.is_active, is_visible: fields.is_visible, updated_at: new Date(),
+    }).where('id', '=', id).returningAll().executeTakeFirstOrThrow();
+    await trx.deleteFrom('service_package_items').where('package_id', '=', id).execute();
+    await trx.insertInto('service_package_items').values(service_ids.map((sid, i) => ({ tenant_id: access.tenantId, package_id: id, service_id: sid, sequence: i }))).execute();
+    await audit(trx, actor, 'package.updated', { tenantId: access.tenantId, targetType: 'package', targetId: id, data: {
+      price_minor: { from: cur.price_minor, to: p.price_minor }, service_ids: { from: before.map((b) => b.service_id), to: service_ids },
+    } });
     return { ...p, service_ids };
   });
 }

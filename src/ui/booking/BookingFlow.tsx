@@ -11,17 +11,23 @@ import { cx } from '../components/cx';
 import { formatDuration, formatMoney, formatTime, tzLabel } from '@/shared/format';
 import { badgeLabel, type ServiceBadge } from '@/shared/badges';
 
+/** A customer-selectable variant or add-on (display data only; the server re-prices every quote). */
+export type FlowOption = { id: string; name_ar: string | null; name_en: string | null; price_minor: number; duration_min: number };
 export type FlowService = {
   id: string; name_ar: string | null; name_en: string | null; description_ar: string | null; description_en: string | null; price_minor: number; price_display: string; duration_min: number;
   category: { id: string; name_ar: string | null; name_en: string | null } | null;
   /** Set when the service is offered at one branch only. */
   branch_id?: string | null;
   badge?: ServiceBadge | null;
+  variants?: FlowOption[];
+  addons?: FlowOption[];
   staff: Array<{ id: string; name: string; name_en: string | null; title_ar: string | null; title_en: string | null; photo: string | null; branch_ids?: string[] }>;
 };
 export type FlowBranch = { id: string; name: string; city: string | null };
 type CouponPreview = { code: string; subtotal_minor: number; discount_minor: number; total_minor: number; deposit_minor: number };
-type Pick = { key: string; serviceId: string; staffId: string | null };
+type Pick = { key: string; serviceId: string; staffId: string | null; variantId?: string | null; addonIds?: string[] };
+/** Selection saved across a sign-in round trip (sessionStorage), re-validated against live availability and prices on return. */
+type Draft = { picks: Pick[]; day: string; start: string; note: string; savedAt: number; branchId?: string | null; coupon?: string; totalMinor?: number; reason?: 'sign_in' | 'session_expired' };
 type Option = { start: string; end: string; gaps_min: number[]; total_gap_min: number; items: Array<{ key: string; service_id: string; staff_id: string; staff_name: string; start: string; end: string; price_minor: number; duration_min: number }> };
 type Search = { days: Record<string, Option[]>; next_available_date: string | null; empty_reason: string | null; suggestion: string | null; timezone: string };
 
@@ -82,14 +88,16 @@ export function BookingFlow({ slug, tenantName, timezone, services: allServices,
   const [waitlisted, setWaitlisted] = useState(false);
   const [consent, setConsent] = useState(true);
   const [idemKey] = useState(newIdempotencyKey);
+  const [resumeNote, setResumeNote] = useState<string | null>(null);
 
   // Restore a selection saved before signing in, then re-validate it against live availability.
   const [resumeStart, setResumeStart] = useState<string | null>(null);
+  const [resumeDraft, setResumeDraft] = useState<Draft | null>(null);
   useEffect(() => {
     try {
       const raw = sessionStorage.getItem(STORAGE_KEY(slug));
       if (!raw) return;
-      const saved = JSON.parse(raw) as { picks: Pick[]; day: string; start: string; note: string; savedAt: number; branchId?: string | null; coupon?: string };
+      const saved = JSON.parse(raw) as Draft;
       if (Date.now() - saved.savedAt > 30 * 60_000) { sessionStorage.removeItem(STORAGE_KEY(slug)); return; }
       const savedBranch = saved.branchId && branches.some((b) => b.id === saved.branchId) ? saved.branchId : branchId;
       // Restoring from sessionStorage must happen after hydration, so it lives in an effect.
@@ -97,14 +105,14 @@ export function BookingFlow({ slug, tenantName, timezone, services: allServices,
       setBranchId(savedBranch);
       if (saved.coupon) setCouponCode(saved.coupon);
       const offered = servicesAtBranch(allServices, savedBranch);
-      setPicks(saved.picks.filter((p) => offered.some((s) => s.id === p.serviceId)));
-      setDay(saved.day); setNote(saved.note); setResumeStart(saved.start);
+      setPicks(saved.picks.filter((p) => offered.some((s) => s.id === p.serviceId)).map((p) => sanitizePick(p, offered.find((s) => s.id === p.serviceId)!)));
+      setDay(saved.day); setNote(saved.note); setResumeStart(saved.start); setResumeDraft(saved);
       setWindowStart(DateTime.fromISO(saved.day, { zone: timezone }));
     } catch { /* storage unavailable: start fresh */ }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slug, timezone]);
 
-  const key = JSON.stringify([branchId, picks.map((p) => [p.serviceId, p.staffId])]);
+  const key = JSON.stringify([branchId, picks.map((p) => [p.serviceId, p.staffId, p.variantId ?? null, p.addonIds ?? []])]);
   useEffect(() => {
     // Resetting request state when the inputs change; the fetch itself resolves asynchronously.
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -112,7 +120,7 @@ export function BookingFlow({ slug, tenantName, timezone, services: allServices,
     const ctrl = new AbortController();
     setLoading(true); setError(null); setChosen(null);
     api<Search>(`/api/v1/s/${slug}/availability`, {
-      body: { ...(branchId ? { branch_id: branchId } : {}), items: picks.map((p) => ({ key: p.key, service_id: p.serviceId, staff_id: p.staffId })), from: windowStart.toISODate(), to: windowStart.plus({ days: 6 }).toISODate() },
+      body: { ...(branchId ? { branch_id: branchId } : {}), items: picks.map((p) => ({ ...itemOptions(p), key: p.key, service_id: p.serviceId, staff_id: p.staffId })), from: windowStart.toISODate(), to: windowStart.plus({ days: 6 }).toISODate() },
       signal: ctrl.signal,
     }).then((r) => {
       setSearch(r);
@@ -126,12 +134,22 @@ export function BookingFlow({ slug, tenantName, timezone, services: allServices,
   useEffect(() => {
     if (!resumeStart || !search || !day) return;
     const o = search.days[day]?.find((x) => x.start === resumeStart);
-    // One-shot reconciliation of a restored selection once live availability arrives.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (o) setChosen(o); else setError(new ApiError(409, 'slot_unavailable', 'slot'));
-    setResumeStart(null);
+    // One-shot reconciliation of a restored selection once live availability arrives:
+    // the time must still be free and the price is re-quoted by the server.
+    if (o) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setChosen(o);
+      const now = o.items.reduce((a, i) => a + i.price_minor, 0);
+      const before = resumeDraft?.totalMinor;
+      if (before != null && before !== now) setResumeNote(t('booking.flow.resume_price_changed', { from: formatMoney(before, 'SAR', locale), to: formatMoney(now, 'SAR', locale) }));
+      else setResumeNote(t(resumeDraft?.reason === 'session_expired' ? 'booking.flow.resume_after_expiry' : 'booking.flow.resume_ok'));
+    } else {
+      setError(new ApiError(409, 'slot_unavailable', 'slot'));
+      setResumeNote(null);
+    }
+    setResumeStart(null); setResumeDraft(null);
     try { sessionStorage.removeItem(STORAGE_KEY(slug)); } catch { /* ignore */ }
-  }, [resumeStart, search, day, slug]);
+  }, [resumeStart, search, day, slug, resumeDraft, t, locale]);
 
   const grouped = useMemo(() => {
     const m = new Map<string, { label: string; items: FlowService[] }>();
@@ -147,25 +165,31 @@ export function BookingFlow({ slug, tenantName, timezone, services: allServices,
   const fmtT = (iso: string) => formatTime(iso, { tz: timezone, locale, timeFormat });
   const options = (day && search?.days[day]) || [];
 
+  /** Saves the selection and goes through the existing sign-in-and-return path. */
+  function signInAndReturn(reason: Draft['reason']) {
+    if (!chosen) return;
+    const draft: Draft = { picks, day: day!, start: chosen.start, note, savedAt: Date.now(), branchId, coupon: coupon?.code ?? couponCode, totalMinor: chosen.items.reduce((a, i) => a + i.price_minor, 0), reason };
+    try { sessionStorage.setItem(STORAGE_KEY(slug), JSON.stringify(draft)); } catch { /* ignore */ }
+    window.location.href = `/auth/login?next=${encodeURIComponent(`/s/${slug}/booking`)}`;
+  }
+
   async function reserve() {
     if (!chosen) return;
-    if (!signedIn || !verified) {
-      try { sessionStorage.setItem(STORAGE_KEY(slug), JSON.stringify({ picks, day, start: chosen.start, note, savedAt: Date.now(), branchId, coupon: coupon?.code ?? couponCode })); } catch { /* ignore */ }
-      window.location.href = `/auth/login?next=${encodeURIComponent(`/s/${slug}/booking`)}`;
-      return;
-    }
+    if (!signedIn || !verified) { signInAndReturn('sign_in'); return; }
     setBusy(true); setError(null);
     try {
       const r = await api<{ booking_id: string }>(`/api/v1/s/${slug}/bookings`, {
         body: {
           ...(branchId ? { branch_id: branchId } : {}),
-          items: chosen.items.map((i) => ({ key: i.key, service_id: i.service_id, staff_id: i.staff_id, start: i.start })), customer_note: note || undefined,
+          items: chosen.items.map((i) => ({ ...itemOptions(picks.find((p) => p.key === i.key)), key: i.key, service_id: i.service_id, staff_id: i.staff_id, start: i.start })), customer_note: note || undefined,
           ...(coupon ? { coupon_code: coupon.code } : {}),
         },
         idempotencyKey: idemKey,
       });
       window.location.href = `/s/${slug}/checkout/booking/${r.booking_id}`;
     } catch (e) {
+      // The session ended mid-booking: keep the selection and sign in again (it is re-validated on return).
+      if (e instanceof ApiError && e.status === 401) { signInAndReturn('session_expired'); return; }
       setError(e);
       if (e instanceof ApiError && e.code === 'slot_unavailable') { setChosen(null); setWindowStart((w) => w.plus({ milliseconds: 1 }).minus({ milliseconds: 1 })); }
       if (e instanceof ApiError && e.code.startsWith('coupon_')) setCoupon(null);
@@ -177,7 +201,7 @@ export function BookingFlow({ slug, tenantName, timezone, services: allServices,
     setCouponBusy(true); setCouponErr(null);
     try {
       setCoupon(await api<CouponPreview>(`/api/v1/s/${slug}/bookings/coupon`, {
-        body: { ...(branchId ? { branch_id: branchId } : {}), code: couponCode.trim(), items: chosen.items.map((i) => ({ key: i.key, service_id: i.service_id, staff_id: i.staff_id })) },
+        body: { ...(branchId ? { branch_id: branchId } : {}), code: couponCode.trim(), items: chosen.items.map((i) => ({ ...itemOptions(picks.find((p) => p.key === i.key)), key: i.key, service_id: i.service_id, staff_id: i.staff_id })) },
       }));
     } catch (e) { setCoupon(null); setCouponErr(e); } finally { setCouponBusy(false); }
   }
@@ -201,14 +225,16 @@ export function BookingFlow({ slug, tenantName, timezone, services: allServices,
     } catch (e) { setError(e); } finally { setBusy(false); }
   }
 
-  const total = chosen ? chosen.items.reduce((a, i) => a + i.price_minor, 0) : picks.reduce((a, p) => a + svc(p.serviceId).price_minor, 0);
+  const total = chosen ? chosen.items.reduce((a, i) => a + i.price_minor, 0) : picks.reduce((a, p) => a + estimate(svc(p.serviceId), p).price, 0);
+  const setPick = (k: string, patch: Partial<Pick>) => setPicks(picks.map((x) => (x.key === k ? { ...x, ...patch } : x)));
   const days = Array.from({ length: 7 }, (_, i) => windowStart.plus({ days: i }));
 
   return (
     <div className="storefront mx-auto max-w-3xl px-4 py-6 text-sf-text">
       <h1 className="font-sf-heading text-2xl">{t('booking.flow.title')}</h1>
       <p className="mb-4 text-sm text-sf-muted">{tenantName} · {t('time.tz_note', { tz: tzLabel(timezone, locale) })}</p>
-      {error ? <div role="alert" className="mb-4 rounded-[var(--radius-sf)] border border-red-200 bg-red-50 p-3 text-sm text-red-800">{msg(error)}</div> : null}
+      {error ? <div role="alert" className="mb-4 rounded-[var(--radius-sf)] border border-danger/30 bg-danger-bg p-3 text-sm text-danger">{msg(error)}</div> : null}
+      {resumeNote ? <p role="status" className="mb-4 rounded-[var(--radius-sf)] border border-sf-border bg-sf-surface p-3 text-sm">{resumeNote}</p> : null}
       {rebooking ? <p role="status" className="mb-4 rounded-[var(--radius-sf)] border border-sf-border bg-sf-surface p-3 text-sm">{t('customer.rebook.flow_note')}</p> : null}
 
       {branches.length > 1 ? (
@@ -237,7 +263,7 @@ export function BookingFlow({ slug, tenantName, timezone, services: allServices,
                   <div className="flex items-start justify-between gap-2">
                     <div>
                       <p className="flex flex-wrap items-center gap-2 font-medium">{pick(s.name_ar, s.name_en)}{s.badge ? <FlowBadge b={s.badge} locale={locale} /> : null}</p>
-                      <p className="text-xs text-sf-muted">{formatDuration(s.duration_min, locale)} · {s.price_display === 'starting_from' ? '≥ ' : ''}{formatMoney(s.price_minor, 'SAR', locale)}</p>
+                      <p className="text-xs text-sf-muted">{formatDuration(estimate(s, p).duration, locale)} · {s.price_display === 'starting_from' && !p.variantId ? '≥ ' : ''}{formatMoney(estimate(s, p).price, 'SAR', locale)}</p>
                     </div>
                     <button className="text-sf-muted hover:text-sf-text" aria-label={t('booking.flow.remove_service')} onClick={() => setPicks(picks.filter((x) => x.key !== p.key))}><Trash2 className="size-4" /></button>
                   </div>
@@ -248,6 +274,32 @@ export function BookingFlow({ slug, tenantName, timezone, services: allServices,
                     {s.staff.map((st) => <option key={st.id} value={st.id}>{pick(st.name, st.name_en)}{st.title_ar || st.title_en ? ` — ${pick(st.title_ar, st.title_en)}` : ''}</option>)}
                   </select>
                   {!p.staffId ? <p className="mt-1 text-[11px] text-sf-muted">{t('booking.flow.any_staff_note')}</p> : null}
+                  {s.variants?.length ? (
+                    <>
+                      <label className="mt-2 block text-xs text-sf-muted" htmlFor={`var-${p.key}`}>{t('booking.flow.choose_variant')}</label>
+                      <select id={`var-${p.key}`} value={p.variantId ?? ''} onChange={(e) => setPick(p.key, { variantId: e.target.value || null })}
+                        className="mt-1 h-10 w-full rounded-[var(--radius-sf)] border border-sf-border bg-sf-bg px-2 text-sm">
+                        <option value="">{t('booking.flow.standard_variant')} — {formatDuration(s.duration_min, locale)} · {formatMoney(s.price_minor, 'SAR', locale)}</option>
+                        {s.variants.map((v) => <option key={v.id} value={v.id}>{pick(v.name_ar, v.name_en)} — {formatDuration(v.duration_min, locale)} · {formatMoney(v.price_minor, 'SAR', locale)}</option>)}
+                      </select>
+                    </>
+                  ) : null}
+                  {s.addons?.length ? (
+                    <fieldset className="mt-2">
+                      <legend className="text-xs text-sf-muted">{t('booking.flow.choose_addons')}</legend>
+                      <div className="mt-1 flex flex-col gap-1">
+                        {s.addons.map((a) => {
+                          const on = (p.addonIds ?? []).includes(a.id);
+                          return (
+                            <label key={a.id} className="flex items-center justify-between gap-2 rounded-[var(--radius-sf)] border border-sf-border bg-sf-bg px-2 py-1.5 text-sm">
+                              <span className="inline-flex items-center gap-2"><input type="checkbox" checked={on} onChange={() => setPick(p.key, { addonIds: on ? (p.addonIds ?? []).filter((x) => x !== a.id) : [...(p.addonIds ?? []), a.id] })} />{pick(a.name_ar, a.name_en)}</span>
+                              <span className="text-xs text-sf-muted">+{formatMoney(a.price_minor, 'SAR', locale)}{a.duration_min ? ` · +${formatDuration(a.duration_min, locale)}` : ''}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </fieldset>
+                  ) : null}
                 </li>
               );
             })}
@@ -335,6 +387,7 @@ export function BookingFlow({ slug, tenantName, timezone, services: allServices,
                 <div className="flex items-start justify-between gap-2">
                   <div>
                     <p className="font-medium">{pick(svc(i.service_id).name_ar, svc(i.service_id).name_en)}</p>
+                    {optionLabel(svc(i.service_id), picks.find((p) => p.key === i.key), pick) ? <p className="text-xs text-sf-muted">{optionLabel(svc(i.service_id), picks.find((p) => p.key === i.key), pick)}</p> : null}
                     <p className="flex flex-wrap items-center gap-x-3 text-xs text-sf-muted">
                       <span className="inline-flex items-center gap-1"><Clock className="size-3" />{fmtT(i.start)}–{fmtT(i.end)}</span>
                       <span className="inline-flex items-center gap-1"><User className="size-3" />{t('booking.flow.with', { name: i.staff_name })}</span>
@@ -379,6 +432,31 @@ export function BookingFlow({ slug, tenantName, timezone, services: allServices,
       ) : null}
     </div>
   );
+}
+
+/** The options a pick sends with every quote/hold (the server validates and prices them). */
+function itemOptions(p: Pick | undefined) {
+  if (!p) return {};
+  return { ...(p.variantId ? { variant_id: p.variantId } : {}), ...(p.addonIds?.length ? { addon_ids: p.addonIds } : {}) };
+}
+
+/** Drops options that are no longer offered (e.g. a restored draft after the business changed its menu). */
+function sanitizePick(p: Pick, s: FlowService): Pick {
+  return { ...p, variantId: p.variantId && s.variants?.some((v) => v.id === p.variantId) ? p.variantId : null, addonIds: (p.addonIds ?? []).filter((id) => s.addons?.some((a) => a.id === id)) };
+}
+
+/** Display estimate before a time is chosen; the summary always shows the server's quote. */
+function estimate(s: FlowService, p: Pick) {
+  const v = p.variantId ? s.variants?.find((x) => x.id === p.variantId) : undefined;
+  const adds = (s.addons ?? []).filter((a) => (p.addonIds ?? []).includes(a.id));
+  return { price: (v?.price_minor ?? s.price_minor) + adds.reduce((a, x) => a + x.price_minor, 0), duration: (v?.duration_min ?? s.duration_min) + adds.reduce((a, x) => a + x.duration_min, 0) };
+}
+
+function optionLabel(s: FlowService, p: Pick | undefined, pick: (ar: string | null, en: string | null) => string) {
+  if (!p) return '';
+  const v = p.variantId ? s.variants?.find((x) => x.id === p.variantId) : undefined;
+  const adds = (s.addons ?? []).filter((a) => (p.addonIds ?? []).includes(a.id));
+  return [v ? pick(v.name_ar, v.name_en) : null, ...adds.map((a) => `+ ${pick(a.name_ar, a.name_en)}`)].filter(Boolean).join(' · ');
 }
 
 function FlowBadge({ b, locale }: { b: ServiceBadge; locale: 'ar' | 'en' }) {

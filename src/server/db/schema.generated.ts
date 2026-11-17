@@ -2330,6 +2330,19 @@ export interface MarketingPreferences {
   weekly_weekday: Generated<number>;
 }
 
+export interface MarketplaceCommissionReversals {
+  booking_id: string;
+  commission_id: string;
+  created_at: Generated<Timestamp>;
+  cumulative_refund_minor: number;
+  currency: string;
+  fee_reversed_minor: number;
+  id: Generated<string>;
+  refund_id: string;
+  refund_minor: number;
+  tenant_id: string;
+}
+
 export interface MarketplaceCommissions {
   base_minor: number;
   booking_id: string;
@@ -2552,6 +2565,7 @@ export interface Orders {
   id: Generated<string>;
   number: string;
   paid_minor: Generated<number>;
+  payment_choice: Generated<string>;
   payment_terms: Generated<Json>;
   refund_status: Generated<string>;
   refunded_minor: Generated<number>;
@@ -4653,6 +4667,7 @@ export interface DB {
   marketing_calendar_events: MarketingCalendarEvents;
   marketing_plans: MarketingPlans;
   marketing_preferences: MarketingPreferences;
+  marketplace_commission_reversals: MarketplaceCommissionReversals;
   marketplace_commissions: MarketplaceCommissions;
   marketplace_listings: MarketplaceListings;
   marketplace_settings: MarketplaceSettings;

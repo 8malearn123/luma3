@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
-import { CheckCircle2, Clock, Hourglass } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Clock, Hourglass } from 'lucide-react';
 import { useI18n } from '@/i18n/client';
 import { api, ApiError, newIdempotencyKey } from '../api';
 import { useErrorMessage } from '../hooks';
@@ -28,7 +28,9 @@ export function BookingCheckout({ slug, bookingId, timezone, returningPaymentId,
   const [now, setNow] = useState(() => Date.now());
   const [polling, setPolling] = useState(!!returningPaymentId);
   const [gift, setGift] = useState('');
-  const [key] = useState(newIdempotencyKey);
+  const [key, setKey] = useState(newIdempotencyKey);
+  // Outcome of the provider round trip, read from the SERVER's payment status (never the redirect).
+  const [failure, setFailure] = useState<'failed' | 'cancelled' | null>(null);
   const [giftKey, setGiftKey] = useState(newIdempotencyKey);
 
   const load = useCallback(async () => {
@@ -46,6 +48,7 @@ export function BookingCheckout({ slug, bookingId, timezone, returningPaymentId,
     const tick = async (n: number) => {
       try {
         const s = await api<{ status: string; target: { status: string } | null }>(`/api/v1/s/${slug}/payments/${returningPaymentId}`);
+        if (s.status === 'failed' || s.status === 'cancelled') { setFailure(s.status); setKey(newIdempotencyKey()); setOption(null); }
         if (s.status === 'captured' || s.status === 'failed' || s.status === 'cancelled' || n > 20) { setPolling(false); await load(); return; }
       } catch { /* keep polling briefly */ }
       if (!stop) setTimeout(() => tick(n + 1), 1500);
@@ -65,7 +68,7 @@ export function BookingCheckout({ slug, bookingId, timezone, returningPaymentId,
 
   async function pay() {
     if (!option) return;
-    setBusy(true); setError(null);
+    setBusy(true); setError(null); setFailure(null);
     try {
       const r = await api<{ status: string; payment: { checkout_url: string; id: string } | null }>(`/api/v1/s/${slug}/bookings/${bookingId}/checkout`, { body: { option }, idempotencyKey: key });
       if (r.payment) {
@@ -75,7 +78,15 @@ export function BookingCheckout({ slug, bookingId, timezone, returningPaymentId,
         return;
       }
       await load();
-    } catch (e) { setError(e); if (e instanceof ApiError && e.code === 'terms_changed') await load(); } finally { setBusy(false); }
+    } catch (e) {
+      setError(e); setKey(newIdempotencyKey());
+      if (e instanceof ApiError && e.status === 401) {
+        // Session ended while paying: sign in again and come straight back to this held booking.
+        window.location.href = `/auth/login?next=${encodeURIComponent(`/s/${slug}/checkout/booking/${bookingId}`)}`;
+        return;
+      }
+      if (e instanceof ApiError && e.code === 'terms_changed') await load();
+    } finally { setBusy(false); }
   }
 
   async function applyGift() {
@@ -92,7 +103,13 @@ export function BookingCheckout({ slug, bookingId, timezone, returningPaymentId,
     <div className="storefront mx-auto max-w-2xl px-4 py-6 text-sf-text">
       <h1 className="font-sf-heading text-2xl">{done ? (b.status === 'pending_approval' ? t('booking.checkout.pending_approval') : t('booking.checkout.confirmed')) : t('booking.checkout.title')}</h1>
       <p className="text-sm text-sf-muted" dir="ltr">{b.number}</p>
-      {error ? <div role="alert" className="my-3 rounded-[var(--radius-sf)] border border-red-200 bg-red-50 p-3 text-sm text-red-800">{msg(error)}</div> : null}
+      {error ? <div role="alert" className="my-3 rounded-[var(--radius-sf)] border border-danger/30 bg-danger-bg p-3 text-sm text-danger">{msg(error)}</div> : null}
+      {failure && !done ? (
+        <div role="alert" className="my-3 flex gap-2 rounded-[var(--radius-sf)] border border-danger/30 bg-danger-bg p-3 text-sm text-danger">
+          <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden />
+          <div><p className="font-medium">{t('booking.checkout.payment_failed_title')}</p><p>{failure === 'cancelled' ? t('booking.checkout.payment_cancelled') : t('booking.checkout.payment_failed_body')}</p></div>
+        </div>
+      ) : null}
       {polling ? <p role="status" className="my-3 inline-flex items-center gap-2 text-sm"><Hourglass className="size-4 animate-pulse" />{t('booking.checkout.processing')}</p> : null}
 
       <section className="my-4 rounded-[var(--radius-sf)] border border-sf-border bg-sf-surface p-4">
@@ -124,7 +141,7 @@ export function BookingCheckout({ slug, bookingId, timezone, returningPaymentId,
         <section className="flex flex-col gap-3">
           <p className="inline-flex items-center gap-2 text-sm text-sf-muted"><Clock className="size-4" />{t('booking.checkout.expires_in', { time: `${mm}:${String(ss).padStart(2, '0')}` })}</p>
           {terms.blocked ? (
-            <div className="rounded-[var(--radius-sf)] border border-amber-300 bg-amber-50 p-3 text-sm">
+            <div className="rounded-[var(--radius-sf)] border border-warn/30 bg-warn-bg p-3 text-sm">
               <p>{t('booking.checkout.blocked')}</p>
               {terms.customerExplanation ? <p className="mt-1">{pick(terms.customerExplanation.ar, terms.customerExplanation.en)}</p> : null}
               <p className="mt-1 text-xs">{t('booking.checkout.review_route')} <Link className="underline" href="/account">{t('nav.account')}</Link></p>
@@ -141,7 +158,7 @@ export function BookingCheckout({ slug, bookingId, timezone, returningPaymentId,
               ))}
               {terms.requiresManualApproval ? <p className="text-xs text-sf-muted">{t('booking.checkout.manual_review')}</p> : null}
               <button className={`${sfBtn} bg-sf-primary text-sf-on-primary`} disabled={!option || busy} onClick={pay}>{t('booking.checkout.confirm')}</button>
-              <p className="text-center text-[11px] text-sf-muted">{t('booking.checkout.sandbox_badge')}</p>
+              {(terms.policySnapshot?.available_methods as string[] | undefined)?.includes('sandbox') && (terms.allowed.includes('full') || terms.allowed.includes('deposit')) ? <p className="text-center text-[11px] text-sf-muted">{t('booking.checkout.sandbox_badge')}</p> : null}
             </fieldset>
           )}
           <p className="text-xs text-sf-muted">

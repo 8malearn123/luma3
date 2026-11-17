@@ -2,10 +2,10 @@
 
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { CircleCheck, PackageCheck, PackageOpen, Undo2, XCircle } from 'lucide-react';
+import { Banknote, CircleCheck, PackageCheck, PackageOpen, Store, Undo2, XCircle } from 'lucide-react';
 import { useI18n } from '@/i18n/client';
 import { api } from '../api';
-import { useApiQuery, useErrorMessage } from '../hooks';
+import { useApiMutation, useApiQuery, useErrorMessage } from '../hooks';
 import { Button } from '../components/button';
 import { Checkbox, Field, FormErrorSummary, Input, Select } from '../components/form';
 import { Alert, Badge, ErrorState, LoadingState } from '../components/feedback';
@@ -17,6 +17,7 @@ import { OrderStatusBadge, useFmt } from './common';
 type Order = {
   id: string; number: string; status: string; refund_status: string; fulfillment_method: string; booking_number: string | null;
   subtotal_minor: number; discount_minor: number; tax_minor: number; total_minor: number; paid_minor: number; refunded_minor: number; currency: string;
+  payment_choice: 'online' | 'on_site';
   customer_name: string; customer_phone: string | null; customer_email: string | null; customer_note: string | null; expires_at: string | null; created_at: string;
   coupon: { code: string } | null;
   sold_by_staff_id: string | null;
@@ -43,6 +44,8 @@ export function OrderDrawer({ orderId, onClose }: { orderId: string; onClose: ()
   const [cancelOpen, setCancelOpen] = useState(false);
   const [reason, setReason] = useState('');
   const [returnOpen, setReturnOpen] = useState(false);
+  const [collectOpen, setCollectOpen] = useState(false);
+  const canCollect = access.can('payments.collect') && !access.readOnly;
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<unknown>(null);
 
@@ -80,6 +83,12 @@ export function OrderDrawer({ orderId, onClose }: { orderId: string; onClose: ()
             <Badge>{t(`commerce.orders.fulfillment.${o.fulfillment_method}`)}</Badge>
             <span className="text-xs text-ink-muted">{when(o.created_at)}</span>
           </div>
+          {o.status === 'pending_payment' && o.payment_choice === 'on_site' ? (
+            <Alert tone="info" title={<span className="inline-flex items-center gap-1"><Store className="size-4" aria-hidden />{t('commerce.orders.pay_at_pickup')}</span>}>
+              <p>{t('commerce.orders.pay_at_pickup_due', { amount: money(o.total_minor - o.paid_minor) })}</p>
+              {canCollect ? <Button size="sm" className="mt-2" icon={<Banknote className="size-4" />} onClick={() => setCollectOpen(true)}>{t('commerce.orders.record_payment')}</Button> : null}
+            </Alert>
+          ) : null}
           {o.status === 'pending_payment' && o.expires_at ? <Alert tone="warn">{t('commerce.orders.expires', { time: when(o.expires_at) })}</Alert> : null}
 
           <section>
@@ -178,8 +187,39 @@ export function OrderDrawer({ orderId, onClose }: { orderId: string; onClose: ()
         <p className="mb-3 text-ink-muted">{t('commerce.orders.cancel_body')}</p>
         <Field label={t('commerce.orders.cancel_reason')} required>{(p) => <Input {...p} value={reason} maxLength={500} onChange={(e) => setReason(e.target.value)} />}</Field>
       </Dialog>
+      {collectOpen && o ? <CollectOrderDialog order={o} onClose={() => setCollectOpen(false)} onDone={() => { setCollectOpen(false); q.refetch(); qc.invalidateQueries({ queryKey: ['orders', access.slug] }); toast({ tone: 'ok', text: t('commerce.orders.payment_recorded_toast') }); }} /> : null}
       {returnOpen && o ? <ReturnDialog order={o} onClose={() => setReturnOpen(false)} onDone={() => { setReturnOpen(false); q.refetch(); toast({ tone: 'ok', text: t('commerce.orders.return_created') }); }} /> : null}
     </Drawer>
+  );
+}
+
+/** Pay at pickup: the counter records the cash/terminal payment (with a reference); the order then becomes paid. */
+function CollectOrderDialog({ order, onClose, onDone }: { order: Order; onClose: () => void; onDone: () => void }) {
+  const { t } = useI18n();
+  const access = useAccess();
+  const msg = useErrorMessage();
+  const { money } = useFmt();
+  const due = order.total_minor - order.paid_minor;
+  const [method, setMethod] = useState<'cash' | 'pos_terminal'>('cash');
+  const [reference, setReference] = useState('');
+  const m = useApiMutation((_: void, { idempotencyKey }) => api(access.api('/payments/on-site'), { body: { order_id: order.id, amount_minor: due, method, reference: reference.trim() }, idempotencyKey }), { onSuccess: () => onDone() });
+  return (
+    <Dialog open onClose={onClose} title={t('commerce.orders.record_payment_title')} footer={<>
+      <Button variant="ghost" onClick={onClose}>{t('actions.cancel')}</Button>
+      <Button loading={m.isPending} disabled={reference.trim().length < 2 || due <= 0} onClick={() => m.mutate()}>{t('commerce.orders.record_payment')}</Button>
+    </>}>
+      <div className="flex flex-col gap-3">
+        <FormErrorSummary message={m.error ? msg(m.error) : null} />
+        <p className="text-ink-muted">{t('commerce.orders.order_balance', { amount: money(due) })}</p>
+        <Field label={t('booking.dashboard.method')} required>{(p) => (
+          <Select {...p} value={method} onChange={(e) => setMethod(e.target.value as 'cash' | 'pos_terminal')}>
+            <option value="cash">{t('booking.dashboard.cash')}</option>
+            <option value="pos_terminal">{t('booking.dashboard.pos')}</option>
+          </Select>
+        )}</Field>
+        <Field label={t('booking.dashboard.reference')} required hint={t('bookings_ui.collect.reference_hint')}>{(p) => <Input {...p} dir="ltr" value={reference} maxLength={80} onChange={(e) => setReference(e.target.value)} />}</Field>
+      </div>
+    </Dialog>
   );
 }
 

@@ -14,7 +14,7 @@ import { offerFreedSlot } from './domains/waitlist/service';
 import { releaseSeats } from './domains/groups/service';
 import { paymentTargets } from './domains/payments/targets';
 import { recordServerEvent } from './domains/analytics/events';
-import { recordMarketplaceCommission } from './domains/marketplace/attribution';
+import { recordMarketplaceCommission, reverseMarketplaceCommission } from './domains/marketplace/attribution';
 import { cancelPlannedUsage, consumeMaterialsForBookingItem, markOrderPaid, releaseCouponRedemption } from './domains/commerce';
 import { onEventPaymentCaptured, onEventPaymentFailed, onEventRefunded } from './domains/events/service';
 import { onWorkspacePaymentCaptured, onWorkspacePaymentFailed, onWorkspaceRefunded } from './domains/hosting/bookings';
@@ -77,6 +77,8 @@ if (!g.__lumaBooted) {
   onRefundSucceeded(async (trx, tenantId, refundId) => {
     await reverseForRefund(trx, tenantId, refundId);
     await restoreOnRefund(trx, tenantId, refundId);
+    // سوق لوما: a refund after completion reverses the commission proportionally (R1).
+    await reverseMarketplaceCommission(trx, tenantId, refundId);
   });
   registerBookingHook.slotFreed(async (trx, tenantId, bookingId) => {
     await offerFreedSlot(trx, tenantId, bookingId);

@@ -241,6 +241,8 @@ export const checkoutInput = z.object({
   fulfillment_method: z.enum(['pickup', 'with_visit']).default('pickup'),
   booking_id: z.string().uuid().optional(),
   note: z.string().trim().max(500).optional(),
+  /** 'online' (full online payment) or 'on_site' (pay at pickup). Omitted: online when available, else pay at pickup. Checked server-side. */
+  payment_choice: z.enum(['online', 'on_site']).optional(),
 }).refine((v) => v.fulfillment_method !== 'with_visit' || !!v.booking_id, { message: 'Choose the visit to collect with', path: ['booking_id'] });
 export type CheckoutInput = z.infer<typeof checkoutInput>;
 

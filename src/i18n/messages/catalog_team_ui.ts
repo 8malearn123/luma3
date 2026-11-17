@@ -36,7 +36,7 @@ const ar = {
       archive_title: 'أرشفة التصنيف؟', archive_body: 'يختفي التصنيف من القوائم، وتبقى خدماته موجودة بدون تصنيف ظاهر.',
     },
     packages: {
-      hint: 'الباقة تجمع خدمتين أو أكثر بسعر واحد. يمكن إنشاء الباقة وأرشفتها؛ لتعديلها أنشئي باقة جديدة.',
+      hint: 'الباقة تجمع خدمتين أو أكثر بسعر واحد. تعديل الباقة يسري على الحجوزات الجديدة فقط.', edit: 'تعديل الباقة', updated: 'تم حفظ الباقة.', edit_note: 'التعديل يسري على الحجوزات والمبيعات الجديدة فقط؛ الحجوزات السابقة تحتفظ بسعرها وخدماتها، والروابط وكتل العروض في المتجر تبقى تعمل.',
       new: 'باقة جديدة', empty: 'لا توجد باقات.', empty_hint: 'اجمعي خدمات متتالية بسعر مميز.', created: 'تم إنشاء الباقة.', archived: 'تمت أرشفة الباقة.',
       archive_title: 'أرشفة الباقة؟', archive_body: 'لن تُعرض الباقة للحجز الجديد. الحجوزات السابقة لا تتأثر.',
       services: 'الخدمات بالترتيب', services_hint: 'من ٢ إلى ١٠', add_service: 'إضافة خدمة', choose_service: 'اختاري خدمة…', price: 'سعر الباقة',
@@ -183,7 +183,7 @@ const en: typeof ar = {
       archive_title: 'Archive this category?', archive_body: 'The category disappears from lists; its services stay, without a visible category.',
     },
     packages: {
-      hint: 'A package bundles two or more services at one price. Packages can be created and archived; to change one, create a new package.',
+      hint: 'A package bundles two or more services at one price. Edits apply to new bookings only.', edit: 'Edit package', updated: 'Package saved.', edit_note: 'Changes apply to new bookings and sales only; past bookings keep their price and services, and store links and offer blocks keep working.',
       new: 'New package', empty: 'No packages.', empty_hint: 'Bundle consecutive services at a special price.', created: 'Package created.', archived: 'Package archived.',
       archive_title: 'Archive this package?', archive_body: 'It will not be offered for new bookings. Past bookings are unaffected.',
       services: 'Services in order', services_hint: '2 to 10', add_service: 'Add service', choose_service: 'Choose a service…', price: 'Package price',
