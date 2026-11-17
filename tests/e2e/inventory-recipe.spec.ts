@@ -107,7 +107,7 @@ test('owner completes a manicure on the station-linked chair: the recipe is dedu
   // The usage list shows the posted consumption at the station.
   await page.goto('/app/noura-salon/inventory?tab=consumption');
   await expect(page.getByRole('table').getByText(/محطة كرسي 1/).first()).toBeVisible();
-  await page.screenshot({ path: 'docs/remediation/evidence/host/h8-recipe-consumption-station.png' });
+  if (process.env.E2E_EVIDENCE) await page.screenshot({ path: 'docs/remediation/evidence/host/h8-recipe-consumption-station.png' });
 
   // Reloading / re-completing never posts it twice.
   await page.goto(`/app/noura-salon/bookings?booking=${bookingId}`);

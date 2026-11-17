@@ -66,7 +66,8 @@ async function signedIn(browser: Browser, baseURL: string, email: string, next: 
   return page;
 }
 
-const shot = (page: Page, name: string) => page.screenshot({ path: `${EVIDENCE}/${name}.png`, fullPage: false });
+/** Evidence screenshots are refreshed only on request (E2E_EVIDENCE=1), so a normal run leaves the tree clean. */
+const shot = async (page: Page, name: string) => { if (process.env.E2E_EVIDENCE) await page.screenshot({ path: `${EVIDENCE}/${name}.png`, fullPage: false }); };
 
 // The space starts 15–30 minutes from now (quarter-hour aligned), so check-in is already open.
 const now = DateTime.now().setZone(TZ);
