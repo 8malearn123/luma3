@@ -59,29 +59,50 @@ function mapSegment(def: Record<string, unknown> | null, channel: string): Segme
   return out.slice(0, 10);
 }
 
-async function addPlanAction(access: TenantAccess, actor: AuditActor, cmd: Extract<ActionCommand, { kind: 'plan_action' }>, pick: (t: { ar: string; en: string }) => string): Promise<ActionResult> {
+/**
+ * Adds an approved opportunity to the current monthly plan (LUMA-AUDIT-038):
+ *  - idempotent: if the plan's current version already holds this opportunity
+ *    (a Loom planner action for it, or an item added from it earlier) nothing
+ *    is appended and the existing plan is returned with status `already_in_plan`;
+ *  - written in the plan's own language (the business locale), not the
+ *    requester's UI language, so one plan never mixes AR and EN copies;
+ *  - the appended version's change note `loom:<opportunity id>` marks its
+ *    provenance as «added from an opportunity» (not «edited by you»).
+ */
+async function addPlanAction(access: TenantAccess, actor: AuditActor, cmd: Extract<ActionCommand, { kind: 'plan_action' }>, _pick: (t: { ar: string; en: string }) => string): Promise<ActionResult> {
   const month = monthBounds(localToday(access.timezone));
+  const planLocale = access.defaultLocale === 'en' ? 'en' : 'ar';
+  const pick = (t: { ar: string; en: string }) => (planLocale === 'ar' ? t.ar || t.en : t.en || t.ar);
+  const itemId = `loom_${cmd.opportunity_id.replace(/-/g, '').slice(0, 12)}`;
   return withTenant(access.tenantId, async (trx) => {
-    const plan = await trx.selectFrom('marketing_plans as p').leftJoin('plan_versions as v', 'v.id', 'p.current_version_id').select(['p.id', 'v.content'])
+    const plan = await trx.selectFrom('marketing_plans as p').leftJoin('plan_versions as v', 'v.id', 'p.current_version_id').select(['p.id', 'p.current_version_id', 'v.content', 'v.version'])
       .where('p.tenant_id', '=', access.tenantId).where('p.kind', '=', 'monthly').where('p.period_start', '=', month.from).where('p.is_example', '=', false)
-      .where('p.status', 'not in', ['rejected', 'completed']).orderBy('p.created_at', 'desc').executeTakeFirst();
-    const n = Date.now().toString(36).slice(-6);
-    const initiative = { id: `loom_${n}`, title: pick(cmd.title).slice(0, 200), description: pick(cmd.description).slice(0, 1500), evidence_refs: cmd.evidence_refs.slice(0, 20) };
+      .where('p.status', 'not in', ['rejected', 'completed']).orderBy('p.created_at', 'desc').forUpdate('p').executeTakeFirst();
+    if (plan?.content && plan.current_version_id) {
+      const content = plan.content as PlanContent;
+      const fromPlanner = await trx.selectFrom('loom.plan_actions').select('id').where('business_id', '=', access.tenantId)
+        .where('plan_version_id', '=', plan.current_version_id).where('opportunity_id', '=', cmd.opportunity_id).executeTakeFirst();
+      if (fromPlanner || content.initiatives.some((i) => i.id === itemId)) {
+        return { target: 'plan_action' as const, ref_id: plan.id, status: 'already_in_plan' };
+      }
+    }
+    const initiative = { id: itemId, title: pick(cmd.title).slice(0, 200), description: pick(cmd.description).slice(0, 1500), evidence_refs: cmd.evidence_refs.slice(0, 20) };
     const activity = {
-      id: `la_${n}`, title: pick(cmd.title).slice(0, 200), initiative_id: initiative.id, date_from: cmd.window.from, date_to: cmd.window.to, channel: cmd.channel,
+      id: `la_${itemId.slice(5)}`, title: pick(cmd.title).slice(0, 200), initiative_id: initiative.id, date_from: cmd.window.from, date_to: cmd.window.to, channel: cmd.channel,
       content_idea: null, owner: null, capacity_note: null, monthly_goal_ref: null, status: 'planned' as const,
     };
+    const note = `loom:${cmd.opportunity_id}`;
     if (plan?.content) {
       const content = plan.content as PlanContent;
       const next: PlanContent = { ...content, initiatives: [...content.initiatives, initiative].slice(-20), activities: [...content.activities, activity].slice(-60) };
-      const v = await appendVersion(trx, access.tenantId, plan.id, { content: next, source: 'manual', createdBy: actor.userId, changeNote: `loom:${cmd.opportunity_id}` });
+      const v = await appendVersion(trx, access.tenantId, plan.id, { content: next, source: 'manual', createdBy: actor.userId, changeNote: note });
       return { target: 'plan_action' as const, ref_id: plan.id, status: `version_${v.version}` };
     }
     const content: PlanContent = {
       goal: pick(cmd.title).slice(0, 500), baseline: [], initiatives: [initiative], activities: [activity], dates: { start: month.from, end: month.to }, owner: '',
       budget: { amount_minor: null, status: 'unknown', assumptions: '' }, metrics: [], monthly_goals: [], experimental: false, limitations: '',
     };
-    const r = await saveGeneratedPlan(trx, access.tenantId, { kind: 'monthly', from: month.from, to: month.to, title: pick(cmd.title).slice(0, 200), content, source: 'manual', createdBy: actor.userId });
+    const r = await saveGeneratedPlan(trx, access.tenantId, { kind: 'monthly', from: month.from, to: month.to, title: pick(cmd.title).slice(0, 200), content, source: 'manual', createdBy: actor.userId, changeNote: note });
     return { target: 'plan_action' as const, ref_id: r.plan_id, status: `version_${r.version}` };
   });
 }

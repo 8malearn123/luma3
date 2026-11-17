@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Download, GitCompare, MessageSquare, Pencil, RefreshCw } from 'lucide-react';
+import { Download, GitCompare, MessageSquare, Pencil, RefreshCw, Sparkles } from 'lucide-react';
 import { useI18n } from '@/i18n/client';
 import { formatDateTime, formatMoney } from '@/shared/format';
 import { useApiQuery, useUnsavedChangesWarning } from '../hooks';
@@ -11,7 +11,7 @@ import { Alert, Badge, EmptyState, ErrorState, LoadingState } from '../component
 import { Field, Input, Select, Textarea } from '../components/form';
 import { Card, Tabs } from '../components/layout';
 import { Drawer } from '../components/overlay';
-import { loomKey, PlanStatus, SourceBadge, useAct } from './loom-shared';
+import { loomKey, PlanStatus, SourceBadge, useAct, useChannelLabel, useLoomFmt } from './loom-shared';
 import { LoomPlanActions } from './LoomPlanActions';
 
 const ACTIONS_BY_STATUS: Record<string, string[]> = {
@@ -25,16 +25,28 @@ const ACTIONS_BY_STATUS: Record<string, string[]> = {
   completed: [],
 };
 
-export function LoomPlans() {
+/**
+ * Plans of one kind (LUMA-AUDIT-021): «الخطط الشهرية» and «الخطط الأسبوعية» are
+ * separate primary tabs. Plans are prepared by the Loom planner (POST /loom/plans);
+ * without a connected AI provider they are rules-based and labelled as such.
+ */
+export function LoomPlans({ kind = 'monthly' }: { kind?: 'monthly' | 'weekly' }) {
   const { t } = useI18n();
   const access = useAccess();
-  const [kind, setKind] = useState<'all' | 'monthly' | 'weekly'>('all');
+  const { act, busy } = useAct();
   const [open, setOpen] = useState<string | null>(null);
-  const r = useApiQuery<any[]>(loomKey(access.slug, 'plans', kind), access.api(`/marketing/plans${kind === 'all' ? '' : `?kind=${kind}`}`));
+  const r = useApiQuery<any[]>(loomKey(access.slug, 'plans', kind), access.api(`/marketing/plans?kind=${kind}`), { refetchInterval: 15000 });
+  const canManage = access.can('marketing.manage');
   return (
     <div className="flex flex-col gap-3">
-      <Tabs value={kind} onChange={setKind} items={[{ value: 'all', label: t('marketing.plan.all') }, { value: 'monthly', label: t('marketing.kinds.monthly') }, { value: 'weekly', label: t('marketing.kinds.weekly') }]} />
-      {r.isLoading ? <LoadingState rows={3} /> : r.error ? <ErrorState error={r.error} onRetry={() => r.refetch()} /> : !r.data!.length ? <EmptyState title={t('marketing.plan.empty')} /> : (
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm text-ink-muted">{t('loomux.plans.rules_note')}</p>
+        {canManage ? (
+          <Button size="sm" icon={<Sparkles className="size-4" />} loading={busy === 'prep'}
+            onClick={() => act('prep', '/loom/plans', { body: { kind }, ok: t('loomux.plans.queued') })}>{t(kind === 'monthly' ? 'loomux.plans.prepare_monthly' : 'loomux.plans.prepare_weekly')}</Button>
+        ) : null}
+      </div>
+      {r.isLoading ? <LoadingState rows={3} /> : r.error ? <ErrorState error={r.error} onRetry={() => r.refetch()} /> : !r.data!.length ? <EmptyState title={t(kind === 'monthly' ? 'loomux.plans.empty_monthly' : 'loomux.plans.empty_weekly')} /> : (
         <ul className="grid gap-3 md:grid-cols-2">
           {r.data!.map((p: any) => (
             <li key={p.id}>
@@ -92,18 +104,18 @@ function PlanDrawer({ id, onClose }: { id: string; onClose: () => void }) {
           {p.has_unapproved_changes ? <Alert tone="info">{t('marketing.plan.newer_unapproved')}</Alert> : null}
           <div className="flex flex-wrap items-end gap-2">
             <Field label={t('marketing.plan.versions')} className="w-56">
-              {(fp) => <Select {...fp} value={vIdx} onChange={(e) => setVIdx(Number(e.target.value))}>{p.versions.map((x: any, i: number) => <option key={x.id} value={i}>{t('marketing.plan.version_n', { n: x.version })} — {t(`marketing.source.${x.source}`)}{x.id === p.approved_version_id ? ` ✓` : ''}</option>)}</Select>}
+              {(fp) => <Select {...fp} value={vIdx} onChange={(e) => setVIdx(Number(e.target.value))}>{p.versions.map((x: any, i: number) => <option key={x.id} value={i}>{t('marketing.plan.version_n', { n: x.version })} — {t(`loomux.provenance.${x.provenance ?? x.source}`)}{x.id === p.approved_version_id ? ` ✓` : ''}</option>)}</Select>}
             </Field>
             <Button size="sm" variant={mode === 'diff' ? 'secondary' : 'ghost'} icon={<GitCompare className="size-4" />} disabled={p.versions.length < 2} onClick={() => setMode(mode === 'diff' ? 'view' : 'diff')}>{t('marketing.actions.compare')}</Button>
             {canManage && !p.is_example && !['completed', 'rejected'].includes(p.status) ? <Button size="sm" variant={mode === 'edit' ? 'secondary' : 'ghost'} icon={<Pencil className="size-4" />} onClick={() => { setVIdx(0); setMode(mode === 'edit' ? 'view' : 'edit'); }}>{t('marketing.actions.edit')}</Button> : null}
             <a className="inline-flex h-8 items-center gap-1 rounded-lg px-3 text-sm text-luma-800 hover:bg-luma-100" href={access.api(`/marketing/plans/${id}/export?format=json&version=${v.version}`)} download><Download className="size-4" aria-hidden />{t('marketing.actions.export_json')}</a>
             <a className="inline-flex h-8 items-center gap-1 rounded-lg px-3 text-sm text-luma-800 hover:bg-luma-100" href={access.api(`/marketing/plans/${id}/export?format=csv&version=${v.version}`)} download><Download className="size-4" aria-hidden />{t('marketing.actions.export_csv')}</a>
-            {canManage && !p.is_example ? <Button size="sm" variant="ghost" icon={<RefreshCw className="size-4" />} loading={busy === 'regen'} onClick={() => act('regen', `/marketing/plans/${id}/regenerate`, { body: {}, ok: t('marketing.queued_note') })}>{t('marketing.actions.regenerate')}</Button> : null}
+            {canManage && !p.is_example ? <Button size="sm" variant="ghost" icon={<RefreshCw className="size-4" />} loading={busy === 'regen'} onClick={() => act('regen', '/loom/plans', { body: { kind: p.kind, period_start: p.period_start }, ok: t('loomux.plans.queued') })}>{t('marketing.actions.regenerate')}</Button> : null}
             {canManage && !p.is_example && access.hasFeature('feature.campaigns') ? <Button size="sm" variant="ghost" loading={busy === 'camp'} onClick={() => act('camp', `/marketing/plans/${id}/campaign-draft`, { body: {}, ok: t('marketing.rec.created_campaign') })}>{t('marketing.actions.to_campaign')}</Button> : null}
           </div>
           {mode === 'diff' ? <VersionDiff planId={id} versions={p.versions.map((x: any) => x.version)} />
             : mode === 'edit' ? <PlanEditor key={p.versions[0].id} planId={id} version={p.versions[0]} onDone={() => setMode('view')} />
-              : <PlanContentView v={v} locale={locale} />}
+              : <PlanContentView v={v} />}
           {mode === 'view' ? <LoomPlanActions planId={id} versionId={v.id} /> : null}
           <Provenance v={v} />
           <Card title={<span className="inline-flex items-center gap-2"><MessageSquare className="size-4" aria-hidden />{t('marketing.plan.comments')}</span>}>
@@ -135,20 +147,24 @@ function Provenance({ v }: { v: any }) {
     <Card title={t('marketing.plan.provenance')}>
       <div className="flex flex-wrap items-center gap-2 text-sm">
         <SourceBadge source={v.source} />
-        {v.provider ? <span className="font-mono text-xs" dir="ltr">{v.provider} / {v.model} / {v.prompt_version}</span> : null}
+        <span>{t(`loomux.provenance.${v.provenance ?? v.source}`)}</span>
+        {v.provider ? <span className="text-xs text-ink-muted" dir="ltr">{v.provider} / {v.model}</span> : null}
         {v.data_as_of ? <span className="text-xs text-ink-muted">{t('marketing.plan.data_as_of', { time: formatDateTime(v.data_as_of, { locale, tz: access.timezone }) })}</span> : null}
         {v.input_tokens != null ? <span className="text-xs text-ink-muted">{t('marketing.plan.tokens', { in: v.input_tokens, out: v.output_tokens ?? 0 })}</span> : null}
       </div>
-      {flags.length ? <p className="mt-2 text-xs text-warn">{t('marketing.plan.flags')}: {flags.join(', ')}</p> : null}
+      {flags.length ? <p className="mt-2 text-xs text-warn">{t('marketing.plan.flags')}: {flags.length}</p> : null}
       {rejected ? <p className="mt-1 text-xs text-warn">{t('marketing.plan.rejected_recs', { n: rejected })}</p> : null}
     </Card>
   );
 }
 
-function PlanContentView({ v, locale }: { v: any; locale: 'ar' | 'en' }) {
-  const { t } = useI18n();
+function PlanContentView({ v }: { v: any }) {
+  const { t, locale } = useI18n();
   const access = useAccess();
+  const fmt = useLoomFmt();
+  const channelLabel = useChannelLabel();
   const c = v.content;
+  const disp = (kind: 'baseline' | 'metrics', i: number, key: string, fallback: string) => v.display?.[kind]?.[i] ?? { label: metricLabel(t, key, fallback), unit: guessUnit(key) };
   return (
     <div className="flex flex-col gap-3">
       {c.experimental ? <Alert tone="warn">{t('marketing.plan.experimental')}</Alert> : null}
@@ -157,12 +173,12 @@ function PlanContentView({ v, locale }: { v: any; locale: 'ar' | 'en' }) {
       </Card>
       {c.baseline.length ? (
         <Card title={t('marketing.plan.baseline')}>
-          <dl className="grid gap-2 sm:grid-cols-2">{c.baseline.map((b: any) => <div key={b.metric_key}><dt className="text-xs text-ink-muted">{metricLabel(t, b.metric_key, b.label)}</dt><dd className="font-semibold tabular-nums" dir="ltr">{fmtMetric(b.metric_key, b.value)}</dd></div>)}</dl>
+          <dl className="grid gap-2 sm:grid-cols-2">{c.baseline.map((b: any, i: number) => { const d = disp('baseline', i, b.metric_key, b.label); return <div key={`${b.metric_key}${i}`}><dt className="text-xs text-ink-muted" dir="auto">{d.label}</dt><dd className="font-semibold tabular-nums">{fmt(d.unit, b.value)}</dd></div>; })}</dl>
         </Card>
       ) : null}
       {c.initiatives.length ? (
         <Card title={t('marketing.plan.initiatives')}>
-          <ul className="flex flex-col gap-2 text-sm">{c.initiatives.map((i: any) => <li key={i.id}><p className="font-medium" dir="auto">{i.title}</p><p className="text-ink-muted" dir="auto">{i.description}</p>{i.evidence_refs.length ? <p className="font-mono text-[11px] text-ink-muted" dir="ltr">{i.evidence_refs.join(', ')}</p> : null}</li>)}</ul>
+          <ul className="flex flex-col gap-2 text-sm">{c.initiatives.map((i: any) => <li key={i.id}><p className="font-medium" dir="auto">{i.title}</p><p className="text-ink-muted" dir="auto">{i.description}</p>{i.evidence_refs.length ? <p className="text-xs text-ink-muted">{t('loomux.plans.evidence_n', { n: i.evidence_refs.length })}</p> : null}</li>)}</ul>
         </Card>
       ) : null}
       <Card title={t('marketing.plan.activities')}>
@@ -174,7 +190,7 @@ function PlanContentView({ v, locale }: { v: any; locale: 'ar' | 'en' }) {
                 <tr key={a.id} className="border-t border-line align-top">
                   <td className="py-2 pe-2"><p dir="auto">{a.title}</p>{a.content_idea ? <p className="text-xs text-ink-muted" dir="auto">{a.content_idea}</p> : null}</td>
                   <td className="py-2 pe-2 text-xs" dir="ltr">{a.date_from ?? '—'}{a.date_to && a.date_to !== a.date_from ? ` → ${a.date_to}` : ''}</td>
-                  <td className="py-2 pe-2 text-xs">{a.channel ?? '—'}</td>
+                  <td className="py-2 pe-2 text-xs">{channelLabel(a.channel)}</td>
                   <td className="py-2 pe-2 text-xs">{a.capacity_note ?? '—'}</td>
                   <td className="py-2 text-xs">{c.monthly_goals?.find((g: any) => g.id === a.monthly_goal_ref)?.title ?? '—'}</td>
                 </tr>
@@ -189,7 +205,7 @@ function PlanContentView({ v, locale }: { v: any; locale: 'ar' | 'en' }) {
           {c.budget.assumptions ? <p className="text-xs text-ink-muted" dir="auto">{c.budget.assumptions}</p> : null}
         </Card>
         <Card title={t('marketing.plan.metrics')}>
-          <ul className="flex flex-col gap-1 text-sm">{c.metrics.map((m: any) => <li key={m.key}>{metricLabel(t, m.key, m.label)}: <span dir="ltr">{fmtMetric(m.key, m.baseline)}</span>{m.proposed_target !== null ? <> → <span title={t('marketing.plan.target_note')}>{t('marketing.plan.proposed_target')} <span dir="ltr">{fmtMetric(m.key, m.proposed_target)}</span></span></> : null}</li>)}</ul>
+          <ul className="flex flex-col gap-1 text-sm">{c.metrics.map((m: any, i: number) => { const d = disp('metrics', i, m.key, m.label); return <li key={`${m.key}${i}`}><span dir="auto">{d.label}</span>: <span className="tabular-nums">{fmt(d.unit, m.baseline)}</span>{m.proposed_target !== null ? <> → <span title={t('marketing.plan.target_note')}>{t('marketing.plan.proposed_target')} <span className="tabular-nums">{fmt(d.unit, m.proposed_target)}</span></span></> : null}</li>; })}</ul>
           <p className="mt-2 text-xs text-ink-muted">{t('marketing.plan.target_note')}</p>
         </Card>
       </div>
@@ -198,15 +214,14 @@ function PlanContentView({ v, locale }: { v: any; locale: 'ar' | 'en' }) {
   );
 }
 
-const RATIO_KEY = /occupancy|rate|ratio|share/;
-function fmtMetric(key: string, v: number | null) {
-  if (v === null || v === undefined) return '—';
-  return RATIO_KEY.test(key) && Math.abs(v) <= 1.5 ? `${Math.round(v * 1000) / 10}%` : String(v);
+/** Fallback for versions without server display info (should not happen; the plan route adds it). */
+function guessUnit(key: string) {
+  return /_minor$|\.net$|revenue/.test(key) ? 'minor' : /occupancy|rate|ratio|share/.test(key) ? 'ratio' : /minutes|free_min/.test(key) ? 'minutes' : null;
 }
 function metricLabel(t: (k: string) => string, key: string, fallback: string) {
   const k = `marketing.metric.${key.replace(/\./g, '_')}`;
   const v = t(k);
-  return v === k ? fallback || key : v;
+  return v === k ? fallback || t('loomux.diff.section.metric') : v;
 }
 
 function PlanEditor({ planId, version, onDone }: { planId: string; version: any; onDone: () => void }) {
@@ -241,27 +256,41 @@ function PlanEditor({ planId, version, onDone }: { planId: string; version: any;
   );
 }
 
+/** Human comparison of two versions (LUMA-AUDIT-024): item titles and plain values, no JSON paths or objects. */
 function VersionDiff({ planId, versions }: { planId: string; versions: number[] }) {
   const { t } = useI18n();
   const access = useAccess();
+  const fmt = useLoomFmt();
+  const channelLabel = useChannelLabel();
   const [from, setFrom] = useState(versions[1] ?? versions[0]!);
   const [to, setTo] = useState(versions[0]!);
   const r = useApiQuery<any>(loomKey(access.slug, 'diff', planId, String(from), String(to)), access.api(`/marketing/plans/${planId}/diff?from=${from}&to=${to}`));
-  const show = (x: unknown) => (typeof x === 'object' ? JSON.stringify(x) : String(x));
+  const label = (prefix: string, k: string | null) => { if (!k) return null; const key = `${prefix}.${k}`; const v = t(key); return v === key ? null : v; };
+  const value = (c: any, x: string | number | null) => {
+    if (x === null || x === undefined || x === '') return '—';
+    if (c.value_kind === 'money' && typeof x === 'number') return fmt('minor', x);
+    if (c.field === 'channel' && typeof x === 'string') return channelLabel(x);
+    if (typeof x === 'number') return fmt(null, x);
+    return String(x).slice(0, 400);
+  };
   return (
     <Card title={t('marketing.plan.diff_title')}>
       <div className="mb-3 flex gap-2">
         <Field label={t('marketing.plan.from_version')} className="w-32">{(p) => <Select {...p} value={from} onChange={(e) => setFrom(Number(e.target.value))}>{versions.map((n) => <option key={n} value={n}>{n}</option>)}</Select>}</Field>
         <Field label={t('marketing.plan.to_version')} className="w-32">{(p) => <Select {...p} value={to} onChange={(e) => setTo(Number(e.target.value))}>{versions.map((n) => <option key={n} value={n}>{n}</option>)}</Select>}</Field>
       </div>
-      {r.isLoading ? <LoadingState rows={2} /> : r.error ? <ErrorState error={r.error} /> : !r.data.changes.length ? <p className="text-sm text-ink-muted">{t('marketing.plan.no_changes')}</p> : (
-        <ul className="flex flex-col gap-2 text-sm">
-          {r.data.changes.map((c: any, i: number) => (
+      {r.isLoading ? <LoadingState rows={2} /> : r.error ? <ErrorState error={r.error} /> : !(r.data.summary ?? []).length ? <p className="text-sm text-ink-muted">{t('marketing.plan.no_changes')}</p> : (
+        <ul className="flex flex-col gap-2 text-sm" data-testid="plan-diff">
+          {r.data.summary.map((c: any, i: number) => (
             <li key={i} className="rounded-lg border border-line p-2">
-              <p className="font-mono text-xs" dir="ltr">{c.path}</p>
-              <Badge tone={c.kind === 'added' ? 'ok' : c.kind === 'removed' ? 'danger' : 'info'}>{t(`marketing.plan.${c.kind}`)}</Badge>
-              {c.before !== undefined ? <p className="mt-1 text-xs text-danger line-through" dir="auto">{show(c.before).slice(0, 400)}</p> : null}
-              {c.after !== undefined ? <p className="mt-1 text-xs text-ok" dir="auto">{show(c.after).slice(0, 400)}</p> : null}
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge tone={c.kind === 'added' ? 'ok' : c.kind === 'removed' ? 'danger' : 'info'}>{t(`loomux.diff.${c.kind}`)}</Badge>
+                <span className="font-medium">{t(`loomux.diff.section.${c.section}`)}</span>
+                {c.item ? <span dir="auto">«{c.item}»</span> : null}
+                {label('loomux.diff.field', c.field) ? <span className="text-ink-muted">· {label('loomux.diff.field', c.field)}</span> : null}
+              </div>
+              {c.kind !== 'added' && c.before !== null ? <p className="mt-1 text-xs"><span className="text-ink-muted">{t('loomux.diff.before')}: </span><span className="text-danger line-through" dir="auto">{value(c, c.before)}</span></p> : null}
+              {c.kind !== 'removed' && c.after !== null ? <p className="mt-1 text-xs"><span className="text-ink-muted">{t('loomux.diff.after')}: </span><span className="text-ok" dir="auto">{value(c, c.after)}</span></p> : null}
             </li>
           ))}
         </ul>

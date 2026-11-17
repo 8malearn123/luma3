@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import pg from 'pg';
 import { e2eEnv } from '../../playwright.config';
 
@@ -29,4 +29,6 @@ export default async function globalSetup() {
   const env = { ...process.env, ...e2eEnv };
   execFileSync('pnpm', ['-s', 'exec', 'tsx', 'scripts/migrate.ts'], { env, stdio: 'inherit' });
   execFileSync('pnpm', ['-s', 'exec', 'tsx', 'scripts/seed.ts'], { env, stdio: 'inherit' });
+  // Lets tests/e2e/serve.ts start the job worker only once the database is migrated and seeded.
+  writeFileSync('.e2e/seeded', new Date().toISOString());
 }

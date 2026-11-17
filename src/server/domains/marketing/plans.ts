@@ -41,6 +41,8 @@ export async function appendVersion(trx: Tx, tenantId: string, planId: string, v
 export async function saveGeneratedPlan(trx: Tx, tenantId: string, g: {
   kind: 'monthly' | 'weekly'; from: string; to: string; title: string; content: PlanContent; source: Source;
   parentPlanId?: string | null; targetPlanId?: string | null; aiRunId?: string | null; snapshotId?: string | null; validation?: Record<string, unknown>; createdBy?: string | null;
+  /** Overrides the default note (null for a new plan, 'regenerated' otherwise), e.g. `loom:<opportunity id>`. */
+  changeNote?: string | null;
 }) {
   let plan = g.targetPlanId
     ? await trx.selectFrom('marketing_plans').selectAll().where('id', '=', g.targetPlanId).where('tenant_id', '=', tenantId).executeTakeFirst()
@@ -56,7 +58,7 @@ export async function saveGeneratedPlan(trx: Tx, tenantId: string, g: {
   }
   const v = await appendVersion(trx, tenantId, plan.id, {
     content: g.content, source: g.source, createdBy: g.createdBy ?? null, aiRunId: g.aiRunId, snapshotId: g.snapshotId, validation: g.validation,
-    changeNote: created ? null : 'regenerated',
+    changeNote: g.changeNote !== undefined ? g.changeNote : created ? null : 'regenerated',
   });
   return { plan_id: plan.id, version_id: v.id, version: v.version, created };
 }
@@ -208,12 +210,52 @@ export function diffContent(a: Record<string, unknown>, b: Record<string, unknow
   return out;
 }
 
+/**
+ * Human-readable version comparison (LUMA-AUDIT-024): one row per changed
+ * item/field with the item's title and plain before/after values, instead of
+ * JSON paths and raw objects. Internal ids and references are skipped.
+ */
+export type HumanChange = {
+  section: 'goal' | 'baseline' | 'initiative' | 'activity' | 'monthly_goal' | 'budget' | 'metric' | 'dates' | 'limitations' | 'owner' | 'other';
+  kind: Change['kind']; item: string | null; field: string | null;
+  before: string | number | null; after: string | number | null; value_kind: 'text' | 'money' | 'date' | 'number' | 'ratio';
+};
+const INTERNAL_FIELDS = new Set(['id', 'initiative_id', 'monthly_goal_ref', 'evidence_refs', 'metric_key', 'key', 'experimental', 'status']);
+const SECTION: Record<string, HumanChange['section']> = {
+  goal: 'goal', baseline: 'baseline', initiatives: 'initiative', activities: 'activity', monthly_goals: 'monthly_goal', budget: 'budget', metrics: 'metric', dates: 'dates', limitations: 'limitations', owner: 'owner',
+};
+const titleOf = (x: unknown): string | null => (x && typeof x === 'object' ? String((x as Record<string, unknown>).title ?? (x as Record<string, unknown>).label ?? '') || null : null);
+const scalar = (x: unknown): string | number | null => (x === null || x === undefined ? null : typeof x === 'number' || typeof x === 'string' ? x : typeof x === 'boolean' ? String(x) : titleOf(x));
+
+export function humanDiff(a: PlanContent, b: PlanContent): HumanChange[] {
+  const out: HumanChange[] = [];
+  for (const c of diffContent(a as unknown as Record<string, unknown>, b as unknown as Record<string, unknown>)) {
+    const m = c.path.match(/^([a-z_]+)(?:\[([^\]]+)\]|\.(\d+))?(?:\.(.+))?$/);
+    const root = m?.[1] ?? c.path;
+    const section = SECTION[root] ?? 'other';
+    const ref = m?.[2] ?? m?.[3] ?? null;
+    const field = m?.[4] ?? null;
+    const leaf = field ? field.split('.').pop()! : null;
+    if (leaf && INTERNAL_FIELDS.has(leaf)) continue;
+    let item: string | null = null;
+    if (ref !== null) {
+      const list = (k: PlanContent) => (k as unknown as Record<string, unknown[]>)[root] ?? [];
+      const find = (k: PlanContent) => (m?.[3] !== undefined ? list(k)[Number(ref)] : list(k).find((e) => (e as { id?: string }).id === ref));
+      item = titleOf(find(b)) ?? titleOf(find(a));
+    }
+    const vk: HumanChange['value_kind'] = leaf === 'amount_minor' ? 'money' : leaf && /date|start|end/.test(leaf) ? 'date'
+      : (section === 'metric' || section === 'baseline') && typeof (c.after ?? c.before) === 'number' ? 'number' : 'text';
+    out.push({ section, kind: c.kind, item, field: leaf, before: scalar(c.before), after: scalar(c.after), value_kind: vk });
+  }
+  return out.slice(0, 200);
+}
+
 export async function diffVersions(access: TenantAccess, planId: string, from: number, to: number) {
   return withTenant(access.tenantId, async (trx) => {
     const rows = await trx.selectFrom('plan_versions').select(['version', 'content']).where('plan_id', '=', planId).where('version', 'in', [from, to]).execute();
     const a = rows.find((r) => r.version === from), b = rows.find((r) => r.version === to);
     if (!a || !b) throw Errors.notFound('version');
-    return { from, to, changes: diffContent(a.content as Record<string, unknown>, b.content as Record<string, unknown>) };
+    return { from, to, changes: diffContent(a.content as Record<string, unknown>, b.content as Record<string, unknown>), summary: humanDiff(a.content as PlanContent, b.content as PlanContent) };
   });
 }
 

@@ -548,8 +548,8 @@ describe('tenant isolation', () => {
     expect((await other.owner.call(hostSettlement.POST, { params: { tenantSlug: other.slug, id: w.id }, body: {} })).status).toBe(404);
     expect((await y.owner.call(wsBooking.GET, { params: { tenantSlug: y.slug, id: w.id } })).status).toBe(404);
     expect((await y.owner.call(wsCancel.POST, { params: { tenantSlug: y.slug, id: w.id }, body: { reason: 'not mine' } })).status).toBe(404);
-    // A guest cannot act as the host on her own booking.
-    expect((await x.owner.call(hostBooking.GET, { params: { tenantSlug: x.slug, id: w.id } })).status).toBe(404);
+    // A guest cannot act as the host on her own booking (an expert has no hosting capability at all since R5: 403).
+    expect([403, 404]).toContain((await x.owner.call(hostBooking.GET, { params: { tenantSlug: x.slug, id: w.id } })).status);
     // Another expert cannot link someone else's client appointment, nor add appointments to someone else's space.
     const theirs = await clientAppointment(x, at(futureDate(17), '15:00'));
     const steal = await request(y, l.id, at(futureDate(17), '14:00'), 180, { link_booking_ids: [theirs] });

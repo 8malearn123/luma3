@@ -20,6 +20,7 @@ import { BookingDrawer, type BookingDetail } from '../bookings/BookingDrawer';
 import { EarningsCard } from '../payroll/EarningsCard';
 import { MyHrCard, MyLatenessCard, MyRequestsCard } from '../hr/PortalCards';
 import { OwnBalanceNote } from '../hr/LeavePanels';
+import { ScheduleTab } from '../team/ScheduleTab';
 import { BookingStatusBadge, parseRange, useBookingFmt, type BookingAction, type BookingRow } from '../bookings/common';
 
 type Schedule = {
@@ -71,7 +72,7 @@ export function StaffPortal() {
           {access.can('attendance.own') ? <ClockCard /> : null}
           {access.can('attendance.own') ? <MyLatenessCard /> : null}
           {access.can('hr.request') ? <MyRequestsCard /> : null}
-          {access.can('leave.request', 'schedule.manage') ? <LeaveCard staffId={access.staffProfileId} /> : null}
+          {access.can('leave.request', 'schedule.manage') && !access.solo ? <LeaveCard staffId={access.staffProfileId} /> : null}
           <ProfileCard />
         </div>
       </div>
@@ -172,6 +173,25 @@ function TodayItem({ row, segments, onOpen }: { row: BookingRow; segments: Booki
 }
 
 function MySchedule({ staffId }: { staffId: string }) {
+  const access = useAccess();
+  // LUMA-AUDIT-014 / R5: whoever manages schedules (the owner, a freelancer) edits her own hours here;
+  // the read-only view and «تواصلي مع الإدارة» are only for staff who cannot change schedules.
+  if (access.can('schedule.manage') && !access.readOnly) return <OwnScheduleEditor staffId={staffId} />;
+  return <ReadOnlySchedule staffId={staffId} />;
+}
+
+function OwnScheduleEditor({ staffId }: { staffId: string }) {
+  const { t } = useI18n();
+  return (
+    <section aria-labelledby="own-schedule-title" className="flex flex-col gap-2">
+      <h2 id="own-schedule-title" className="text-lg font-semibold">{t('me_portal.schedule')}</h2>
+      <p className="text-xs text-ink-muted" data-testid="own-schedule-note">{t('workspace_mode.own_schedule')}</p>
+      <ScheduleTab staff={[]} staffLoading={false} initialStaffId={staffId} ownOnly />
+    </section>
+  );
+}
+
+function ReadOnlySchedule({ staffId }: { staffId: string }) {
   const { t, locale, timeFormat } = useI18n();
   const access = useAccess();
   const today = DateTime.now().setZone(access.timezone);

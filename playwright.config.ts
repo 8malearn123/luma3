@@ -1,3 +1,4 @@
+import { existsSync } from 'node:fs';
 import { defineConfig, devices } from '@playwright/test';
 
 /**
@@ -5,6 +6,8 @@ import { defineConfig, devices } from '@playwright/test';
  * end in `_e2e` (rebuilt and seeded by tests/e2e/global-setup.ts).
  */
 const E2E_DB = process.env.E2E_DATABASE ?? 'luma_e2e';
+/** A preinstalled Chromium (sandboxes without the pinned Playwright browser); override with PW_CHROMIUM_PATH. */
+const CHROMIUM = process.env.PW_CHROMIUM_PATH ?? (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
 const PORT = Number(process.env.E2E_PORT ?? 3110);
 export const e2eEnv = {
   APP_ENV: 'development',
@@ -32,17 +35,18 @@ export default defineConfig({
   timeout: 120_000,
   expect: { timeout: 20_000 },
   reporter: [['list'], ['html', { open: 'never', outputFolder: 'playwright-report' }]],
-  use: { baseURL: `http://localhost:${PORT}`, trace: 'retain-on-failure', screenshot: 'only-on-failure', locale: 'ar-SA' },
+  use: { baseURL: `http://localhost:${PORT}`, trace: 'retain-on-failure', screenshot: 'only-on-failure', locale: 'ar-SA', ...(CHROMIUM ? { launchOptions: { executablePath: CHROMIUM } } : {}) },
   projects: [
     { name: 'desktop', use: { ...devices['Desktop Chrome'] } },
     { name: 'mobile', use: { ...devices['Pixel 7'] }, testMatch: /responsive\.spec\.ts/ },
   ],
   webServer: {
     // A production build: realistic, and avoids dev-mode compile memory spikes across many routes.
-    command: `pnpm exec next build && pnpm exec next start -p ${PORT}`,
+    // tests/e2e/serve.ts runs `next start` plus the job worker (analyses, plan preparation, hold expiry) — LUMA-AUDIT-043.
+    command: `pnpm exec next build && pnpm exec tsx tests/e2e/serve.ts`,
     url: `http://localhost:${PORT}/api/v1/health`,
     timeout: 600_000,
     reuseExistingServer: false,
-    env: { ...e2eEnv, NEXT_DIST_DIR: '.next-e2e' },
+    env: { ...e2eEnv, NEXT_DIST_DIR: '.next-e2e', E2E_PORT: String(PORT) },
   },
 });

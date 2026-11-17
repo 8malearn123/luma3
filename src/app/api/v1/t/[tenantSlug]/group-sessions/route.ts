@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { route } from '@/server/http/route';
 import { createSession, listSessions } from '@/server/domains/groups/service';
 import { groupSessionInput } from '@/shared/schemas/waitlist';
+import { requireArea } from '@/server/tenancy/workspace-mode';
 
 export const GET = route({
   auth: 'tenant', capability: ['bookings.view_all', 'bookings.manage'], feature: 'feature.group_sessions',
@@ -10,5 +11,9 @@ export const GET = route({
 });
 export const POST = route({
   auth: 'tenant', capability: 'bookings.manage', feature: 'feature.group_sessions', input: groupSessionInput,
-  handler: async ({ tenant, actor, input }) => ({ status: 201, data: await createSession(tenant, actor, input) }),
+  handler: async ({ tenant, actor, input }) => {
+    // Group classes are a salon/academy feature; experts sell event bookings (workspace-mode.ts).
+    requireArea(tenant, 'groups');
+    return { status: 201, data: await createSession(tenant, actor, input) };
+  },
 });

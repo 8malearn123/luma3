@@ -1,7 +1,9 @@
 import type { z } from 'zod';
 import { audit, Errors, withSystem, withTenant, type AuditActor } from '../db';
 import { ensureConnection, requestAnalysis } from '../analysis/run';
-import type { Offering } from '../contracts/canonical';
+import type { InventoryItem, Offering } from '../contracts/canonical';
+import { itemName } from '../detectors/v1';
+import { metricDisplay, type SubjectNames } from '../display';
 import { connectorFor } from '../connectors/registry';
 import type { DecisionReason } from '../contracts/opportunity';
 import { cardDetails, renderCard } from '../opportunities/render';
@@ -9,7 +11,7 @@ import { knowledgeTitles } from '../knowledge/store';
 import { decide, DecisionError, markConverted, type DecisionInput } from '../opportunities/store';
 import { loadFacts, loadGoals, replaceGoals, resolveProfile, validateExplicit, writeFact } from '../profile/facts';
 import { readPlatformSettings } from '../settings/platform';
-import { render, type LoomLocale } from '../util/text';
+import { render, type Localized, type LoomLocale } from '../util/text';
 import { createInitiativeFor, opportunityMemory, resurfacedMap } from './memory';
 import { priceProposalAllowed } from '../radar/market';
 import type { goalsInput, opportunityListQuery, preferencesInput, setupInput } from './schemas';
@@ -29,6 +31,30 @@ async function offeringChoices(businessId: string, locale: LoomLocale) {
   const page = await connectorFor(conn.kind).pull(conn, 'offerings', null, 1000);
   return (page.records.map((r) => r.data) as Offering[]).filter((o) => o.status === 'active' && (o.kind === 'service' || o.kind === 'product'))
     .map((o) => ({ id: o.id, kind: o.kind, name: render(o.name, locale) }));
+}
+
+/**
+ * Names of offerings and inventory items (through the connector) so metrics
+ * like `inventory.weekly_usage@item:<id>` are shown as «Weekly usage — <item>»
+ * (LUMA-AUDIT-024). Best effort: a connector that cannot list them yields no names.
+ */
+export async function subjectNames(businessId: string): Promise<SubjectNames> {
+  const out = new Map<string, Localized>();
+  try {
+    const conn = await withTenant(businessId, (trx) => ensureConnection(trx, businessId));
+    const c = connectorFor(conn.kind);
+    const offerings = (await c.pull(conn, 'offerings', null, 5000)).records.map((r) => r.data as Offering);
+    for (const o of offerings) out.set(o.id, o.name);
+    const byId = new Map(offerings.map((o) => [o.id, o]));
+    const items = (await c.pull(conn, 'inventory_items', null, 5000)).records.map((r) => r.data as InventoryItem);
+    for (const i of items) out.set(i.id, itemName(i, i.offering_id ? byId.get(i.offering_id) : undefined));
+  } catch { /* names are display sugar; the generic label is used instead */ }
+  return out;
+}
+
+/** Owner-facing success metrics: readable label + unit next to the raw values. */
+export function successMetricsView(metrics: Array<{ metric_key: string; baseline: number | null; target: number | null } & Record<string, unknown>>, names: SubjectNames, locale: LoomLocale) {
+  return metrics.map((m) => ({ ...m, ...metricDisplay(m.metric_key, names, locale) }));
 }
 
 async function offeringChoicesWithPrice(businessId: string) {
@@ -139,14 +165,17 @@ export async function getAnalysis(c: Pick<Ctx, 'businessId' | 'locale'>, id: str
   return analysisView(a, c.locale);
 }
 
-const rowView = (o: { id: string; business_id: string; card: unknown; wording?: unknown; status: string; display_bucket: string | null; evidence_strength: string | null; decision_reason: string | null; decided_at: Date | null; deferred_until: string | null; detector_id: string; conversion: unknown; updated_at: Date }, locale: LoomLocale, resurfaced: { reason: string; at: Date } | null = null) => ({
+const rowView = (o: { id: string; business_id: string; card: unknown; wording?: unknown; status: string; display_bucket: string | null; evidence_strength: string | null; decision_reason: string | null; decided_at: Date | null; deferred_until: string | null; detector_id: string; conversion: unknown; updated_at: Date }, locale: LoomLocale, resurfaced: { reason: string; at: Date } | null = null, names: SubjectNames = new Map()) => ({
   // «عادت للظهور لأن القيد زال»: re-offered after a capacity / inventory / budget / timing rejection (§10.1, T13).
   resurfaced,
-  card: renderCard(o, locale), details: cardDetails(o, locale), status: o.status, bucket: o.display_bucket, evidence_strength: o.evidence_strength, detector_id: o.detector_id,
+  card: renderCard(o, locale),
+  // Owner-facing labels/units, index-aligned with card.success_metrics (the card itself stays the strict §11.1 contract).
+  display: { success_metrics: successMetricsView((o.card as { success_metrics: never[] }).success_metrics, names, locale).map((m) => ({ label: m.label, unit: m.unit })) }, details: cardDetails(o, locale), status: o.status, bucket: o.display_bucket, evidence_strength: o.evidence_strength, detector_id: o.detector_id,
   decision: o.decided_at ? { reason: o.decision_reason, at: o.decided_at, deferred_until: o.deferred_until } : null, conversion: o.conversion, updated_at: o.updated_at,
 });
 
 export async function listOpportunities(c: Pick<Ctx, 'businessId' | 'locale'>, q: z.infer<typeof opportunityListQuery>) {
+  const names = await subjectNames(c.businessId);
   return withTenant(c.businessId, async (trx) => {
     let qb = trx.selectFrom('loom.opportunities').selectAll().where('business_id', '=', c.businessId);
     if (q.status) qb = qb.where('status', '=', q.status);
@@ -155,11 +184,12 @@ export async function listOpportunities(c: Pick<Ctx, 'businessId' | 'locale'>, q
     if (q.bucket) qb = qb.where('display_bucket', '=', q.bucket);
     const rows = await qb.orderBy('priority_rank', 'asc').orderBy('updated_at', 'desc').limit(100).execute();
     const back = await resurfacedMap(trx, c.businessId, rows.map((o) => o.id));
-    return rows.map((o) => rowView(o, c.locale, back.get(o.id) ?? null));
+    return rows.map((o) => rowView(o, c.locale, back.get(o.id) ?? null, names));
   });
 }
 
 export async function getOpportunity(c: Pick<Ctx, 'businessId' | 'locale'> & { actor?: AuditActor }, id: string) {
+  const names = await subjectNames(c.businessId);
   return withTenant(c.businessId, async (trx) => {
     const o = await trx.selectFrom('loom.opportunities').selectAll().where('business_id', '=', c.businessId).where('id', '=', id).executeTakeFirst();
     if (!o) throw Errors.notFound('opportunity');
@@ -171,10 +201,11 @@ export async function getOpportunity(c: Pick<Ctx, 'businessId' | 'locale'> & { a
     const events = await trx.selectFrom('loom.opportunity_events').select(['event', 'from_status', 'to_status', 'reason', 'note', 'counts_as_idea_failure', 'created_at']).where('business_id', '=', c.businessId).where('opportunity_id', '=', id).orderBy('created_at').execute();
     const back = await resurfacedMap(trx, c.businessId, [o.id]);
     return {
-      ...rowView(o, c.locale, back.get(o.id) ?? null),
+      ...rowView(o, c.locale, back.get(o.id) ?? null, names),
       // Phase 5: decision ladder (each stage), the caller's like/dislike (taste only) and initiatives.
       ...(await opportunityMemory(trx, c.businessId, id, c.actor?.userId ?? null)),
-      evidence: evidence.map((e) => ({ id: e.id, metric_key: e.metric_key, grain_ref: e.grain_ref, value: e.value, n: e.n, label: render(e.label as { ar: string; en: string }, c.locale), grade: e.grade })),
+      evidence: evidence.map((e) => ({ id: e.id, metric_key: e.metric_key, grain_ref: e.grain_ref, value: e.value, n: e.n, grade: e.grade,
+        ...metricDisplay(`${e.metric_key}@${e.grain_ref}`, names, c.locale, render(e.label as Localized, c.locale)) })),
       checks: Object.values(Object.fromEntries(checks.reverse().map((x) => [x.check_type, { type: x.check_type, status: x.status, details: x.details }]))),
       events,
       // «مرجع المنهجية»: knowledge units cited by the card or its plan actions (phase 3).
@@ -202,6 +233,10 @@ export async function decideOpportunity(c: Ctx, id: string, input: DecisionInput
 export async function recordConversion(c: Ctx, id: string, conversion: { target: string; ref_id: string }) {
   try {
     await withTenant(c.businessId, async (trx) => {
+      // Idempotent (LUMA-AUDIT-038): the same artifact converted again records nothing new (no second initiative).
+      const existing = await trx.selectFrom('loom.initiatives').select('id').where('business_id', '=', c.businessId).where('opportunity_id', '=', id)
+        .where('artifact_kind', '=', conversion.target).where('artifact_ref', '=', conversion.ref_id).executeTakeFirst();
+      if (existing) return;
       await markConverted(trx, c.businessId, id, conversion, c.actor.userId);
       // §10.2: the initiative record (frozen baseline + original proposal) and the `scheduled` stage.
       await createInitiativeFor(trx, c.businessId, id, conversion, c.actor.userId);

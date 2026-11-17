@@ -4,7 +4,7 @@ import { expect, type Page } from '@playwright/test';
 export const creds = (): Record<string, string> => JSON.parse(readFileSync('.e2e/credentials.json', 'utf8'));
 
 export async function useEnglish(page: Page) {
-  await page.context().addCookies([{ name: 'luma_locale', value: 'en', url: page.url().startsWith('http') ? page.url() : 'http://localhost:3110' }]);
+  await page.context().addCookies([{ name: 'luma_locale', value: 'en', url: page.url().startsWith('http') ? page.url() : `http://localhost:${process.env.E2E_PORT ?? 3110}` }]);
 }
 
 export async function signIn(page: Page, email: string, next?: string) {

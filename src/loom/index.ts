@@ -48,6 +48,7 @@ export * as loomWebhooks from './webhooks/outgoing';
 export { emitLoomEvent, deliverWebhook, WEBHOOK_EVENTS, type WebhookEvent } from './webhooks/outgoing';
 export { signBody, verifySignature, newWebhookSecret, SIGNATURE_HEADER, EVENT_ID_HEADER, SignatureError } from './webhooks/signing';
 export * as loomApi from './api/service';
+export { metricDisplay, metricLabel, metricUnit, grainLabel, splitMetricKey, moneyText, type SubjectNames } from './display';
 export * as loomMemory from './api/memory';
 // Phase 5: memory, measurement and the change aggregator (docs/LOOM_CORE.md §14–§17).
 export { recordLadder, recordView, recordReaction, inferBrandFit, brandFitKey, LADDER_STAGES, REACTIONS, type LadderStage, type Reaction } from './memory/ladder';

@@ -16,6 +16,11 @@ export function stableHash(v: unknown): string {
 }
 
 export const pct = (x: number | null | undefined, digits = 0) => (x == null ? '—' : `${(x * 100).toFixed(digits)}%`);
+/** Money in the business currency for rules text (minor units → «٩٧٫٣٩ ر.س.» style with Latin digits / «SAR 97.39»). */
+export function moneyText(minor: number, currency: string): Localized {
+  const f = (loc: string) => new Intl.NumberFormat(loc, { style: 'currency', currency, minimumFractionDigits: minor % 100 === 0 ? 0 : 2, maximumFractionDigits: 2 }).format(minor / 100);
+  return L(f('ar-SA-u-ca-gregory-nu-latn'), f('en-SA'));
+}
 export const round = (x: number, d = 4) => Math.round(x * 10 ** d) / 10 ** d;
 export const median = (xs: number[]): number | null => {
   if (!xs.length) return null;

@@ -84,8 +84,14 @@ describe('Loom conversions through LUMA’s ActionPort', () => {
     const plan = await withTenant(s.biz.tenantId, (trx) => trx.selectFrom('plan_versions').select(['plan_id', 'content', 'source']).where('plan_id', '=', p1.body.data.result.ref_id).execute());
     expect(plan).toHaveLength(1);
     expect((plan[0]!.content as any).activities[0].title).toBe(promo.card.title);
+    // LUMA-AUDIT-038: converting the same opportunity again never duplicates the item (nor the initiative record).
     const p2 = await s.owner.call(convert.POST, { params: id, body: { target: 'plan_action' } });
-    expect(p2.body.data.result.status).toBe('version_2');
+    expect(p2.status).toBe(201);
+    expect(p2.body.data.result.status).toBe('already_in_plan');
+    const again = await withTenant(s.biz.tenantId, (trx) => trx.selectFrom('plan_versions').select(['change_note']).where('plan_id', '=', p1.body.data.result.ref_id).execute());
+    expect(again).toEqual([{ change_note: `loom:${promo.card.opportunity_id}` }]);
+    const inits = await withTenant(s.biz.tenantId, (trx) => trx.selectFrom('loom.initiatives').select('id').where('opportunity_id', '=', promo.card.opportunity_id).where('artifact_kind', '=', 'plan_action').execute());
+    expect(inits).toHaveLength(1);
 
     const c = await s.owner.call(convert.POST, { params: id, body: { target: 'campaign_draft', channel: 'in_app' } });
     expect(c.status).toBe(201);
@@ -93,7 +99,7 @@ describe('Loom conversions through LUMA’s ActionPort', () => {
     expect(camp).toEqual({ status: 'draft', channel: 'in_app' });
     expect((await s.owner.call(convert.POST, { params: id, body: { target: 'price_proposal', proposed_price_minor: 25000 } })).status).toBe(422);
     const events = (await s.owner.call(oppOne.GET, { params: id })).body.data.events.filter((e: any) => e.event === 'converted');
-    expect(events).toHaveLength(3);
+    expect(events).toHaveLength(2);
   });
 
   it('price_proposal from a margin-leak review creates a catalog proposal (never a direct price change)', async () => {

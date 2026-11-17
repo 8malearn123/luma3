@@ -35,10 +35,11 @@ export function useTeamCaps() {
     editStaff: access.can('staff.edit') && !access.readOnly,
     schedule: access.can('schedule.manage') || (access.can('schedule.view_own') && !!access.staffProfileId),
     manageSchedule: access.can('schedule.manage') && !access.readOnly,
-    leave: access.can('leave.approve', 'schedule.manage', 'leave.request'),
+    // R5: a solo freelancer has no leave / HR requests until an assistant exists (the server drops those capabilities too).
+    leave: access.can('leave.approve', 'schedule.manage', 'leave.request') && !access.solo,
     attendance: access.can('attendance.manage') || (access.can('attendance.own') && !!access.staffProfileId),
     members: access.can('team.manage'),
-    requests: access.can('hr.configure', 'leave.approve', 'schedule.manage') || (access.can('hr.request') && !!access.staffProfileId),
+    requests: (access.can('hr.configure', 'leave.approve', 'schedule.manage') || (access.can('hr.request') && !!access.staffProfileId)) && !access.solo,
     files: access.can('staff_file.manage'),
   };
 }
@@ -81,6 +82,7 @@ function TeamPageInner() {
 
       {tab === 'staff' ? (
         <div className="flex flex-col gap-3">
+          {access.solo ? <p className="rounded-xl bg-luma-50 p-3 text-sm text-ink-muted" data-testid="solo-team-hint">{t('workspace_mode.solo_team_hint')}</p> : null}
           <div className="flex flex-wrap items-center justify-between gap-2">
             <Checkbox label={t('catalog_team.team.show_inactive')} checked={showInactive} onChange={setShowInactive} />
             {limit ? <span className="text-xs text-ink-muted">{t('catalog_team.team.limit_note', { limit, n: (staff.data ?? []).filter((s) => s.is_active).length })}</span> : null}

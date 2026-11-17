@@ -6,15 +6,15 @@ import { getT } from '@/i18n/server';
 
 export const metadata = { title: 'Loom Marketing' };
 
-/** Loom Marketing dashboard (?tab=summary|opportunities|plans|recommendations|trends|campaigns|setup|preferences|jobs). */
-export default async function MarketingPage({ params, searchParams }: { params: Promise<{ tenantSlug: string }>; searchParams: Promise<{ tab?: string }> }) {
+/** Loom Marketing dashboard (?tab=home|monthly|weekly|opportunities|trends|results|campaigns|setup|advanced[&section=status|connections|models|preferences]; old values such as plans/jobs still resolve). */
+export default async function MarketingPage({ params, searchParams }: { params: Promise<{ tenantSlug: string }>; searchParams: Promise<{ tab?: string; section?: string }> }) {
   const { tenantSlug } = await params;
-  const { tab } = await searchParams;
+  const { tab, section } = await searchParams;
   const { access } = await requireTenantPage(tenantSlug);
   if (!hasCapability(access, ['marketing.view', 'marketing.manage'])) return <DeniedState />;
   if (!featureEnabled(access, 'feature.marketing_ai')) {
     const { t } = await getT();
     return <Alert tone="info">{t('marketing.ai.feature_off')}</Alert>;
   }
-  return <LoomDashboard initialTab={tab} />;
+  return <LoomDashboard initialTab={tab} initialSection={section} />;
 }
