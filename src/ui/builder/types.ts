@@ -21,6 +21,8 @@ export type CatalogRefs = {
   assets: Array<{ id: string; purpose: string; width: number | null; height: number | null; alt_ar: string | null; alt_en: string | null; created_at: string }>;
 };
 
+export type ComponentState = { available: boolean; reason: 'disabled' | 'plan' | null; feature: string | null };
+
 export type AiState =
   | { state: 'connected'; provider: string; model: string; verified_at: string | null }
   | { state: 'disconnected'; reason: string }
@@ -40,6 +42,8 @@ export type BuilderState = {
   policy: { can_remove_powered_by: boolean; custom_pages_limit: number | null; customization_ai: boolean; products: boolean };
   published: { tenant_status: string; version_id: string | null; version_number: number | null; published_at: string | null };
   catalog: CatalogRefs;
+  /** Platform component switches + plan gates (LUMA-AUDIT-019); absent types are available. */
+  components?: Partial<Record<string, ComponentState>>;
   storefront: StorefrontData;
 };
 

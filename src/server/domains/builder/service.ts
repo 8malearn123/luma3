@@ -10,6 +10,7 @@ import { getDraftStorefront } from '../storefront/service';
 import { readBrand, writeBrand } from './brand';
 import { readDraftPages, readLayout, safeBlocks } from './drafts';
 import { parseLayout, validatePage, type PageIssue, type RefWarning } from './validation';
+import { blockIds, componentAvailability, componentIssues } from './components';
 import { makeBlock, type PageBlock, type SiteLayout } from '@/shared/builder/blocks';
 import { contrastWarnings, type Brand } from '@/shared/builder/theme';
 import { RESERVED_PAGE_SLUGS } from '@/shared/builder/storefront';
@@ -44,10 +45,13 @@ export async function validateDraft(trx: Tx, access: TenantAccess) {
   const pages = await readDraftPages(trx, access.tenantId);
   const issues: PageIssue[] = [];
   const warnings: RefWarning[] = [];
+  const avail = await componentAvailability(trx, access);
   for (const p of pages) {
     const r = await validatePage(trx, access.tenantId, p.id, p.blocks, { productsEnabled: productsOn(access) });
     issues.push(...r.issues);
     warnings.push(...r.warnings);
+    // Platform-disabled / plan-gated components block publishing (LUMA-AUDIT-019).
+    if (!r.issues.length) issues.push(...componentIssues(p.id, r.blocks, avail).issues);
   }
   const lay = await trx.selectFrom('site_drafts').select('layout').where('tenant_id', '=', access.tenantId).executeTakeFirst();
   const pl = parseLayout(lay?.layout);
@@ -61,7 +65,7 @@ export async function validateDraft(trx: Tx, access: TenantAccess) {
 /** Everything the editor needs in one request. */
 export async function getBuilderState(access: TenantAccess) {
   const state = await withTenant(access.tenantId, async (trx) => {
-    const [brand, layout, pages, validation, published, catalog] = await Promise.all([
+    const [brand, layout, pages, validation, published, catalog, components] = await Promise.all([
       readBrand(trx, access.tenantId),
       readLayout(trx, access.tenantId),
       readDraftPages(trx, access.tenantId, { includeArchived: true }),
@@ -69,8 +73,9 @@ export async function getBuilderState(access: TenantAccess) {
       trx.selectFrom('tenants as t').leftJoin('site_versions as v', (j) => j.onRef('v.id', '=', 't.published_version_id').onRef('v.tenant_id', '=', 't.id'))
         .select(['t.status', 't.published_version_id', 'v.version_number', 'v.published_at']).where('t.id', '=', access.tenantId).executeTakeFirstOrThrow(),
       catalogRefs(trx, access.tenantId),
+      componentAvailability(trx, access),
     ]);
-    return { brand, layout, pages, validation, published, catalog };
+    return { brand, layout, pages, validation, published, catalog, components };
   });
   const [ready, ai, canvas] = await Promise.all([readiness(access), assistantStatus(access), getDraftStorefront(access.tenantId, 'canvas')]);
   return {
@@ -86,6 +91,7 @@ export async function getBuilderState(access: TenantAccess) {
     policy: builderPolicy(access),
     published: { tenant_status: state.published.status, version_id: state.published.published_version_id, version_number: state.published.version_number ?? null, published_at: state.published.published_at?.toISOString() ?? null },
     catalog: state.catalog,
+    components: state.components,
     storefront: canvas,
   };
 }
@@ -117,11 +123,16 @@ async function catalogRefs(trx: Tx, tenantId: string) {
 
 export async function writePageBlocks(trx: Tx, access: TenantAccess, actor: AuditActor, pageId: string, expectedVersion: number, raw: unknown) {
   const page = await trx.selectFrom('page_drafts as d').innerJoin('store_pages as p', (j) => j.onRef('p.id', '=', 'd.page_id').onRef('p.tenant_id', '=', 'd.tenant_id'))
-    .select(['d.version', 'p.status']).where('d.tenant_id', '=', access.tenantId).where('d.page_id', '=', pageId).forUpdate().executeTakeFirst();
+    .select(['d.version', 'd.blocks', 'p.status']).where('d.tenant_id', '=', access.tenantId).where('d.page_id', '=', pageId).forUpdate().executeTakeFirst();
   if (!page) throw Errors.notFound('page');
   if (page.version !== expectedVersion) throw Errors.versionConflict(page.version);
   const v = await validatePage(trx, access.tenantId, pageId, raw, { productsEnabled: productsOn(access) });
   if (v.issues.length) throw Errors.invalid('invalid_blocks', 'Some blocks are invalid', { issues: v.issues });
+  // A block the platform disabled (or the plan does not include) cannot be ADDED; ones already
+  // in the draft stay editable but are reported and must be removed before publishing.
+  const comp = componentIssues(pageId, v.blocks, await componentAvailability(trx, access), blockIds(safeBlocks(page.blocks)));
+  if (comp.issues.length) throw Errors.invalid('component_unavailable', 'This block is not available for your store', { issues: comp.issues });
+  v.warnings.push(...comp.warnings);
   const r = await trx.updateTable('page_drafts').set({ blocks: JSON.stringify(v.blocks), version: page.version + 1, updated_by: actor.userId })
     .where('tenant_id', '=', access.tenantId).where('page_id', '=', pageId).where('version', '=', expectedVersion).returning(['version', 'updated_at']).executeTakeFirst();
   if (!r) throw Errors.versionConflict();

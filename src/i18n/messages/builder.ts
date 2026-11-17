@@ -51,7 +51,7 @@ const ar = {
     library: {
       hint: 'اسحبي المكوّن إلى اللوحة أو اضغطي + لإضافته بعد المكوّن المحدد.', drag: 'اسحبي {name}', drag_hint: 'اسحبي إلى اللوحة', add: 'إضافة',
       cat: { media: 'الصور والوسائط', content: 'المحتوى', catalog: 'الخدمات والعروض', commerce: 'المتجر', people: 'الفريق', trust: 'الثقة', info: 'المعلومات', layout: 'التخطيط' },
-      cannot: { limit_type: 'وصلتِ للحد الأقصى من هذا المكوّن في الصفحة', limit_total: 'وصلتِ للحد الأقصى من المكونات في الصفحة', needs_service: 'أضيفي خدمة أولاً', needs_product: 'أضيفي منتجاً أولاً', needs_page: 'أنشئي صفحة أولاً', feature: 'غير متاح في باقتك' },
+      cannot: { limit_type: 'وصلتِ للحد الأقصى من هذا المكوّن في الصفحة', limit_total: 'وصلتِ للحد الأقصى من المكونات في الصفحة', needs_service: 'أضيفي خدمة أولاً', needs_product: 'أضيفي منتجاً أولاً', needs_page: 'أنشئي صفحة أولاً', feature: 'غير متاح في باقتك', disabled: 'أوقفته لوما مؤقتاً', plan: 'يتطلب باقة أعلى' },
     },
     canvas: {
       label: 'لوحة المعاينة', drag: 'سحب {name}', sortable: 'مكوّن قابل لإعادة الترتيب', move_up: 'تحريك لأعلى', move_down: 'تحريك لأسفل', duplicate: 'تكرار',
@@ -60,7 +60,7 @@ const ar = {
     },
     warnings: {
       title: 'تنبيهات', block: 'هذا المكوّن يشير إلى عنصر غير متاح', count: '{n} تنبيه',
-      codes: { archived: '{kind} مؤرشف — ستظهر للعميلات رسالة بديلة', hidden: '{kind} مخفي — لن يظهر للعميلات', inactive: '{kind} غير نشط حالياً', missing_section: 'القسم المرتبط غير موجود في هذه الصفحة', wrong_kind: 'نوع التصنيف لا يطابق المكوّن', feature_disabled: 'غير متاح في باقتك — لن يظهر', broken_asset: 'الصورة لم تعد متاحة' },
+      codes: { archived: '{kind} مؤرشف — ستظهر للعميلات رسالة بديلة', hidden: '{kind} مخفي — لن يظهر للعميلات', inactive: '{kind} غير نشط حالياً', missing_section: 'القسم المرتبط غير موجود في هذه الصفحة', wrong_kind: 'نوع التصنيف لا يطابق المكوّن', feature_disabled: 'غير متاح في باقتك — لن يظهر', broken_asset: 'الصورة لم تعد متاحة', component_disabled: 'أوقفت لوما هذا المكوّن — احذفيه قبل النشر', component_plan: 'هذا المكوّن يتطلب باقة أعلى — احذفيه قبل النشر' },
       kinds: { service: 'الخدمة', product: 'المنتج', category: 'التصنيف', staff: 'الموظفة', page: 'الصفحة', package: 'الباقة', branch: 'الفرع', asset: 'الصورة', section: 'القسم', block: 'المكوّن' },
     },
     status: { archived: 'مؤرشف', hidden: 'مخفي', inactive: 'غير نشط', missing: 'غير موجود' },
@@ -117,6 +117,7 @@ const ar = {
     versions: {
       title: 'الإصدارات', empty: 'لا توجد إصدارات منشورة بعد', empty_hint: 'كل نشر ينشئ إصداراً يمكنكِ الرجوع إليه.', v: 'الإصدار {n}', live: 'منشور', from: 'استرجاع للإصدار {n}',
       rollback: 'إعادة نشر هذا الإصدار', restore: 'نسخ إلى المسودة', rollback_confirm: 'إعادة نشر الإصدار {n}؟', restore_confirm: 'نسخ الإصدار {n} إلى المسودة؟',
+      notices: 'ملاحظات على هذا الإصدار ({n}):', blocked: 'لا يمكن نشر هذا الإصدار الآن:',
       rollback_body: 'يتغير التصميم فقط. الحجوزات والطلبات والمخزون والأسعار لا تتأثر، ومسودتك الحالية تبقى كما هي.',
       restore_body: 'ستُستبدل المسودة الحالية بمحتوى هذا الإصدار دون نشر. يمكنكِ المراجعة ثم النشر.', rolled_back: 'تمت إعادة النشر كإصدار {n}', restored: 'تم نسخ الإصدار {n} إلى المسودة',
     },
@@ -139,6 +140,7 @@ const ar = {
     },
   },
   errors: {
+    component_unavailable: 'هذا المكوّن غير متاح لمتجرك حالياً، ولم يُحفظ.', component_disabled: 'أوقفت لوما هذا المكوّن.', component_plan: 'هذا المكوّن يتطلب باقة أعلى.',
     invalid_blocks: 'بعض المكونات غير صالحة ولم تُحفظ.', invalid_layout: 'إعدادات التخطيط غير صالحة.', not_ready: 'أكملي قائمة الجاهزية قبل النشر.',
     publish_validation_failed: 'صحّحي المشكلات قبل النشر.', page_slug_fixed: 'لا يمكن تغيير عنوان هذه الصفحة.', page_not_archivable: 'الصفحات الأساسية لا تُؤرشف؛ يمكنكِ إخفاؤها من القائمة.',
     title_required: 'عنوان الصفحة مطلوب.', template_invalid: 'هذا القالب لم يعد صالحاً.', ai_unavailable: 'مساعد التخصيص غير متصل حالياً. المحرر اليدوي يعمل.',
@@ -201,7 +203,7 @@ const en: Shape<typeof ar> = {
     library: {
       hint: 'Drag a component onto the canvas, or press + to add it after the selected one.', drag: 'Drag {name}', drag_hint: 'Drag onto the canvas', add: 'Add',
       cat: { media: 'Images & media', content: 'Content', catalog: 'Services & offers', commerce: 'Shop', people: 'Team', trust: 'Trust', info: 'Information', layout: 'Layout' },
-      cannot: { limit_type: 'Maximum of this component on the page reached', limit_total: 'Maximum number of components on the page reached', needs_service: 'Add a service first', needs_product: 'Add a product first', needs_page: 'Create a page first', feature: 'Not included in your plan' },
+      cannot: { limit_type: 'Maximum of this component on the page reached', limit_total: 'Maximum number of components on the page reached', needs_service: 'Add a service first', needs_product: 'Add a product first', needs_page: 'Create a page first', feature: 'Not included in your plan', disabled: 'Temporarily turned off by LUMA', plan: 'Needs a higher plan' },
     },
     canvas: {
       label: 'Preview canvas', drag: 'Drag {name}', sortable: 'sortable component', move_up: 'Move up', move_down: 'Move down', duplicate: 'Duplicate',
@@ -210,7 +212,7 @@ const en: Shape<typeof ar> = {
     },
     warnings: {
       title: 'Warnings', block: 'This component points to something unavailable', count: '{n} warning(s)',
-      codes: { archived: '{kind} is archived — customers will see a fallback message', hidden: '{kind} is hidden — customers will not see it', inactive: '{kind} is currently inactive', missing_section: 'The linked section is not on this page', wrong_kind: 'Category type does not match the component', feature_disabled: 'Not included in your plan — it will not be shown', broken_asset: 'The image is no longer available' },
+      codes: { archived: '{kind} is archived — customers will see a fallback message', hidden: '{kind} is hidden — customers will not see it', inactive: '{kind} is currently inactive', missing_section: 'The linked section is not on this page', wrong_kind: 'Category type does not match the component', feature_disabled: 'Not included in your plan — it will not be shown', broken_asset: 'The image is no longer available', component_disabled: 'LUMA turned this component off — remove it before publishing', component_plan: 'This component needs a higher plan — remove it before publishing' },
       kinds: { service: 'Service', product: 'Product', category: 'Category', staff: 'Team member', page: 'Page', package: 'Package', branch: 'Branch', asset: 'Image', section: 'Section', block: 'Component' },
     },
     status: { archived: 'archived', hidden: 'hidden', inactive: 'inactive', missing: 'missing' },
@@ -267,6 +269,7 @@ const en: Shape<typeof ar> = {
     versions: {
       title: 'Versions', empty: 'No published versions yet', empty_hint: 'Every publish creates a version you can return to.', v: 'Version {n}', live: 'Live', from: 'Rollback to v{n}',
       rollback: 'Republish this version', restore: 'Copy into draft', rollback_confirm: 'Republish version {n}?', restore_confirm: 'Copy version {n} into the draft?',
+      notices: 'Notes on this version ({n}):', blocked: 'This version cannot be published right now:',
       rollback_body: 'Only the design changes. Bookings, orders, inventory and prices are not affected, and your current draft stays as it is.',
       restore_body: 'The current draft is replaced with this version without publishing. You can review it and then publish.', rolled_back: 'Republished as version {n}', restored: 'Version {n} copied into the draft',
     },
@@ -289,6 +292,7 @@ const en: Shape<typeof ar> = {
     },
   },
   errors: {
+    component_unavailable: 'This component is not available for your store right now and was not saved.', component_disabled: 'LUMA turned this component off.', component_plan: 'This component needs a higher plan.',
     invalid_blocks: 'Some components are invalid and were not saved.', invalid_layout: 'The layout settings are invalid.', not_ready: 'Complete the readiness checklist before publishing.',
     publish_validation_failed: 'Fix the problems before publishing.', page_slug_fixed: 'This page address cannot be changed.', page_not_archivable: 'Default pages cannot be archived; hide them from navigation instead.',
     title_required: 'A page title is required.', template_invalid: 'This template is no longer valid.', ai_unavailable: 'The customization assistant is not connected. The manual builder works.',

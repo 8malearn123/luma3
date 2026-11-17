@@ -124,7 +124,7 @@ export function BuilderApp({ slug, initial }: { slug: string; initial: BuilderSt
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }));
 
-  const check = useCallback((type: BlockType) => canAdd(type, blocks, refs, pages, server.policy.products), [blocks, refs, pages, server.policy.products]);
+  const check = useCallback((type: BlockType) => canAdd(type, blocks, refs, pages, server.policy.products, server.components), [blocks, refs, pages, server.policy.products, server.components]);
   const add = useCallback((type: BlockType, index?: number) => {
     if (!check(type).ok) return;
     const nb = newBlock(type, refs, pages);

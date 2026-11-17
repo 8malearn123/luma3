@@ -1,5 +1,5 @@
 import { BLOCKS, makeBlock, MAX_BLOCKS_PER_PAGE, MAX_CHILDREN, newBlockId, type BlockType, type PageBlock } from '@/shared/builder/blocks';
-import type { BuilderPage, CatalogRefs } from './types';
+import type { BuilderPage, CatalogRefs, ComponentState } from './types';
 
 /** Pure block-tree operations used by the editor (and its undo history). */
 
@@ -74,11 +74,13 @@ export function countBlocks(list: PageBlock[]) {
   return { total, byType };
 }
 
-export type AddCheck = { ok: true } | { ok: false; reason: 'limit_type' | 'limit_total' | 'needs_service' | 'needs_product' | 'needs_page' | 'feature' };
+export type AddCheck = { ok: true } | { ok: false; reason: 'limit_type' | 'limit_total' | 'needs_service' | 'needs_product' | 'needs_page' | 'feature' | 'disabled' | 'plan' };
 
-export function canAdd(type: BlockType, list: PageBlock[], refs: CatalogRefs, pages: BuilderPage[], productsEnabled: boolean): AddCheck {
+export function canAdd(type: BlockType, list: PageBlock[], refs: CatalogRefs, pages: BuilderPage[], productsEnabled: boolean, components?: Partial<Record<string, ComponentState>>): AddCheck {
   const d = BLOCKS[type];
   const { total, byType } = countBlocks(list);
+  const comp = components?.[type];
+  if (comp && !comp.available) return { ok: false, reason: comp.reason === 'plan' ? 'plan' : 'disabled' };
   if (d.feature === 'feature.products' && !productsEnabled) return { ok: false, reason: 'feature' };
   if (total >= MAX_BLOCKS_PER_PAGE) return { ok: false, reason: 'limit_total' };
   if ((byType.get(type) ?? 0) >= d.maxPerPage) return { ok: false, reason: 'limit_type' };

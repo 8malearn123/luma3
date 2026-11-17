@@ -32,10 +32,14 @@ function Item({ type, check, onAdd }: { type: BlockType; check: AddCheck; onAdd:
       <span ref={setNodeRef} {...listeners} {...attributes} className={cx('flex min-w-0 flex-1 items-center gap-2', check.ok && 'cursor-grab active:cursor-grabbing')}
         aria-label={t('builder.library.drag', { name: d.label[locale] })} title={reason ?? t('builder.library.drag_hint')}>
         <BlockIcon name={d.icon} className="size-4 shrink-0 text-luma-700" />
-        <span className="truncate">{d.label[locale]}</span>
+        <span className="flex min-w-0 flex-col">
+          <span className="truncate">{d.label[locale]}</span>
+          {/* Why it cannot be added is visible, not only on hover (LUMA-AUDIT-019). */}
+          {reason ? <span className="text-xs text-ink-muted" id={`lib-reason-${type}`}>{reason}</span> : null}
+        </span>
       </span>
       <button type="button" disabled={!check.ok} onClick={() => onAdd(type)} title={reason ?? t('builder.library.add')}
-        aria-label={`${t('builder.library.add')}: ${d.label[locale]}`} className="rounded-md p-1 text-luma-700 hover:bg-luma-100 disabled:cursor-not-allowed">
+        aria-label={`${t('builder.library.add')}: ${d.label[locale]}`} aria-describedby={reason ? `lib-reason-${type}` : undefined} className="rounded-md p-1 text-luma-700 hover:bg-luma-100 disabled:cursor-not-allowed">
         <Plus className="size-4" />
       </button>
     </li>
