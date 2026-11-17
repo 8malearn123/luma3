@@ -36,26 +36,26 @@ export function PortfolioPage() {
     <div>
       <PageHeader title={t('expert.portfolio.title')} subtitle={t('expert.portfolio.subtitle')}
         actions={canEdit ? <Button icon={<Plus className="size-4" />} onClick={() => setAdding(true)}>{t('expert.portfolio.add')}</Button> : null} />
-      <p className="mb-4 text-sm text-ink-muted">{t('expert.portfolio.builder_hint')} <Link className="text-luma-700 underline" href={`/app/${access.slug}/builder`}>{t('nav.builder')}</Link></p>
+      <p className="mb-4 text-sm text-ink-muted">{t('expert.portfolio.builder_hint')} <Link className="text-link underline" href={`/app/${access.slug}/builder`}>{t('nav.builder')}</Link></p>
       {toggle.error ? <p role="alert" className="mb-2 text-sm text-danger">{msg(toggle.error)}</p> : null}
       {q.isLoading ? <LoadingState rows={4} /> : q.error ? <ErrorState error={q.error} onRetry={() => q.refetch()} /> : !q.data?.length ? (
         <EmptyState icon={<Images className="size-8" aria-hidden />} title={t('expert.portfolio.empty')} hint={t('expert.portfolio.empty_hint')} />
       ) : (
         <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {q.data.map((it) => (
-            <li key={it.id} className="overflow-hidden rounded-2xl border border-line bg-white">
+            <li key={it.id} className="overflow-hidden rounded-2xl border border-line bg-surface">
               <div className="grid grid-cols-2 gap-px bg-line">
                 {it.before_asset_id ? (
-                  <figure className="relative bg-white">
+                  <figure className="relative bg-surface">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={`/api/v1/media/${it.before_asset_id}`} alt="" className="aspect-[4/5] w-full object-cover" />
-                    <figcaption className="absolute top-1 start-1 rounded-full bg-black/60 px-2 text-xs text-white">{t('expert.ba.before')}</figcaption>
+                    <figcaption className="absolute top-1 start-1 rounded-full bg-scrim/70 px-2 text-xs text-white">{t('expert.ba.before')}</figcaption>
                   </figure>
-                ) : <div className="flex items-center justify-center bg-luma-50 text-xs text-ink-muted">{t('expert.portfolio.single')}</div>}
-                <figure className="relative bg-white">
+                ) : <div className="flex items-center justify-center bg-surface-muted text-xs text-ink-muted">{t('expert.portfolio.single')}</div>}
+                <figure className="relative bg-surface">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={`/api/v1/media/${it.after_asset_id}`} alt="" className="aspect-[4/5] w-full object-cover" />
-                  <figcaption className="absolute top-1 start-1 rounded-full bg-black/60 px-2 text-xs text-white">{t('expert.ba.after')}</figcaption>
+                  <figcaption className="absolute top-1 start-1 rounded-full bg-scrim/70 px-2 text-xs text-white">{t('expert.ba.after')}</figcaption>
                 </figure>
               </div>
               <div className="flex items-center gap-2 p-3">

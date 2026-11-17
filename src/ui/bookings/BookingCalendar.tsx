@@ -12,11 +12,11 @@ const HIDDEN = ['cancelled', 'expired'];
 type Block = { row: BookingRow; seg: Segment; startMin: number; endMin: number; lane: number; lanes: number };
 
 const STATUS_CLS: Record<string, string> = {
-  confirmed: 'border-info/40 bg-info-bg text-ink', pending_approval: 'border-warn/50 bg-warn-bg text-ink', checked_in: 'border-luma-500 bg-luma-100 text-luma-900',
-  in_service: 'border-luma-700 bg-luma-200 text-luma-900', completed: 'border-ok/40 bg-ok-bg text-ink', no_show: 'border-danger/40 bg-danger-bg text-ink',
-  held: 'border-warn border-dashed bg-white text-ink', pending_payment: 'border-warn border-dashed bg-white text-ink',
+  confirmed: 'border-info/40 bg-info-bg text-ink', pending_approval: 'border-warn/50 bg-warn-bg text-ink', checked_in: 'border-brand bg-accent-soft text-heading',
+  in_service: 'border-primary bg-highlight text-heading', completed: 'border-ok/40 bg-ok-bg text-ink', no_show: 'border-danger/40 bg-danger-bg text-ink',
+  held: 'border-warn border-dashed bg-surface text-ink', pending_payment: 'border-warn border-dashed bg-surface text-ink',
 };
-const HOLD_STYLE: CSSProperties = { backgroundImage: 'repeating-linear-gradient(135deg, rgba(217,119,6,0.10) 0 6px, transparent 6px 12px)' };
+const HOLD_STYLE: CSSProperties = { backgroundImage: 'repeating-linear-gradient(135deg, color-mix(in srgb, var(--color-warn) 14%, transparent) 0 6px, transparent 6px 12px)' };
 
 /** Assigns side-by-side lanes to overlapping blocks within one column. */
 function layout(blocks: Omit<Block, 'lane' | 'lanes'>[]): Block[] {
@@ -80,14 +80,14 @@ export function BookingCalendar({ rows, mode, anchor, tz, staff, staffFilter, on
   const nowTop = (minutesOf(now) - firstHour * 60) / 60 * HOUR_PX;
 
   if (!columns.length) {
-    return <p className="rounded-xl border border-dashed border-luma-200 bg-white/60 p-8 text-center text-sm text-ink-muted">{t('booking.dashboard.no_bookings')}</p>;
+    return <p className="rounded-xl border border-dashed border-highlight bg-surface/60 p-8 text-center text-sm text-ink-muted">{t('booking.dashboard.no_bookings')}</p>;
   }
 
   return (
     <div className="flex flex-col gap-2">
-      <div className="overflow-x-auto rounded-xl border border-line bg-white" role="region" aria-label={t('booking.dashboard.calendar')} tabIndex={0}>
+      <div className="overflow-x-auto rounded-xl border border-line bg-surface" role="region" aria-label={t('booking.dashboard.calendar')} tabIndex={0}>
         <div className="flex min-w-full" style={{ width: 'max-content' }}>
-          <div className="sticky start-0 z-10 w-16 shrink-0 border-e border-line bg-white">
+          <div className="sticky start-0 z-10 w-16 shrink-0 border-e border-line bg-surface">
             <div className="h-10 border-b border-line" />
             <div className="relative" style={{ height }}>
               {hours.map((h) => (
@@ -101,7 +101,7 @@ export function BookingCalendar({ rows, mode, anchor, tz, staff, staffFilter, on
             const isToday = col.day.hasSame(now, 'day');
             return (
               <div key={col.key} className={cx('min-w-[9.5rem] flex-1 border-e border-line last:border-e-0', mode === 'week' && 'min-w-[8rem]')}>
-                <div className={cx('flex h-10 items-center justify-center truncate border-b border-line px-2 text-sm font-medium', isToday && mode === 'week' && 'text-luma-800')}>{col.label}</div>
+                <div className={cx('flex h-10 items-center justify-center truncate border-b border-line px-2 text-sm font-medium', isToday && mode === 'week' && 'text-heading')}>{col.label}</div>
                 <div className="relative" style={{ height }}>
                   {hours.map((h) => <div key={h} className="absolute inset-x-0 border-t border-line/60" style={{ top: (h - firstHour) * HOUR_PX }} aria-hidden />)}
                   {isToday && nowTop >= 0 && nowTop <= height ? <div className="absolute inset-x-0 z-[5] border-t-2 border-danger" style={{ top: nowTop }} aria-hidden /> : null}
@@ -111,7 +111,7 @@ export function BookingCalendar({ rows, mode, anchor, tz, staff, staffFilter, on
                     const h = Math.max(22, (b.endMin - b.startMin) / 60 * HOUR_PX - 2);
                     return (
                       <button key={`${b.row.id}-${b.seg.starts_at}-${b.seg.staff_id}`} type="button" onClick={() => onOpen(b.row.id)}
-                        className={cx('absolute z-[6] overflow-hidden rounded-md border px-1.5 py-0.5 text-start text-[11px] leading-tight shadow-sm hover:z-[7] hover:ring-2 hover:ring-luma-300 focus:z-[7] focus:outline-none focus:ring-2 focus:ring-luma-500', STATUS_CLS[b.row.status] ?? 'border-line bg-luma-50')}
+                        className={cx('absolute z-[6] overflow-hidden rounded-md border px-1.5 py-0.5 text-start text-[11px] leading-tight shadow-sm hover:z-[7] hover:ring-2 hover:ring-line-strong focus:z-[7] focus:outline-none focus:ring-2 focus:ring-brand', STATUS_CLS[b.row.status] ?? 'border-line bg-surface-muted')}
                         style={{ top, height: h, insetInlineStart: `calc(${(b.lane / b.lanes) * 100}% + 2px)`, width: `calc(${100 / b.lanes}% - 4px)`, ...(hold ? HOLD_STYLE : {}) }}
                         aria-label={`${b.row.number} · ${b.row.customer_name} · ${time(b.seg.starts_at, tz)} · ${t(`booking.status.${b.row.status}`)}${hold ? ` · ${t('bookings_ui.calendar.hold')}` : ''}`}>
                         <span className="block truncate font-semibold">{time(b.seg.starts_at, tz)}{hold ? <span className="text-warn"> · {t('bookings_ui.calendar.hold')}</span> : null}</span>

@@ -104,7 +104,7 @@ export function AttendanceTab({ staff }: { staff: StaffRow[] }) {
       ) : (
         <ul className="flex flex-col gap-2">
           {days.map((g) => (
-            <li key={`${g.staffId}:${g.day}`} className="rounded-xl border border-line bg-white p-3">
+            <li key={`${g.staffId}:${g.day}`} className="rounded-xl border border-line bg-surface p-3">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="font-medium">{formatDate(`${g.day}T12:00:00Z`, { tz: 'UTC', locale, weekday: true })}</span>
                 {!staffId ? <span className="text-sm text-ink-muted">{name(g.staffId)}</span> : null}
@@ -114,7 +114,7 @@ export function AttendanceTab({ staff }: { staff: StaffRow[] }) {
               </div>
               <ul className="mt-2 flex flex-wrap gap-2 text-sm">
                 {g.events.map((e) => (
-                  <li key={e.id} className="inline-flex items-center gap-1 rounded-lg bg-luma-50 px-2 py-1">
+                  <li key={e.id} className="inline-flex items-center gap-1 rounded-lg bg-surface-muted px-2 py-1">
                     {e.kind === 'clock_in' ? <LogIn className="size-3.5 text-ok" aria-hidden /> : <LogOut className="size-3.5 text-ink-muted" aria-hidden />}
                     <span>{t(`catalog_team.attendance.${e.kind}`)}</span>
                     <span dir="ltr">{formatTime(e.at, { tz: access.timezone, locale, timeFormat })}</span>

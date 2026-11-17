@@ -53,7 +53,7 @@ export function StaffFilesTab({ openId, onOpen }: { openId: string | null; onOpe
         <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {q.data.map((s) => (
             <li key={s.staff_id}>
-              <button type="button" onClick={() => onOpen(s.staff_id)} className="flex w-full flex-col gap-2 rounded-2xl border border-line bg-white p-4 text-start shadow-sm hover:border-luma-300">
+              <button type="button" onClick={() => onOpen(s.staff_id)} className="flex w-full flex-col gap-2 rounded-2xl border border-line bg-surface p-4 text-start shadow-sm hover:border-line-strong">
                 <span className="flex items-center justify-between gap-2"><span className="font-medium">{s.staff_name}</span>{s.employee_number ? <span dir="ltr" className="text-xs text-ink-muted">{s.employee_number}</span> : null}</span>
                 <span className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
                   <span className="text-ink-muted">{t('hr.files.hire_date')}</span><span>{s.hire_date ? day(s.hire_date) : '—'}</span>
@@ -161,8 +161,8 @@ function Documents({ file, onChanged }: { file: StaffFile; onChanged: () => void
         <ul className="mb-3 divide-y divide-line rounded-xl border border-line">
           {file.documents.map((d) => (
             <li key={d.id} className="flex flex-wrap items-center gap-2 px-3 py-2 text-sm">
-              <FileText className="size-4 text-luma-700" aria-hidden />
-              <a href={d.url} target="_blank" rel="noreferrer" className="font-medium text-luma-700 hover:underline">{d.title}</a>
+              <FileText className="size-4 text-link" aria-hidden />
+              <a href={d.url} target="_blank" rel="noreferrer" className="font-medium text-link hover:underline">{d.title}</a>
               <span className="ms-auto"><ExpiryBadge date={d.expires_on} /></span>
               {!access.readOnly ? <IconButton label={t('actions.delete')} onClick={() => del.mutate(d.id)}><Trash2 className="size-4" aria-hidden /></IconButton> : null}
             </li>

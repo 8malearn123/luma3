@@ -14,7 +14,7 @@ export default async function AccountLayout({ children }: { children: React.Reac
   const { t } = await getT();
   return (
     <div className="luma-app min-h-dvh bg-canvas">
-      <header className="border-b border-line bg-white">
+      <header className="border-b border-line bg-surface">
         <div className="mx-auto flex max-w-6xl items-center gap-3 px-3 py-3 sm:px-6">
           <Link href="/" aria-label="LUMA"><LumaLogo className="h-9 w-auto" /></Link>
           <div className="flex-1" />
@@ -24,7 +24,7 @@ export default async function AccountLayout({ children }: { children: React.Reac
       </header>
       <div className="mx-auto max-w-6xl px-3 py-6 sm:px-6">
         <div className="mb-5">
-          <h1 className="font-display text-2xl text-luma-900">{t('account.title')}</h1>
+          <h1 className="font-display text-2xl text-heading">{t('account.title')}</h1>
           <p className="text-sm text-ink-muted">{t('account.subtitle')}</p>
         </div>
         <div className="flex flex-col gap-5 lg:flex-row">

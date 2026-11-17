@@ -221,8 +221,8 @@ export function BuilderApp({ slug, initial }: { slug: string; initial: BuilderSt
       onSelect={setSelected} onAssetsChange={onAssetsChange}
       onChange={(fn, key) => b.setBlocks(page.id, (l) => updateBlock(l, sel.block.id, fn), key)} />
   ) : (
-    <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-luma-200 p-6 text-center text-sm text-ink-muted">
-      <MousePointerClick className="size-6 text-luma-300" aria-hidden />
+    <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-highlight p-6 text-center text-sm text-ink-muted">
+      <MousePointerClick className="size-6 text-line-strong" aria-hidden />
       <p>{t('builder.select_hint')}</p>
       {blocks.length ? (
         <ul className="mt-2 flex w-full flex-col gap-1 text-start">
@@ -295,7 +295,7 @@ export function BuilderApp({ slug, initial }: { slug: string; initial: BuilderSt
             {propsPanel}
           </aside>
         </div>
-        <DragOverlay>{dragType ? <div className="flex items-center gap-2 rounded-lg border border-luma-300 bg-surface px-3 py-2 text-sm shadow-lg"><BlockIcon name={BLOCKS[dragType].icon} className="size-4" />{BLOCKS[dragType].label[locale]}</div> : null}</DragOverlay>
+        <DragOverlay>{dragType ? <div className="flex items-center gap-2 rounded-lg border border-line-strong bg-surface px-3 py-2 text-sm shadow-lg"><BlockIcon name={BLOCKS[dragType].icon} className="size-4" />{BLOCKS[dragType].label[locale]}</div> : null}</DragOverlay>
       </DndContext>
 
       <Dialog open={!!b.conflict} onClose={() => {}} title={t('builder.conflict.title')} footer={<>

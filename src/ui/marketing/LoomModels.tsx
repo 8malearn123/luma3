@@ -46,7 +46,7 @@ export function LoomModels() {
   const e = d.eligibility;
   return (
     <div className="flex flex-col gap-4">
-      <Card title={<span className="inline-flex items-center gap-2"><BrainCircuit className="size-5 text-luma-500" aria-hidden />{t('loom_models.title')} <Badge tone="warn">{t('loom_models.experimental')}</Badge></span>}
+      <Card title={<span className="inline-flex items-center gap-2"><BrainCircuit className="size-5 text-brand" aria-hidden />{t('loom_models.title')} <Badge tone="warn">{t('loom_models.experimental')}</Badge></span>}
         actions={canManage && d.enabled ? <Button size="sm" variant="outline" loading={busy === 'train'} onClick={() => act('train', '/loom/models/train', { ok: t('loom_models.actions.queued') })}>{t('loom_models.actions.train')}</Button> : null}>
         <p className="text-sm text-ink-muted">{t('loom_models.subtitle')}</p>
         {!d.enabled ? <Alert tone="info" className="mt-3">{t('loom_models.disabled')}</Alert> : null}

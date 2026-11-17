@@ -57,7 +57,7 @@ export function StepUpProvider({ children }: { children: ReactNode }) {
   return (
     <Ctx.Provider value={run}>
       {children}
-      <Dialog open={open} onClose={cancel} title={<span className="inline-flex items-center gap-2"><ShieldCheck className="size-5 text-luma-700" aria-hidden />{t('stepup.title')}</span>}
+      <Dialog open={open} onClose={cancel} title={<span className="inline-flex items-center gap-2"><ShieldCheck className="size-5 text-link" aria-hidden />{t('stepup.title')}</span>}
         footer={<><Button variant="ghost" onClick={cancel}>{t('actions.cancel')}</Button><Button loading={busy} disabled={!password} onClick={confirm}>{t('stepup.confirm')}</Button></>}>
         <form onSubmit={(e) => { e.preventDefault(); if (password) void confirm(); }} className="flex flex-col gap-3">
           <p className="text-ink-muted">{t('stepup.hint')}</p>

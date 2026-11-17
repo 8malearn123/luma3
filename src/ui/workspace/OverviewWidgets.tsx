@@ -14,8 +14,8 @@ export function OverviewWidgets() {
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
       {items.map((i) => (
-        <Link key={i.key} href={i.href(access.slug)} className="flex items-center gap-3 rounded-xl border border-line bg-white p-4 hover:border-luma-300">
-          <NavIcon name={i.icon} className="size-5 text-luma-500" />
+        <Link key={i.key} href={i.href(access.slug)} className="flex items-center gap-3 rounded-xl border border-line bg-surface p-4 hover:border-line-strong">
+          <NavIcon name={i.icon} className="size-5 text-brand" />
           <span className="text-sm font-medium">{t(`nav.${i.key}`)}</span>
         </Link>
       ))}

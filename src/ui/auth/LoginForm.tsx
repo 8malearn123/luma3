@@ -44,7 +44,7 @@ export function LoginForm({ next, demo }: { next: string; demo: boolean }) {
         </Field>
         <Checkbox label={t('customer.auth.remember_me')} description={t('customer.auth.remember_me_hint')} checked={remember} onChange={setRemember} />
         <Button type="submit" loading={busy} size="lg">{t('auth.login_cta')}</Button>
-        <Link href="/auth/recover" className="text-center text-sm text-luma-700 underline">{t('auth.forgot')}</Link>
+        <Link href="/auth/recover" className="text-center text-sm text-link underline">{t('auth.forgot')}</Link>
       </form>
       {demo ? <DemoSwitcher next={next} /> : null}
     </AuthCard>

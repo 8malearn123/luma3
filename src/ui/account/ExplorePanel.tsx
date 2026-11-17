@@ -24,14 +24,14 @@ export function ExplorePanel() {
   );
   return (
     <div className="flex flex-col gap-5">
-      <Card title={<span className="inline-flex items-center gap-2"><Heart className="size-4 text-luma-700" aria-hidden />{t('market.explore.favorites')}</span>}>
+      <Card title={<span className="inline-flex items-center gap-2"><Heart className="size-4 text-link" aria-hidden />{t('market.explore.favorites')}</span>}>
         {d.favorites.length ? grid(d.favorites) : (
           <EmptyState title={t('market.explore.no_favorites')} hint={t('market.explore.no_favorites_hint')}
-            action={<Link href="/discover" className="rounded-lg bg-luma-700 px-4 py-2 text-sm text-white">{t('market.explore.browse')}</Link>} />
+            action={<Link href="/discover" className="rounded-lg bg-primary px-4 py-2 text-sm text-on-primary">{t('market.explore.browse')}</Link>} />
         )}
       </Card>
-      <Card title={<span className="inline-flex items-center gap-2"><Compass className="size-4 text-luma-700" aria-hidden />{t('market.explore.suggested')}</span>}
-        actions={<Link href="/discover" className="text-sm text-luma-700 hover:underline">{t('market.hub.see_all')}</Link>}>
+      <Card title={<span className="inline-flex items-center gap-2"><Compass className="size-4 text-link" aria-hidden />{t('market.explore.suggested')}</span>}
+        actions={<Link href="/discover" className="text-sm text-link hover:underline">{t('market.hub.see_all')}</Link>}>
         {d.suggestions.length ? grid(d.suggestions) : <p className="text-sm text-ink-muted">{t('market.explore.no_suggestions')}</p>}
       </Card>
     </div>

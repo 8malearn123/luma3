@@ -45,12 +45,12 @@ export function CreateBusinessForm({ verified, plans, initialPlan, initialCycle 
 
   const issues = err instanceof ApiError && err.code === 'validation_failed' ? err.details?.issues : undefined;
   return (
-    <div className="mx-auto max-w-xl p-6">
+    <div className="luma-app min-h-dvh"><div className="mx-auto max-w-xl p-6">
       <LumaLogo className="mb-6 h-10 w-auto" />
-      <h1 className="mb-1 text-2xl font-semibold text-luma-900">{t('selector.create')}</h1>
+      <h1 className="mb-1 text-2xl font-semibold text-heading">{t('selector.create')}</h1>
       <p className="mb-5 text-sm text-ink-muted">{t('onboarding.steps.1.hint')}</p>
       {!verified ? <Alert tone="warn" className="mb-4">{t('errors.forbidden')}</Alert> : null}
-      <form onSubmit={submit} className="flex flex-col gap-4 rounded-2xl bg-white p-5 shadow-sm">
+      <form onSubmit={submit} className="flex flex-col gap-4 rounded-2xl bg-surface p-5 shadow-sm">
         <FormErrorSummary message={err ? msg(err) : null} issues={issues} />
         <Field label={t('onboarding.fields.business_name')} required>{(p) => <Input {...p} value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} />}</Field>
         <Field label={t('onboarding.fields.slug')} hint={t('onboarding.fields.slug_hint', { slug: f.slug || '…' })} error={avail === false ? t('errors.slug_taken') : null} required>
@@ -75,6 +75,6 @@ export function CreateBusinessForm({ verified, plans, initialPlan, initialCycle 
         <Field label={t('pricing.referral_code')}>{(p) => <Input {...p} dir="ltr" value={f.referral_code} onChange={(e) => setF({ ...f, referral_code: e.target.value.replace(/[^A-Za-z0-9_-]/g, '') })} />}</Field>
         <Button type="submit" size="lg" loading={busy} disabled={!verified || !f.name || avail === false}>{t('onboarding.create_business')}</Button>
       </form>
-    </div>
+    </div></div>
   );
 }

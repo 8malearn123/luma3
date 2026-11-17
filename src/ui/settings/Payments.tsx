@@ -102,7 +102,7 @@ function Payments({ slug }: { slug: string }) {
         </ul>
       </Card>
 
-      <Card title={t('catalog_team.payments.onsite_title')} actions={<Banknote className="size-5 text-luma-500" aria-hidden />}>
+      <Card title={t('catalog_team.payments.onsite_title')} actions={<Banknote className="size-5 text-brand" aria-hidden />}>
         <div className="flex flex-col gap-3 text-sm">
           <p className="text-ink-muted">{t('catalog_team.payments.onsite_hint')}</p>
           {policy ? (
@@ -114,13 +114,13 @@ function Payments({ slug }: { slug: string }) {
           ) : null}
           <p className="text-xs text-ink-muted">{t('catalog_team.payments.onsite_methods')}</p>
           {access.can('business.manage') ? (
-            <Link href={`/app/${slug}/settings?tab=booking`} className="self-start text-sm font-medium text-luma-700 underline underline-offset-2">{t('catalog_team.payments.edit_in_booking')}</Link>
+            <Link href={`/app/${slug}/settings?tab=booking`} className="self-start text-sm font-medium text-link underline underline-offset-2">{t('catalog_team.payments.edit_in_booking')}</Link>
           ) : null}
         </div>
       </Card>
 
       {canReconcile ? (
-        <Card title={t('catalog_team.payments.reconcile_title')} actions={<Scale className="size-5 text-luma-500" aria-hidden />}>
+        <Card title={t('catalog_team.payments.reconcile_title')} actions={<Scale className="size-5 text-brand" aria-hidden />}>
           <div className="flex flex-col gap-3">
             <p className="text-sm text-ink-muted">{t('catalog_team.payments.reconcile_hint')}</p>
             <Button variant="outline" className="self-start" icon={<RefreshCw className="size-4" />} loading={busy === 'reconcile'} onClick={reconcile}>{t('catalog_team.payments.run_reconcile')}</Button>

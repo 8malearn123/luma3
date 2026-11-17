@@ -214,7 +214,7 @@ function CustomerPointsCard() {
               </ul>
             ) : <p className="text-sm text-ink-muted">{t('fe.loyalty.no_entries')}</p>}
             {canAdjust ? (
-              <div className="flex flex-col gap-3 rounded-xl border border-line bg-luma-50 p-3">
+              <div className="flex flex-col gap-3 rounded-xl border border-line bg-surface-muted p-3">
                 <p className="text-sm font-medium">{t('fe.loyalty.adjust')}</p>
                 <div className="grid grid-cols-2 gap-3">
                   <Field label={t('fe.loyalty.direction')}>{(p) => (

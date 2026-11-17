@@ -34,7 +34,7 @@ function Segmented<T extends string>({ label, value, options, onChange }: { labe
       <div className="flex flex-wrap gap-1">
         {options.map((o) => (
           <button key={o} type="button" role="radio" aria-checked={value === o} onClick={() => onChange(o)}
-            className={cx('rounded-md border px-2.5 py-1 text-xs', value === o ? 'border-link bg-primary text-on-primary' : 'border-line bg-surface hover:border-luma-300')}>{t(`builder.o.${o}`)}</button>
+            className={cx('rounded-md border px-2.5 py-1 text-xs', value === o ? 'border-link bg-primary text-on-primary' : 'border-line bg-surface hover:border-line-strong')}>{t(`builder.o.${o}`)}</button>
         ))}
       </div>
     </div>
@@ -78,7 +78,7 @@ export function BrandPanel({ slug, brand, onChange, assets, onAssetsChange }: { 
         <Segmented label={t('builder.brand.card_style')} value={brand.card_style} options={['flat', 'bordered', 'elevated'] as const} onChange={(v) => onChange((b) => ({ ...b, card_style: v }))} />
         <Segmented label={t('builder.brand.density')} value={brand.density} options={['compact', 'comfortable', 'spacious'] as const} onChange={(v) => onChange((b) => ({ ...b, density: v }))} />
         <Field label={`${t('builder.brand.spacing')}: ${brand.spacing_scale}`}>{(p) => (
-          <input {...p} type="range" min={0.75} max={1.5} step={0.05} value={brand.spacing_scale} onChange={(e) => onChange((b) => ({ ...b, spacing_scale: Number(e.target.value) }), 'spacing')} className="accent-luma-700" />
+          <input {...p} type="range" min={0.75} max={1.5} step={0.05} value={brand.spacing_scale} onChange={(e) => onChange((b) => ({ ...b, spacing_scale: Number(e.target.value) }), 'spacing')} className="accent-primary" />
         )}</Field>
       </section>
       <section className="flex flex-col gap-3">

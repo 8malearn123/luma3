@@ -39,7 +39,7 @@ export function ImagePicker({ slug, purpose, value, onChange, label, assets, onU
         {value ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={`/api/v1/media/${value}`} alt="" className="size-16 rounded-lg border border-line object-cover" />
-        ) : <div className="flex size-16 items-center justify-center rounded-lg border border-dashed border-luma-300 bg-surface-muted"><ImagePlus className="size-5 text-luma-300" aria-hidden /></div>}
+        ) : <div className="flex size-16 items-center justify-center rounded-lg border border-dashed border-line-strong bg-surface-muted"><ImagePlus className="size-5 text-line-strong" aria-hidden /></div>}
         <div className="flex flex-col gap-1">
           <Button size="sm" variant="outline" onClick={() => setOpen(true)} aria-label={`${value ? t('builder.image.change') : t('builder.image.choose')}: ${label}`}>{value ? t('builder.image.change') : t('builder.image.choose')}</Button>
           {value && crop.canCrop ? <Button size="sm" variant="ghost" icon={<Crop className="size-4" />} onClick={() => crop.recrop(value)}>{t('business.crop.edit')}</Button> : null}
@@ -60,7 +60,7 @@ export function ImagePicker({ slug, purpose, value, onChange, label, assets, onU
               {assets.map((a) => (
                 <li key={a.id}>
                   <button type="button" onClick={() => { onChange(a.id); setOpen(false); }} aria-pressed={value === a.id}
-                    className={cx('block w-full overflow-hidden rounded-lg border-2', value === a.id ? 'border-link' : 'border-transparent hover:border-luma-300')}
+                    className={cx('block w-full overflow-hidden rounded-lg border-2', value === a.id ? 'border-link' : 'border-transparent hover:border-line-strong')}
                     aria-label={a.alt_ar || a.alt_en || t('builder.image.untitled')}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={`/api/v1/media/${a.id}`} alt="" loading="lazy" className="aspect-square w-full object-cover" />

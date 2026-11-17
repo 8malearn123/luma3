@@ -224,7 +224,7 @@ function OverridesCard({ data, staffId, branchId, readOnly }: { data: Schedule; 
       <div className="flex flex-col gap-3">
         <ApiErrorBox err={err} />
         {adding ? (
-          <div className="grid gap-3 rounded-xl bg-luma-50/60 p-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-3 rounded-xl bg-surface-muted/60 p-3 sm:grid-cols-2 lg:grid-cols-4">
             <Field label={t('fields.date')} required>{(fp) => <Input {...fp} type="date" dir="ltr" min={today} value={form.on_date} onChange={(e) => setForm({ ...form, on_date: e.target.value })} />}</Field>
             <Field label={t('catalog_team.schedule.kind')}>{(fp) => (
               <Select {...fp} value={form.kind} onChange={(e) => setForm({ ...form, kind: e.target.value as typeof form.kind })}>
@@ -296,7 +296,7 @@ function BlocksCard({ data, staffId, branchId, readOnly }: { data: Schedule; sta
         <p className="text-xs text-ink-muted">{t('catalog_team.schedule.blocks_hint')}</p>
         <ApiErrorBox err={err} />
         {adding ? (
-          <div className="grid gap-3 rounded-xl bg-luma-50/60 p-3 sm:grid-cols-2">
+          <div className="grid gap-3 rounded-xl bg-surface-muted/60 p-3 sm:grid-cols-2">
             <Field label={t('fields.from')} required>{(fp) => <Input {...fp} type="datetime-local" dir="ltr" value={form.from} onChange={(e) => setForm({ ...form, from: e.target.value })} />}</Field>
             <Field label={t('fields.to')} required>{(fp) => <Input {...fp} type="datetime-local" dir="ltr" value={form.to} onChange={(e) => setForm({ ...form, to: e.target.value })} />}</Field>
             <Field label={t('fields.reason')} className="sm:col-span-2">{(fp) => <Input {...fp} maxLength={200} value={form.reason} onChange={(e) => setForm({ ...form, reason: e.target.value })} />}</Field>

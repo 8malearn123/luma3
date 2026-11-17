@@ -78,10 +78,10 @@ function ReviewCard({ r, locale }: { r: Review; locale: 'ar' | 'en' }) {
     } catch (e) { setErr(e); } finally { setBusy(false); }
   }
   return (
-    <li className="rounded-xl border border-line bg-white p-4">
+    <li className="rounded-xl border border-line bg-surface p-4">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="inline-flex items-center gap-0.5 font-semibold text-luma-700" aria-label={t('reviews.rating', { n: r.rating })}>
-          {Array.from({ length: 5 }).map((_, i) => <Star key={i} className={`size-4 ${i < r.rating ? 'fill-current' : 'text-luma-200'}`} aria-hidden />)}
+        <span className="inline-flex items-center gap-0.5 font-semibold text-link" aria-label={t('reviews.rating', { n: r.rating })}>
+          {Array.from({ length: 5 }).map((_, i) => <Star key={i} className={`size-4 ${i < r.rating ? 'fill-current' : 'text-highlight'}`} aria-hidden />)}
         </span>
         <span className="font-medium">{r.customer_name}</span>
         <span className="text-xs text-ink-muted">{t('reviews.visit')}: {formatDate(r.visit_at, { locale, tz: access.timezone })}{r.staff_name ? ` · ${r.staff_name}` : ''}</span>
@@ -89,7 +89,7 @@ function ReviewCard({ r, locale }: { r: Review; locale: 'ar' | 'en' }) {
       </div>
       {r.comment ? <p className="mt-2 text-sm">{r.comment}</p> : null}
       {r.moderation_reason && r.status !== 'published' ? <p className="mt-1 text-xs text-ink-muted">{t('fields.reason')}: {r.moderation_reason}</p> : null}
-      {r.business_reply && mode !== 'reply' ? <div className="mt-2 rounded-lg bg-luma-50 p-2 text-sm"><p className="text-xs font-medium text-luma-800">{t('reviews.reply')}</p>{r.business_reply}</div> : null}
+      {r.business_reply && mode !== 'reply' ? <div className="mt-2 rounded-lg bg-surface-muted p-2 text-sm"><p className="text-xs font-medium text-heading">{t('reviews.reply')}</p>{r.business_reply}</div> : null}
       <FormErrorSummary message={err ? msg(err) : null} />
       {canManage ? (
         <div className="mt-2 flex flex-wrap gap-2">

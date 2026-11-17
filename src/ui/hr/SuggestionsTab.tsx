@@ -75,7 +75,7 @@ export function SuggestionsTab() {
           <ul className="divide-y divide-line">
             {rows.map((r) => (
               <li key={r.id} className="flex flex-wrap items-center gap-3 py-2 text-sm">
-                {canManage && r.status === 'pending' ? <input type="checkbox" aria-label={t('hr.suggestions.select', { name: r.staff_name })} className="size-4 accent-luma-700" checked={picked.includes(r.id)} onChange={(e) => toggle(r.id, e.target.checked)} /> : null}
+                {canManage && r.status === 'pending' ? <input type="checkbox" aria-label={t('hr.suggestions.select', { name: r.staff_name })} className="size-4 accent-primary" checked={picked.includes(r.id)} onChange={(e) => toggle(r.id, e.target.checked)} /> : null}
                 <span className="min-w-0 flex-1">
                   <span className="font-medium">{r.staff_name}</span>
                   <span className="ms-2 text-ink-muted">{day(r.on_date)}</span>

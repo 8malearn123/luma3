@@ -108,7 +108,7 @@ export function AiStatusCard({ ai }: { ai: any }) {
   const { t, locale } = useI18n();
   const access = useAccess();
   return (
-    <Card title={<span className="inline-flex items-center gap-2"><Bot className="size-5 text-luma-500" aria-hidden />{ai.state === 'connected' ? t('marketing.ai.connected') : ai.state === 'disconnected' ? t('marketing.ai.disconnected') : t('marketing.ai.misconfigured')}</span>}>
+    <Card title={<span className="inline-flex items-center gap-2"><Bot className="size-5 text-brand" aria-hidden />{ai.state === 'connected' ? t('marketing.ai.connected') : ai.state === 'disconnected' ? t('marketing.ai.disconnected') : t('marketing.ai.misconfigured')}</span>}>
       {ai.state === 'disconnected' ? <p className="text-sm text-ink-muted">{t(`marketing.ai.reason_${ai.reason}`)}</p> : null}
       {ai.state === 'connected' ? <p className="text-sm text-ink-muted">{ai.verified_at ? t('marketing.ai.verified_at', { time: formatDateTime(ai.verified_at, { locale, tz: access.timezone }) }) : t('marketing.ai.not_verified')}</p> : null}
       {!ai.feature_enabled ? <p className="text-sm text-warn">{t('marketing.ai.feature_off')}</p> : null}
@@ -271,7 +271,7 @@ function CalendarCard() {
   const [ev, setEv] = useState({ title: '', kind: 'holiday', starts_on: '', ends_on: '', relevance_note: '', source_url: '' });
   const canManage = access.can('marketing.manage');
   return (
-    <Card title={<span className="inline-flex items-center gap-2"><CalendarCheck className="size-5 text-luma-500" aria-hidden />{t('marketing.prefs.calendar_title')}</span>}>
+    <Card title={<span className="inline-flex items-center gap-2"><CalendarCheck className="size-5 text-brand" aria-hidden />{t('marketing.prefs.calendar_title')}</span>}>
       <p className="mb-2 text-xs text-ink-muted">{t('marketing.prefs.calendar_hint')}</p>
       {r.isLoading ? <LoadingState rows={2} /> : r.error ? <ErrorState error={r.error} /> : r.data!.length ? (
         <ul className="mb-3 flex flex-col gap-2 text-sm">

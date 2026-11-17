@@ -5,7 +5,7 @@ import { AlertCircle } from 'lucide-react';
 import { cx } from './cx';
 import { useI18n } from '@/i18n/client';
 
-const control = 'w-full rounded-lg border border-line bg-surface px-3 text-sm text-ink placeholder:text-ink-muted/70 focus:border-luma-500 focus:outline-none focus:ring-2 focus:ring-luma-200 disabled:bg-surface-muted aria-[invalid=true]:border-danger';
+const control = 'w-full rounded-lg border border-line bg-surface px-3 text-sm text-ink placeholder:text-ink-muted/70 focus:border-brand focus:outline-none focus:ring-2 focus:ring-highlight disabled:bg-surface-muted aria-[invalid=true]:border-danger';
 
 export function Field({ label, hint, error, required, children, id: idProp, className }: { label: ReactNode; hint?: ReactNode; error?: string | null; required?: boolean; children: (props: { id: string; 'aria-describedby'?: string; 'aria-invalid'?: boolean }) => ReactNode; id?: string; className?: string }) {
   const gen = useId();
@@ -53,7 +53,7 @@ export function Checkbox({ label, checked, onChange, disabled, description }: { 
 export function Switch({ label, checked, onChange, disabled }: { label: ReactNode; checked: boolean; onChange: (v: boolean) => void; disabled?: boolean }) {
   return (
     <button type="button" role="switch" aria-checked={checked} disabled={disabled} onClick={() => onChange(!checked)} className="inline-flex items-center gap-2 text-sm disabled:opacity-50">
-      <span className={cx('relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors', checked ? 'bg-primary' : 'bg-luma-200')}>
+      <span className={cx('relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors', checked ? 'bg-primary' : 'bg-highlight')}>
         <span className={cx('absolute top-0.5 size-4 rounded-full bg-surface shadow transition-all', checked ? 'start-[18px]' : 'start-0.5')} />
       </span>
       {label}

@@ -314,7 +314,7 @@ function TeamTab({ q }: { q: string }) {
               <p className="mt-2 text-xs text-ink-muted">{t('analytics.team.actual_vs_planned', { a: Math.round(s.execution.avg_actual_min), p: Math.round(s.execution.avg_planned_min), n: s.execution.timed_services })}</p>
             ) : null}
             <p className="mt-2 text-xs text-ink-muted">{s.productivity_vs_specialty.index ? t('analytics.team.productivity_vs', { x: s.productivity_vs_specialty.index.toFixed(2) }) : t('analytics.team.not_enough_peers')}</p>
-            <div className="mt-3 rounded-lg bg-luma-50 p-3">
+            <div className="mt-3 rounded-lg bg-surface-muted p-3">
               <p className="text-sm font-medium">{t('analytics.team.composite')}: {s.composite.status === 'ok' ? `${s.composite.score}/100` : t('analytics.team.insufficient')}</p>
               {s.composite.status !== 'ok' ? <p className="text-xs text-ink-muted">{t('analytics.team.composite_insufficient')}</p> : null}
               {s.composite.components.length ? <p className="mt-1 text-xs text-ink-muted">{s.composite.components.map((c: any) => `${t(`analytics.team.weight_keys.${c.key}`)} ${c.score} × ${c.weight}`).join(' • ')}</p> : null}

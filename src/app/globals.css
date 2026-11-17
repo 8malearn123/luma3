@@ -38,6 +38,14 @@
   --color-danger-bg: #fbe9e7;
   --color-info: #2b5a8a;
   --color-info-bg: #e6eff8;
+  /* Brand accents (2026-11-17 sweep): luma-500 for icons/indicators (non-text only — 4.3:1 on white),
+     luma-200 for the highlight stroke, soft rings and selected tints, luma-300 for stronger outlines. */
+  --color-brand: #9e6898;
+  --color-highlight: #e4b5ca;
+  --color-line-strong: #cf97ba;
+  /* Star ratings (icon only) and the WhatsApp share button (white label, 5.3:1, same in both themes). */
+  --color-rating: #d97706;
+  --color-whatsapp: #0f7b42;
 
   --font-sans: 'IBM Plex Sans Arabic', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-display: 'Cinzel', 'IBM Plex Sans Arabic', serif;
@@ -70,7 +78,8 @@
 
 /*
  * Dark mode (DESIGN_GUIDE §11, decided 2026-11-15) — LUMA internal surfaces only.
- * Applies inside `.luma-app` (dashboard, platform, account, onboarding shells);
+ * Applies inside `.luma-app` (dashboard, platform, account, workspace picker,
+ * new-business, invitation, maintenance and auth screens);
  * the public storefront (.storefront) and marketing pages stay in their own
  * light themes. Choice: <html data-theme="light|dark"> from the luma_theme
  * cookie (set by the user-menu toggle, rendered on the server so there is no
@@ -100,16 +109,10 @@
   --color-danger-bg: #3d1614;
   --color-info: #9cc3ef;
   --color-info-bg: #14263a;
-  /* Compatibility for screens not yet migrated to semantic tokens: tints become
-     dark surfaces, dark text steps become light. Remove after the token sweep. */
-  --color-white: #221a26;
-  --color-luma-50: #2b2130;
-  --color-luma-100: #3a2840;
-  --color-luma-200: #4d3655;
-  --color-luma-500: #c58fbf;
-  --color-luma-700: #e4b5ca;
-  --color-luma-800: #f0d6e4;
-  --color-luma-900: #f7e9f0;
+  --color-brand: #c58fbf;
+  --color-highlight: #4d3655;
+  --color-line-strong: #75607d;
+  --color-rating: #f2c46d;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) .luma-app {
@@ -135,40 +138,34 @@
     --color-danger-bg: #3d1614;
     --color-info: #9cc3ef;
     --color-info-bg: #14263a;
-    /* Compatibility for screens not yet migrated to semantic tokens: tints become
-       dark surfaces, dark text steps become light. Remove after the token sweep. */
-    --color-white: #221a26;
-    --color-luma-50: #2b2130;
-    --color-luma-100: #3a2840;
-    --color-luma-200: #4d3655;
-    --color-luma-500: #c58fbf;
-    --color-luma-700: #e4b5ca;
-    --color-luma-800: #f0d6e4;
-    --color-luma-900: #f7e9f0;
+    --color-brand: #c58fbf;
+    --color-highlight: #4d3655;
+    --color-line-strong: #75607d;
+    --color-rating: #f2c46d;
   }
 }
-@layer utilities {
-  :root[data-theme='dark'] .luma-app {
-    .text-white { color: #ffffff; }
-    .bg-luma-700 { background-color: var(--color-primary); }
-    .hover\:bg-luma-800:hover { background-color: var(--color-primary-hover); }
-    .storefront { --color-white: #ffffff; color-scheme: light; }
-  }
-  @media (prefers-color-scheme: dark) {
-    :root:not([data-theme='light']) .luma-app {
-      .text-white { color: #ffffff; }
-      .bg-luma-700 { background-color: var(--color-primary); }
-      .hover\:bg-luma-800:hover { background-color: var(--color-primary-hover); }
-      .storefront { --color-white: #ffffff; color-scheme: light; }
-    }
-  }
+/* No white flash around a dark dashboard: the page behind `.luma-app` (overscroll,
+   short pages) takes the dark canvas too. Kept in sync with --color-canvas above. */
+:root[data-theme='dark'] body:has(.luma-app) { background-color: #17111a; color-scheme: dark; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) body:has(.luma-app) { background-color: #17111a; color-scheme: dark; }
+}
+
+/* LumaLogo/LumaMark render a light-surface and a dark-surface image; show the one that
+   matches the theme (outside `.luma-app` it is always the light-surface artwork). */
+.luma-on-dark { display: none; }
+:root[data-theme='dark'] .luma-app .luma-on-light { display: none; }
+:root[data-theme='dark'] .luma-app .luma-on-dark { display: revert-layer; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .luma-app .luma-on-light { display: none; }
+  :root:not([data-theme='light']) .luma-app .luma-on-dark { display: revert-layer; }
 }
 
 @layer base {
   html { -webkit-text-size-adjust: 100%; }
   body { @apply bg-canvas text-ink antialiased; font-family: var(--font-sans); }
   .luma-app { @apply bg-canvas text-ink; }
-  :focus-visible { outline: 2px solid var(--color-luma-500); outline-offset: 2px; }
+  :focus-visible { outline: 2px solid var(--color-brand); outline-offset: 2px; }
   .storefront :focus-visible { outline-color: var(--sf-primary, #2f2a26); }
   /* Re-resolve the radius on the storefront root for `rounded-[var(--radius-sf)]` users. */
   .storefront { --radius-sf: var(--sf-radius, 10px); }

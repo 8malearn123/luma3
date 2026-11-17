@@ -93,12 +93,12 @@ export function CropEditor({ src, purpose, onCancel, onConfirm, onSkip, busy, er
           <div role="radiogroup" aria-label={t('business.crop.shape')} className="flex gap-1">
             {aspects.map((a) => (
               <button key={a.key} type="button" role="radio" aria-checked={a.key === aspect.key} onClick={() => { setAspect(a); setZoom(1); if (nat) setOff(centered(nat, 1, vw, Math.round(vw / a.ratio))); }}
-                className={cx('rounded-lg border px-2.5 py-1 text-xs', a.key === aspect.key ? 'border-luma-700 bg-luma-700 text-white' : 'border-line hover:bg-luma-50')} dir="ltr">{a.key}</button>
+                className={cx('rounded-lg border px-2.5 py-1 text-xs', a.key === aspect.key ? 'border-primary bg-primary text-on-primary' : 'border-line hover:bg-surface-muted')} dir="ltr">{a.key}</button>
             ))}
           </div>
         ) : null}
         <div ref={box} tabIndex={0} role="application" aria-label={t('business.crop.area')} aria-roledescription={t('business.crop.area')}
-          className={cx('relative cursor-grab touch-none select-none overflow-hidden bg-luma-50 outline-none ring-luma-500 focus-visible:ring-2 active:cursor-grabbing', purpose === 'logo' ? 'rounded-full' : 'rounded-lg')}
+          className={cx('relative cursor-grab touch-none select-none overflow-hidden bg-surface-muted outline-none ring-brand focus-visible:ring-2 active:cursor-grabbing', purpose === 'logo' ? 'rounded-full' : 'rounded-lg')}
           style={{ width: vw, height: vh }}
           onPointerDown={(e) => { (e.target as HTMLElement).setPointerCapture?.(e.pointerId); drag.current = { x: e.clientX, y: e.clientY, ox: off.ox, oy: off.oy }; }}
           onPointerMove={(e) => { const d = drag.current; if (d && nat) setOff(clampOffset(nat.w, nat.h, vw, vh, zoom, d.ox + e.clientX - d.x, d.oy + e.clientY - d.y)); }}
@@ -117,13 +117,13 @@ export function CropEditor({ src, purpose, onCancel, onConfirm, onSkip, busy, er
             style={nat ? { left: off.ox, top: off.oy, width: nat.w * scale, height: nat.h * scale } : { opacity: 0 }}
             onLoad={(e) => { const n = { w: e.currentTarget.naturalWidth, h: e.currentTarget.naturalHeight }; setNat(n); setZoom(1); setOff(centered(n, 1, vw, vh)); }} />
           <div className="pointer-events-none absolute inset-0 grid grid-cols-3 grid-rows-3" aria-hidden>
-            {Array.from({ length: 9 }, (_, i) => <span key={i} className="border border-white/30" />)}
+            {Array.from({ length: 9 }, (_, i) => <span key={i} className="border border-surface/30" />)}
           </div>
         </div>
         <div className="flex w-full max-w-xs items-center gap-2">
-          <button type="button" className="rounded-md p-1 hover:bg-luma-100" aria-label={t('business.crop.zoom_out')} onClick={() => setZoomAround(zoom / 1.2)}><Minus className="size-4" /></button>
-          <input type="range" min={1} max={MAX_ZOOM} step={0.01} value={zoom} onChange={(e) => setZoomAround(Number(e.target.value))} className="flex-1 accent-luma-700" aria-label={t('business.crop.zoom')} />
-          <button type="button" className="rounded-md p-1 hover:bg-luma-100" aria-label={t('business.crop.zoom_in')} onClick={() => setZoomAround(zoom * 1.2)}><Plus className="size-4" /></button>
+          <button type="button" className="rounded-md p-1 hover:bg-accent-soft" aria-label={t('business.crop.zoom_out')} onClick={() => setZoomAround(zoom / 1.2)}><Minus className="size-4" /></button>
+          <input type="range" min={1} max={MAX_ZOOM} step={0.01} value={zoom} onChange={(e) => setZoomAround(Number(e.target.value))} className="flex-1 accent-primary" aria-label={t('business.crop.zoom')} />
+          <button type="button" className="rounded-md p-1 hover:bg-accent-soft" aria-label={t('business.crop.zoom_in')} onClick={() => setZoomAround(zoom * 1.2)}><Plus className="size-4" /></button>
         </div>
         <p className="flex items-center gap-1 text-xs text-ink-muted"><Move className="size-3.5" aria-hidden />{t('business.crop.help')}</p>
         {error ? <p className="text-xs text-danger" role="alert">{error}</p> : null}

@@ -96,7 +96,7 @@ export function OrderDrawer({ orderId, onClose }: { orderId: string; onClose: ()
             <p>{o.customer_name}</p>
             <p className="text-sm text-ink-muted" dir="ltr">{[o.customer_phone, o.customer_email].filter(Boolean).join(' · ')}</p>
             {o.booking_number ? <p className="text-sm">{t('commerce.orders.booking', { number: o.booking_number })}</p> : null}
-            {o.customer_note ? <p className="mt-1 rounded-lg bg-luma-50 p-2 text-sm"><span className="font-medium">{t('commerce.orders.note')}: </span>{o.customer_note}</p> : null}
+            {o.customer_note ? <p className="mt-1 rounded-lg bg-surface-muted p-2 text-sm"><span className="font-medium">{t('commerce.orders.note')}: </span>{o.customer_note}</p> : null}
           </section>
 
           <SellerSection order={o} onSaved={() => q.refetch()} />
@@ -163,7 +163,7 @@ export function OrderDrawer({ orderId, onClose }: { orderId: string; onClose: ()
 
           <section>
             <h3 className="mb-2 text-sm font-semibold">{t('commerce.orders.history')}</h3>
-            <ol className="flex flex-col gap-2 border-s-2 border-luma-100 ps-4">
+            <ol className="flex flex-col gap-2 border-s-2 border-accent-soft ps-4">
               {o.events.map((e) => (
                 <li key={e.id} className="text-sm">
                   <p className="font-medium">{t(`commerce.orders.event.${e.kind}`)}{e.to_status && e.kind === 'status_changed' ? `: ${t(`commerce.orders.status.${e.to_status}`)}` : ''}</p>

@@ -112,7 +112,7 @@ function OpportunityCard({ o }: { o: any }) {
   });
   const open_ = ['detected', 'assessed', 'proposed', 'studying'].includes(o.status);
   return (
-    <li className="rounded-2xl border border-line bg-white p-4">
+    <li className="rounded-2xl border border-line bg-surface p-4">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="font-semibold" dir="auto">{c.title}</p>
@@ -222,7 +222,7 @@ function OpportunityCard({ o }: { o: any }) {
             ) : null}
           </div>
           {mode ? (
-            <form className="flex flex-wrap items-end gap-2 rounded-lg bg-luma-50 p-3" onSubmit={(e) => { e.preventDefault(); if (!reason) return; void decide({ action: mode, reason, ...(mode === 'defer' ? { until } : {}), ...(note ? { note } : {}) }); }}>
+            <form className="flex flex-wrap items-end gap-2 rounded-lg bg-surface-muted p-3" onSubmit={(e) => { e.preventDefault(); if (!reason) return; void decide({ action: mode, reason, ...(mode === 'defer' ? { until } : {}), ...(note ? { note } : {}) }); }}>
               <Field label={t('loom.decision.reason')} className="w-60" required>{(p) => <Select {...p} required value={reason} onChange={(e) => setReason(e.target.value)}><option value="">{t('loom.decision.reason_required')}</option>{REASONS.map((r) => <option key={r} value={r}>{t(`loom.decision.reasons.${r}`)}</option>)}</Select>}</Field>
               {mode === 'defer' ? <Field label={t('loom.decision.until')} className="w-44" required>{(p) => <Input {...p} required type="date" dir="ltr" value={until} onChange={(e) => setUntil(e.target.value)} />}</Field> : null}
               <Field label={t('loom.decision.note')} className="min-w-56 flex-1" required={reason === 'other'}>{(p) => <Textarea {...p} rows={1} maxLength={1000} required={reason === 'other'} value={note} onChange={(e) => setNote(e.target.value)} />}</Field>
@@ -231,7 +231,7 @@ function OpportunityCard({ o }: { o: any }) {
             </form>
           ) : null}
           {c.recommended_action.kind === 'price_review' && access.can('catalog.edit') && ['proposed', 'studying', 'accepted', 'converted'].includes(o.status) ? (
-            <form className="flex flex-wrap items-end gap-2 rounded-lg bg-luma-50 p-3" onSubmit={(e) => { e.preventDefault(); if (price !== null) void convert({ target: 'price_proposal', proposed_price_minor: price }); }}>
+            <form className="flex flex-wrap items-end gap-2 rounded-lg bg-surface-muted p-3" onSubmit={(e) => { e.preventDefault(); if (price !== null) void convert({ target: 'price_proposal', proposed_price_minor: price }); }}>
               <p className="w-full text-xs text-ink-muted">{t('loom.convert.price_hint')}</p>
               <Field label={t('loom.convert.new_price')} className="w-44">{(p) => <MoneyInput {...p} value={price} onChange={setPrice} />}</Field>
               <Button type="submit" size="sm" variant="outline" disabled={price === null} loading={busy === 'cprice_proposal'}>{t('loom.convert.price_proposal')}</Button>

@@ -39,7 +39,7 @@ export function PlansPage() {
       {plans.some((p) => p.price_is_test) ? <Alert tone="warn">{t('platform.plans.not_final')}</Alert> : <Alert tone="info">{t('admin.plans.no_booking_limit')}</Alert>}
       <div className="grid gap-4 md:grid-cols-3">
         {plans.map((p) => (
-          <Card key={p.id} title={<span className="font-display text-xl text-luma-700">{pick(p.name_ar, p.name_en)}</span>}
+          <Card key={p.id} title={<span className="font-display text-xl text-link">{pick(p.name_ar, p.name_en)}</span>}
             actions={can('platform.plans.manage') ? <Button size="sm" variant="outline" icon={<Pencil className="size-4" />} onClick={() => setEdit(p)}>{t('actions.edit')}</Button> : null}>
             <p className="text-sm text-ink-muted">{pick(p.description_ar, p.description_en)}</p>
             <p className="mt-3 text-lg font-semibold"><Money minor={p.price_monthly_minor} currency={p.currency} />{p.price_monthly_minor != null ? <span className="text-sm font-normal"> / {t('platform.plans.month')}</span> : null}</p>

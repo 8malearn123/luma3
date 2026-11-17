@@ -19,7 +19,7 @@ export function NotAvailable({ area }: { area: 'hosting' | 'groups' | 'payroll' 
     <div data-testid="not-available">
       <EmptyState icon={<CircleSlash className="size-8" aria-hidden />} title={t('workspace_mode.not_available.title')}
         hint={t(`workspace_mode.not_available.${area}`)}
-        action={<Link href={`/app/${access.slug}`} className="text-sm font-medium text-luma-700 underline">{t('workspace_mode.not_available.back')}</Link>} />
+        action={<Link href={`/app/${access.slug}`} className="text-sm font-medium text-link underline">{t('workspace_mode.not_available.back')}</Link>} />
     </div>
   );
 }

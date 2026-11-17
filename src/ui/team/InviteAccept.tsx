@@ -46,7 +46,7 @@ export function InviteAccept({ token, state, businessName, role, destination, ex
     return (
       <AuthCard title={t('auth.invite_title')} footer={home}>
         <Alert tone={state === 'invalid' ? 'danger' : 'warn'}>{text}</Alert>
-        {state === 'accepted' && user ? <Link href="/app" className="mt-4 inline-block text-sm font-semibold text-luma-700 underline">{t('auth.invite_open_dashboard')}</Link> : null}
+        {state === 'accepted' && user ? <Link href="/app" className="mt-4 inline-block text-sm font-semibold text-link underline">{t('auth.invite_open_dashboard')}</Link> : null}
       </AuthCard>
     );
   }
@@ -61,8 +61,8 @@ export function InviteAccept({ token, state, businessName, role, destination, ex
         {!user ? (
           <>
             <p className="text-sm">{t('auth.invite_signin')}</p>
-            <Link href={loginHref} className="inline-flex h-12 items-center justify-center rounded-xl bg-luma-700 px-6 text-base font-medium text-white hover:bg-luma-800">{t('auth.invite_signin_cta')}</Link>
-            {registerHref ? <Link href={registerHref} className="text-center text-sm text-luma-700 underline">{t('auth.invite_register_cta')}</Link> : null}
+            <Link href={loginHref} className="inline-flex h-12 items-center justify-center rounded-xl bg-primary px-6 text-base font-medium text-on-primary hover:bg-primary-hover">{t('auth.invite_signin_cta')}</Link>
+            {registerHref ? <Link href={registerHref} className="text-center text-sm text-link underline">{t('auth.invite_register_cta')}</Link> : null}
           </>
         ) : user.matches ? (
           <>

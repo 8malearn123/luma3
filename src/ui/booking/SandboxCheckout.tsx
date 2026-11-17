@@ -21,12 +21,12 @@ export function SandboxCheckout({ id, amountMinor, currency, status, returnTo }:
     catch (e) { setErr(e); } finally { setBusy(null); }
   };
   return (
-    <div className="flex min-h-dvh items-center justify-center bg-slate-100 p-4">
-      <div className="w-full max-w-md rounded-2xl border-2 border-dashed border-amber-400 bg-white p-6 shadow">
-        <p className="mb-2 inline-flex items-center gap-2 rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-900"><FlaskConical className="size-4" />SANDBOX</p>
+    <div className="flex min-h-dvh items-center justify-center bg-surface-muted p-4">
+      <div className="w-full max-w-md rounded-2xl border-2 border-dashed border-warn bg-surface p-6 shadow">
+        <p className="mb-2 inline-flex items-center gap-2 rounded-full bg-warn-bg px-3 py-1 text-xs font-semibold text-warn"><FlaskConical className="size-4" />SANDBOX</p>
         <h1 className="text-xl font-semibold">{t('sandbox.title')}</h1>
         <Alert tone="warn" className="my-3">{t('sandbox.warning')}</Alert>
-        <p className="text-sm text-slate-600">{t('sandbox.amount')}</p>
+        <p className="text-sm text-ink-muted">{t('sandbox.amount')}</p>
         <p className="mb-4 text-3xl font-semibold">{formatMoney(amountMinor, currency, locale)}</p>
         {err ? <p role="alert" className="mb-2 text-sm text-danger">{msg(err)}</p> : null}
         {done ? <p role="status" className="text-ok">{t('sandbox.done')}</p> : (

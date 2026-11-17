@@ -54,7 +54,7 @@ export function ProductsPage() {
           {r.image_asset_id
             // eslint-disable-next-line @next/next/no-img-element
             ? <img src={`/api/v1/media/${r.image_asset_id}`} alt="" className="size-10 rounded-lg border border-line object-cover" />
-            : <span className="flex size-10 items-center justify-center rounded-lg bg-luma-50"><ImageIcon className="size-4 text-luma-300" aria-hidden /></span>}
+            : <span className="flex size-10 items-center justify-center rounded-lg bg-surface-muted"><ImageIcon className="size-4 text-line-strong" aria-hidden /></span>}
           <div className="min-w-0">
             <p className="truncate font-medium">{pick(r.name_ar, r.name_en)}</p>
             <p className="truncate text-xs text-ink-muted">{[pick(r.category_name_ar, r.category_name_en), r.sku].filter(Boolean).join(' · ')}</p>

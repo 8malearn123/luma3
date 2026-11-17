@@ -165,7 +165,7 @@ function Components() {
       <FormErrorSummary message={err ? msg(err) : null} />
       <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
         {q.data!.map((c) => (
-          <li key={c.type} className="flex items-center justify-between gap-2 rounded-xl border border-line bg-white p-3">
+          <li key={c.type} className="flex items-center justify-between gap-2 rounded-xl border border-line bg-surface p-3">
             <div><p className="text-sm font-medium">{pick(c.label.ar, c.label.en)}</p><p className="font-mono text-xs text-ink-muted" dir="ltr">{c.type}{c.min_plan_feature ? ` · ${c.min_plan_feature}` : ''}</p></div>
             <Switch label={<span className="sr-only">{pick(c.label.ar, c.label.en)}</span>} checked={c.is_enabled} onChange={async (v) => {
               setErr(null);

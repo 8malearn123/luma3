@@ -50,7 +50,7 @@ export function LoomPlans({ kind = 'monthly' }: { kind?: 'monthly' | 'weekly' })
         <ul className="grid gap-3 md:grid-cols-2">
           {r.data!.map((p: any) => (
             <li key={p.id}>
-              <button className="w-full rounded-2xl border border-line bg-white p-4 text-start hover:border-luma-300" onClick={() => setOpen(p.id)}>
+              <button className="w-full rounded-2xl border border-line bg-surface p-4 text-start hover:border-line-strong" onClick={() => setOpen(p.id)}>
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <span className="font-semibold" dir="auto">{p.title}</span>
                   {p.is_example ? <Badge tone="warn">{t('marketing.plan.example_badge')}</Badge> : <PlanStatus status={p.status} />}
@@ -108,8 +108,8 @@ function PlanDrawer({ id, onClose }: { id: string; onClose: () => void }) {
             </Field>
             <Button size="sm" variant={mode === 'diff' ? 'secondary' : 'ghost'} icon={<GitCompare className="size-4" />} disabled={p.versions.length < 2} onClick={() => setMode(mode === 'diff' ? 'view' : 'diff')}>{t('marketing.actions.compare')}</Button>
             {canManage && !p.is_example && !['completed', 'rejected'].includes(p.status) ? <Button size="sm" variant={mode === 'edit' ? 'secondary' : 'ghost'} icon={<Pencil className="size-4" />} onClick={() => { setVIdx(0); setMode(mode === 'edit' ? 'view' : 'edit'); }}>{t('marketing.actions.edit')}</Button> : null}
-            <a className="inline-flex h-8 items-center gap-1 rounded-lg px-3 text-sm text-luma-800 hover:bg-luma-100" href={access.api(`/marketing/plans/${id}/export?format=json&version=${v.version}`)} download><Download className="size-4" aria-hidden />{t('marketing.actions.export_json')}</a>
-            <a className="inline-flex h-8 items-center gap-1 rounded-lg px-3 text-sm text-luma-800 hover:bg-luma-100" href={access.api(`/marketing/plans/${id}/export?format=csv&version=${v.version}`)} download><Download className="size-4" aria-hidden />{t('marketing.actions.export_csv')}</a>
+            <a className="inline-flex h-8 items-center gap-1 rounded-lg px-3 text-sm text-heading hover:bg-accent-soft" href={access.api(`/marketing/plans/${id}/export?format=json&version=${v.version}`)} download><Download className="size-4" aria-hidden />{t('marketing.actions.export_json')}</a>
+            <a className="inline-flex h-8 items-center gap-1 rounded-lg px-3 text-sm text-heading hover:bg-accent-soft" href={access.api(`/marketing/plans/${id}/export?format=csv&version=${v.version}`)} download><Download className="size-4" aria-hidden />{t('marketing.actions.export_csv')}</a>
             {canManage && !p.is_example ? <Button size="sm" variant="ghost" icon={<RefreshCw className="size-4" />} loading={busy === 'regen'} onClick={() => act('regen', '/loom/plans', { body: { kind: p.kind, period_start: p.period_start }, ok: t('loomux.plans.queued') })}>{t('marketing.actions.regenerate')}</Button> : null}
             {canManage && !p.is_example && access.hasFeature('feature.campaigns') ? <Button size="sm" variant="ghost" loading={busy === 'camp'} onClick={() => act('camp', `/marketing/plans/${id}/campaign-draft`, { body: {}, ok: t('marketing.rec.created_campaign') })}>{t('marketing.actions.to_campaign')}</Button> : null}
           </div>

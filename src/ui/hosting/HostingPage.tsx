@@ -70,9 +70,9 @@ function BookingList({ rows, empty, onOpen }: { rows: Row[]; empty: string; onOp
     <ul className="grid gap-3 md:grid-cols-2">
       {rows.map((r) => (
         <li key={r.id}>
-          <button type="button" onClick={() => onOpen(r.id)} className="flex w-full flex-col gap-1 rounded-2xl border border-line bg-white p-4 text-start hover:border-luma-300 focus-visible:outline-2">
+          <button type="button" onClick={() => onOpen(r.id)} className="flex w-full flex-col gap-1 rounded-2xl border border-line bg-surface p-4 text-start hover:border-line-strong focus-visible:outline-2">
             <div className="flex items-start justify-between gap-2">
-              <p className="font-semibold text-luma-900"><bdi>{r.guest_name}</bdi> · {r.space_code}</p>
+              <p className="font-semibold text-heading"><bdi>{r.guest_name}</bdi> · {r.space_code}</p>
               <Badge tone={TONE[r.status] ?? 'neutral'}>{t(`hosting.status.${r.status}`)}</Badge>
             </div>
             <p className="flex items-center gap-1 text-sm"><CalendarClock className="size-4 text-ink-muted" aria-hidden />{when(r.starts_at)} → {when(r.ends_at)}</p>
@@ -129,7 +129,7 @@ function BookingDrawer({ id, onClose, onChanged }: { id: string; onClose: () => 
             <dt className="text-ink-muted">{t('hosting.guest')}</dt><dd><bdi>{b.guest.name}</bdi>{b.guest.provider_name ? ` — ${b.guest.provider_name}` : ''}</dd>
             <dt className="text-ink-muted">{t('hosting.when')}</dt><dd>{when(b.starts_at)} → {when(b.ends_at)}</dd>
           </dl>
-          {['confirmed', 'checked_in', 'in_use'].includes(b.status) ? <p className="rounded-xl bg-luma-50 p-3 font-medium" dir="auto">{t('hosting.code_for_guest', { code: b.check_in_code })}</p> : null}
+          {['confirmed', 'checked_in', 'in_use'].includes(b.status) ? <p className="rounded-xl bg-surface-muted p-3 font-medium" dir="auto">{t('hosting.code_for_guest', { code: b.check_in_code })}</p> : null}
           {act.error ? <FormErrorSummary message={msg(act.error)} /> : null}
           {manage ? (
             <div className="flex flex-wrap gap-2">
@@ -202,7 +202,7 @@ function Spaces() {
   const manage = access.can('hosting.manage') && !access.readOnly;
   const noChairs = options.data ? options.data.resources.length === 0 : false;
   const canAddResources = access.can('catalog.edit');
-  const resourcesLink = canAddResources ? <Link className="font-medium text-luma-700 underline underline-offset-2" href={`/app/${access.slug}/services?tab=resources`}>{t('hosting.listing.go_resources')}</Link> : null;
+  const resourcesLink = canAddResources ? <Link className="font-medium text-link underline underline-offset-2" href={`/app/${access.slug}/services?tab=resources`}>{t('hosting.listing.go_resources')}</Link> : null;
   return (
     <div className="flex flex-col gap-3">
       {manage ? <div><Button icon={<Plus className="size-4" />} disabled={!options.data || noChairs} onClick={() => setEdit('new')}>{t('hosting.listing.new')}</Button></div> : null}
@@ -216,7 +216,7 @@ function Spaces() {
         <EmptyState icon={<Armchair className="size-8" aria-hidden />} title={t('hosting.empty.spaces')} hint={manage && !noChairs ? t('hosting.listing.first_hint') : undefined} />
       ) : (
         <ul className="grid gap-3 md:grid-cols-2">{list.data.map((l) => (
-          <li key={l.id} className="min-w-0 rounded-2xl border border-line bg-white p-4" data-testid={`listing-${l.code}`}>
+          <li key={l.id} className="min-w-0 rounded-2xl border border-line bg-surface p-4" data-testid={`listing-${l.code}`}>
             <div className="flex items-start justify-between gap-2"><p className="min-w-0 font-semibold">{l.code} · {pick(l.title_ar, l.title_en) || l.resource_name}</p><Badge tone={l.status === 'published' ? 'ok' : 'neutral'}>{t(`hosting.status.${l.status}`)}</Badge></div>
             <p className="text-sm text-ink-muted">{l.resource_name} · {l.branch_name} · {t(`hosting.listing.modes.${l.booking_mode}`)}</p>
             <p className="text-sm"><span dir="ltr">{money(l.price_minor)}</span> {t(`workspace.per.${l.price_model}`)}</p>
@@ -299,7 +299,7 @@ function ListingDrawer({ id, options, onClose, onSaved }: { id: string | null; o
     <Drawer open wide onClose={onClose} title={t(id ? 'hosting.listing.edit' : 'hosting.listing.new')}>
       {id && existing.error ? <ErrorState error={existing.error} onRetry={() => existing.refetch()} /> : !form ? <LoadingState /> : !chairs.length ? (
         <EmptyState icon={<Armchair className="size-8" aria-hidden />} title={t('hosting.listing.no_chairs_title')} hint={t(access.can('catalog.edit') ? 'hosting.listing.no_chairs' : 'hosting.listing.no_chairs_ask')}
-          action={access.can('catalog.edit') ? <Link className="font-medium text-luma-700 underline underline-offset-2" href={`/app/${access.slug}/services?tab=resources`}>{t('hosting.listing.go_resources')}</Link> : null} />
+          action={access.can('catalog.edit') ? <Link className="font-medium text-link underline underline-offset-2" href={`/app/${access.slug}/services?tab=resources`}>{t('hosting.listing.go_resources')}</Link> : null} />
       ) : (
         <form className="flex flex-col gap-3 text-sm" onSubmit={(e) => { e.preventDefault(); save.mutate(); }}>
           {save.error ? <FormErrorSummary message={msg(save.error)} /> : null}
@@ -379,7 +379,7 @@ function AddonEditor({ form, set, options, equipment, hasChair }: { form: Form; 
         <ul className="flex flex-col gap-3">{form.addons.map((a, i) => {
           const prod = a.kind === 'product' ? options.products.find((p) => p.variant_id === a.product_variant_id) : null;
           return (
-            <li key={i} className="flex flex-col gap-2 rounded-xl bg-luma-50 p-3" data-testid="addon-row">
+            <li key={i} className="flex flex-col gap-2 rounded-xl bg-surface-muted p-3" data-testid="addon-row">
               <div className="flex items-center justify-between gap-2"><Badge tone="brand">{t(`hosting.listing.addon_kinds.${a.kind}`)}</Badge>
                 <IconButton label={t('hosting.listing.remove_addon')} onClick={() => remove(i)}><Trash2 className="size-4" aria-hidden /></IconButton></div>
               {a.kind === 'product' ? (

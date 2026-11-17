@@ -99,7 +99,7 @@ function SheetTab() {
           {r.paid_at ? <Badge tone="ok">{t('payroll.sheet.paid')}{r.paid_method ? ` · ${t(`payroll.methods.${r.paid_method}`)}` : ''}</Badge> : r.net_minor > 0 && canManage
             ? <Button size="sm" onClick={() => setPaying(r)}>{t('payroll.sheet.pay')}</Button>
             : <Badge tone="neutral">{r.net_minor > 0 ? t('payroll.sheet.unpaid') : t('payroll.sheet.nothing_due')}</Badge>}
-          {r.id ? <a href={access.api(`/payroll/slips/${r.id}`)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-luma-700 hover:underline"><FileText className="size-3.5" aria-hidden />{t('payroll.sheet.slip')}</a> : null}
+          {r.id ? <a href={access.api(`/payroll/slips/${r.id}`)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-link hover:underline"><FileText className="size-3.5" aria-hidden />{t('payroll.sheet.slip')}</a> : null}
         </span>
       ),
     }] : []),
