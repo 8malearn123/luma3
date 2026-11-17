@@ -16,7 +16,7 @@ import { useStepUp } from '../policy/StepUp';
 import { PeriodPicker, usePeriod } from './common';
 
 type Exp = { id: string; kind: string; period_start: string; period_end: string; status: string; row_count: number | null; error: string | null; created_at: string; download_url: string | null };
-const KINDS = ['bookings', 'payments', 'journal', 'expenses'] as const;
+const KINDS = ['bookings', 'payments', 'journal', 'expenses', 'summary'] as const;
 
 export function ExportsTab() {
   const { t } = useI18n();

@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { CalendarClock, MapPin, Search, Star } from 'lucide-react';
 import { useI18n } from '@/i18n/client';
@@ -87,7 +88,8 @@ function SearchPanel({ onBooked }: { onBooked: (id: string) => void }) {
             <button type="button" onClick={() => setDetail(r.id)} className="flex w-full flex-col gap-1 rounded-2xl border border-line bg-white p-4 text-start hover:border-luma-300 focus-visible:outline-2">
               <p className="font-semibold">{r.host.name} · {pick(r.title_ar, r.title_en) || r.code}</p>
               <p className="flex items-center gap-1 text-sm text-ink-muted"><MapPin className="size-4" aria-hidden />{r.branch.name}{r.branch.city ? ` — ${r.branch.city}` : ''}{r.distance_km != null ? ` · ${t('workspace.km', { n: r.distance_km })}` : ''}</p>
-              <p className="text-sm">{t('workspace.base_price')}: <span dir="ltr">{money(r.price_minor)}</span> {t(`workspace.per.${r.price_model}`)} · <span dir="ltr">{money(r.base_total_minor)}</span></p>
+              <p className="text-sm">{t('workspace.base_price')}: <span dir="ltr">{money(r.price_minor)}</span> {t(`workspace.per.${r.price_model}`)}</p>
+              <p className="text-sm">{t('workspace.price_label_base')} ({t('workspace.minutes', { n: Number(f.duration_min) || 0 })}): <span dir="ltr" className="font-semibold">{money(r.base_total_minor)}</span></p>
               <p className="flex items-center gap-1 text-xs text-ink-muted"><Star className="size-3.5" aria-hidden />{r.rating.average != null ? t('workspace.rating', { avg: r.rating.average, n: r.rating.count }) : t('workspace.no_rating')} · {t(`workspace.${r.booking_mode}`)}</p>
               {r.availability.free.slice(0, 3).map((w, i) => <p key={i} className="text-xs"><Badge tone="ok">{t('hosting.free')}</Badge> {when(w.start)} → {when(w.end)}</p>)}
             </button>
@@ -110,8 +112,8 @@ function ListingDrawer({ id, search, onClose, onBooked }: { id: string; search: 
   const [qty, setQty] = useState<Record<string, number>>({});
   const [start, setStart] = useState(search.get('start_time') ?? '');
   const addons = useMemo(() => Object.entries(qty).filter(([, n]) => n > 0).map(([addon_id, quantity]) => ({ addon_id, quantity })), [qty]);
-  const [priced, setPriced] = useState<any>(null);
-  const price = useApiMutation<void, any>(() => api(access.api('/workspace/quote'), { body: { listing_id: id, duration_min: duration, addons } }), { onSuccess: (r) => setPriced(r) });
+  const [priced, setPriced] = useState<Priced | null>(null);
+  const price = useApiMutation<void, Priced>(() => api(access.api('/workspace/quote'), { body: { listing_id: id, duration_min: duration, addons } }), { onSuccess: (r) => setPriced(r) });
   const book = useApiMutation<void, { id: string }>((_, ctx) => {
     const tz = d.data.branch.timezone as string;
     const local = `${date}T${start}:00`;
@@ -140,7 +142,7 @@ function ListingDrawer({ id, search, onClose, onBooked }: { id: string; search: 
               <ul className="flex flex-col gap-2">{l.addons.map((a: any) => (
                 <li key={a.id} className="flex items-center justify-between gap-2">
                   <span>{pick(a.name_ar, a.name_en)} · <span dir="ltr">{money(a.unit_price_minor)}</span></span>
-                  <Input type="number" min={0} max={a.max_quantity} className="w-20" aria-label={t('workspace.quantity')} value={qty[a.id] ?? 0} onChange={(e) => setQty({ ...qty, [a.id]: Math.max(0, Math.min(a.max_quantity, Number(e.target.value) || 0)) })} />
+                  <Input type="number" min={0} max={a.max_quantity} className="w-20" aria-label={t('workspace.quantity')} value={qty[a.id] ?? 0} onChange={(e) => { setPriced(null); setQty({ ...qty, [a.id]: Math.max(0, Math.min(a.max_quantity, Number(e.target.value) || 0)) }); }} />
                 </li>))}</ul>
             </Card>
           ) : null}
@@ -149,12 +151,44 @@ function ListingDrawer({ id, search, onClose, onBooked }: { id: string; search: 
             <Button variant="outline" onClick={() => price.mutate()}>{t('workspace.total_with_addons')}</Button>
           </div>
           {l.free.map((w: { start: string; end: string }, i: number) => <p key={i} className="text-xs"><CalendarClock className="inline size-3.5" aria-hidden /> {when(w.start)} → {when(w.end)}</p>)}
-          {priced ? <Card><p>{t('workspace.base_price')}: <span dir="ltr">{money(priced.base_total_minor)}</span></p><p className="font-semibold">{t('workspace.total_with_addons')}: <span dir="ltr">{money(priced.total_minor)}</span></p></Card> : null}
+          {priced ? <PriceBreakdown q={priced} /> : null}
           {book.error ? <FormErrorSummary message={msg(book.error)} /> : null}
           <div><Button loading={book.isPending} disabled={!start || !date} onClick={() => book.mutate()}>{t('workspace.request')}</Button></div>
         </div>
       ) : null}
     </Drawer>
+  );
+}
+
+type Priced = { lines: Array<{ kind: string; amount_minor: number; quantity: number; description: string }>; rent_minor: number; addons_minor: number; discount_minor: number; tax_minor: number; total_minor: number; base_total_minor: number; tax: { rate_bp: number; prices_include_tax: boolean; label?: string | null } };
+
+/** LUMA-AUDIT-037: the full price before booking — rent, add-ons, the add-ons discount, tax (included or added) and the total due. */
+function PriceBreakdown({ q }: { q: Priced }) {
+  const { t } = useI18n();
+  const { money } = useFmt();
+  const sum = (k: string) => q.lines.filter((l) => l.kind === k).reduce((a, l) => a + l.amount_minor, 0);
+  const pct = q.addons_minor > 0 ? Math.round((q.discount_minor / q.addons_minor) * 1000) / 10 : 0;
+  const label = q.tax.label || t('hosting.statement.tax');
+  const rows: Array<[string, number, boolean?]> = [
+    [t('workspace.breakdown.rent'), q.rent_minor],
+    ...(sum('product') ? [[t('workspace.breakdown.products'), sum('product')] as [string, number]] : []),
+    ...(sum('equipment') ? [[t('workspace.breakdown.equipment'), sum('equipment')] as [string, number]] : []),
+    ...(q.discount_minor ? [[t('workspace.breakdown.discount', { pct }), -q.discount_minor] as [string, number]] : []),
+    ...(q.tax_minor && !q.tax.prices_include_tax ? [[t('workspace.breakdown.subtotal'), q.rent_minor + q.addons_minor - q.discount_minor] as [string, number], [t('workspace.breakdown.tax_added', { label, rate: q.tax.rate_bp / 100 }), q.tax_minor] as [string, number]] : []),
+    [t('workspace.breakdown.total'), q.total_minor, true],
+    ...(q.tax_minor && q.tax.prices_include_tax ? [[t('workspace.breakdown.tax_included', { label, rate: q.tax.rate_bp / 100 }), q.tax_minor] as [string, number]] : []),
+  ];
+  return (
+    <Card title={t('workspace.breakdown.title')}>
+      <table className="w-full text-sm" data-testid="price-breakdown"><tbody>
+        {rows.map(([k, v, strong]) => (
+          <tr key={k} className="border-b border-line last:border-0">
+            <th scope="row" className={`py-1.5 text-start ${strong ? 'font-semibold' : 'font-normal text-ink-muted'}`}>{k}</th>
+            <td className={`py-1.5 text-end ${strong ? 'font-semibold' : ''}`} dir="ltr">{money(v)}</td>
+          </tr>))}
+      </tbody></table>
+      <p className="mt-2 text-xs text-ink-muted">{t('workspace.price_label_base')}: <span dir="ltr">{money(q.base_total_minor)}</span> · {t(q.tax.prices_include_tax ? 'workspace.tax_basis_inclusive' : 'workspace.tax_basis_exclusive')}</p>
+    </Card>
   );
 }
 
@@ -198,7 +232,8 @@ function BookingDrawer({ id, onClose, onChanged }: { id: string; onClose: () => 
     <Drawer open wide onClose={onClose} title={b ? `${b.number} · ${b.host?.name ?? ''}` : t('states.loading')}>
       {q.isLoading ? <LoadingState /> : q.error ? <ErrorState error={q.error} /> : b && st ? (
         <div className="flex flex-col gap-4 text-sm">
-          <div className="flex items-center gap-2"><Badge tone={TONE[b.status] ?? 'neutral'}>{t(`hosting.status.${b.status}`)}</Badge>{b.hold_expires_at ? <span className="text-xs text-amber-700">{when(b.hold_expires_at)}</span> : null}</div>
+          <div className="flex flex-wrap items-center gap-2"><Badge tone={TONE[b.status] ?? 'neutral'}>{t(`hosting.status.${b.status}`)}</Badge>
+            {b.hold_expires_at && ['pending_approval', 'held', 'pending_payment'].includes(b.status) ? <span className="text-xs font-medium text-warn" data-testid="hold-expiry">{t(b.status === 'pending_approval' ? 'workspace.approval_until' : 'workspace.hold_until', { when: when(b.hold_expires_at) })}</span> : null}</div>
           <p>{b.host.branch_name}{b.host.address ? ` — ${b.host.address}` : ''} · {when(b.starts_at)} → {when(b.ends_at)}</p>
           {!b.location_confirmed ? <Alert tone="warn">{t('workspace.location_pending')}</Alert> : null}
           {b.access_instructions ? <Card title={t('workspace.access_instructions')}><p className="whitespace-pre-line">{locale === 'ar' ? (b.access_instructions.ar ?? b.access_instructions.en) : (b.access_instructions.en ?? b.access_instructions.ar)}</p></Card> : null}
@@ -218,7 +253,9 @@ function BookingDrawer({ id, onClose, onChanged }: { id: string; onClose: () => 
           <Card title={t('hosting.settlement')}><StatementTable s={st} as="guest" /></Card>
           {b.invoices.length ? <p>{t('workspace.invoice')}: {b.invoices.map((i: any) => <span key={i.id} dir="ltr" className="ms-2">{i.number}</span>)}</p> : null}
           <Card title={t('workspace.linked')}>
-            {b.linked_appointments.length ? <ul>{b.linked_appointments.map((a: any) => <li key={a.id}><span dir="ltr">{a.number}</span> · {when(a.starts_at)} · {a.status}</li>)}</ul> : <p className="text-ink-muted">{t('workspace.add_appointment')}</p>}
+            {b.linked_appointments.length ? <ul className="flex flex-col gap-1" data-testid="linked-appointments">{b.linked_appointments.map((a: any) => <li key={a.id}><span dir="ltr">{a.number}</span> · {when(a.starts_at)} → {when(a.ends_at)} · <Badge tone={TONE[a.status] ?? 'neutral'}>{t(`workspace.appt_status.${a.status}`)}</Badge></li>)}</ul>
+              : <p className="text-ink-muted">{b.can.add_appointment ? t('workspace.add_appointment_here') : t('workspace.add_appointment_after_confirm')}</p>}
+            {b.can.add_appointment ? <AddAppointment space={b} onAdded={async () => { await q.refetch(); onChanged(); }} /> : null}
             <p className="mt-2 text-xs text-ink-muted">{t('workspace.cancel_note')}</p>
           </Card>
           {b.can.request_material && catalog.data?.addons?.length ? (
@@ -248,6 +285,69 @@ function BookingDrawer({ id, onClose, onChanged }: { id: string; onClose: () => 
   );
 }
 
+type Svc = { id: string; name_ar: string | null; name_en: string | null; duration_min: number; buffer_before_min: number; buffer_after_min: number; is_active: boolean; archived_at: string | null; staff: Array<{ staff_id: string; duration_override_min: number | null }> };
+type Cust = { id: string; display_name: string; phone: string | null };
+
+/** Wall-clock HH:MM on a date in the space's time zone → ISO with that zone's offset (the server validates everything). */
+function zonedIso(dateISO: string, hhmm: string, tz: string) {
+  const local = `${dateISO}T${hhmm}:00`;
+  const offset = new Intl.DateTimeFormat('en-US', { timeZone: tz, timeZoneName: 'longOffset' }).formatToParts(new Date(`${local}Z`)).find((p) => p.type === 'timeZoneName')?.value.replace('GMT', '') || '';
+  return `${local}${offset === '' ? '+00:00' : offset}`;
+}
+function zonedParts(iso: string, tz: string) {
+  const p = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date(iso));
+  const g = (k: string) => p.find((x) => x.type === k)?.value ?? '';
+  return { date: `${g('year')}-${g('month')}-${g('day')}`, time: `${g('hour')}:${g('minute')}` };
+}
+
+/**
+ * Requirement 13 / journey 1: place one of her client appointments inside this
+ * confirmed space booking. The appointment stays in her own business (D3, D14);
+ * the salon never sees it. The service's own preparation/cleanup buffers must
+ * also fit inside the space time.
+ */
+function AddAppointment({ space, onAdded }: { space: any; onAdded: () => Promise<void> }) {
+  const { t, pick } = useI18n();
+  const access = useAccess();
+  const { when } = useFmt();
+  const toast = useToast();
+  const msg = useErrorMessage();
+  const tz = space.timezone as string;
+  const day = zonedParts(space.starts_at, tz).date;
+  const services = useApiQuery<Svc[]>(['services', access.slug, ''], access.api('/services'));
+  const customers = useApiQuery<{ items: Cust[] }>(['customers', access.slug, 'ws-pick'], access.can('customers.view') ? access.api('/customers?limit=100&sort=name') : null);
+  const mine = (services.data ?? []).filter((s) => s.is_active && !s.archived_at && s.staff.some((x) => x.staff_id === space.guest_staff_id));
+  const [f, setF] = useState({ customer_id: '', service_id: '', start: zonedParts(space.starts_at, tz).time });
+  const svc = mine.find((s) => s.id === f.service_id) ?? null;
+  const add = useApiMutation<void, { confirmed?: boolean; notice?: string }>((_, ctx) => api(access.api(`/workspace/bookings/${space.id}/appointments`), {
+    idempotencyKey: ctx.idempotencyKey,
+    body: { customer_id: f.customer_id, mode: 'confirm_on_site', items: [{ key: 'a', service_id: f.service_id, staff_id: space.guest_staff_id, start: zonedIso(day, f.start, tz) }] },
+  }), { onSuccess: async (r) => { toast({ tone: 'ok', text: t(r.notice === 'prepayment_required' ? 'workspace.appt_added_prepay' : 'workspace.appt_added') }); setF({ ...f, customer_id: '' }); await onAdded(); } });
+  const err = add.error as { code?: string } | null;
+  if (services.isLoading || customers.isLoading) return <LoadingState rows={2} />;
+  if (services.error || customers.error) return <ErrorState error={services.error ?? customers.error} onRetry={() => { services.refetch(); customers.refetch(); }} />;
+  if (!mine.length) return <Alert tone="info" className="mt-2">{t('workspace.appt_no_services')}</Alert>;
+  if (!customers.data?.items.length) return <Alert tone="info" className="mt-2">{t('workspace.appt_no_customers')} <Link className="font-medium underline" href={`/app/${access.slug}/customers`}>{t('workspace.appt_go_customers')}</Link></Alert>;
+  return (
+    <form className="mt-3 flex flex-col gap-2 rounded-xl border border-line p-3" onSubmit={(e) => { e.preventDefault(); add.mutate(); }} aria-label={t('workspace.appt_add')}>
+      <p className="font-medium">{t('workspace.appt_add')}</p>
+      <p className="text-xs text-ink-muted">{t('workspace.appt_window', { from: when(space.starts_at), to: when(space.ends_at) })}</p>
+      <div className="grid gap-2 sm:grid-cols-3">
+        <Field label={t('workspace.appt_customer')} required>{(p) => <Select {...p} value={f.customer_id} onChange={(e) => setF({ ...f, customer_id: e.target.value })} required>
+          <option value="">—</option>{customers.data.items.map((c) => <option key={c.id} value={c.id}>{c.display_name}</option>)}</Select>}</Field>
+        <Field label={t('workspace.appt_service')} required>{(p) => <Select {...p} value={f.service_id} onChange={(e) => setF({ ...f, service_id: e.target.value })} required>
+          <option value="">—</option>{mine.map((s) => <option key={s.id} value={s.id}>{pick(s.name_ar, s.name_en)}</option>)}</Select>}</Field>
+        <Field label={t('workspace.appt_start')} required>{(p) => <Input {...p} type="time" value={f.start} onChange={(e) => setF({ ...f, start: e.target.value })} required />}</Field>
+      </div>
+      {svc ? <p className="text-xs text-ink-muted">{t('workspace.appt_needs', { dur: svc.duration_min, before: svc.buffer_before_min, after: svc.buffer_after_min })}</p> : null}
+      {add.error ? (err?.code === 'outside_workspace_window'
+        ? <Alert tone="danger" title={t('errors.outside_workspace_window')}>{t('workspace.appt_outside_detail', { from: when(space.starts_at), to: when(space.ends_at), before: svc?.buffer_before_min ?? 0, after: svc?.buffer_after_min ?? 0 })}</Alert>
+        : <FormErrorSummary message={msg(add.error)} />) : null}
+      <div><Button type="submit" variant="outline" loading={add.isPending} disabled={!f.customer_id || !f.service_id || !f.start}>{t('workspace.appt_add')}</Button></div>
+    </form>
+  );
+}
+
 function Expenses() {
   const { t } = useI18n();
   const access = useAccess();
@@ -262,8 +362,10 @@ function Expenses() {
         <Stat label={t('workspace.expenses.dues')} value={<span dir="ltr">{money(q.data.dues_minor)}</span>} tone={q.data.dues_minor > 0 ? 'warn' : undefined} />
       </div>
       <Card title={t('workspace.expenses.per_host')}>
-        <ul>{q.data.per_host.map((h: any) => <li key={h.host} className="flex justify-between"><span>{h.host} ({h.count})</span><span dir="ltr">{money(h.total_minor)}</span></li>)}</ul>
+        {q.data.per_host.length ? <ul data-testid="expense-per-host">{q.data.per_host.map((h: any) => <li key={h.host} className="flex justify-between gap-2"><span>{h.host} ({h.count})</span><span dir="ltr">{money(h.total_minor)}</span></li>)}</ul>
+          : <p className="text-ink-muted">{t('workspace.expenses.none')}</p>}
       </Card>
+      <p className="text-xs text-ink-muted">{t('workspace.expenses.basis')}</p>
     </div>
   );
 }

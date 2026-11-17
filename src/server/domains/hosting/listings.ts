@@ -190,6 +190,26 @@ export async function listListings(access: TenantAccess) {
   });
 }
 
+/**
+ * What the listing editor needs, in the hosting scope (no catalog capability
+ * required): the salon's chairs/rooms per branch (and which already have a
+ * listing), the store products it can offer as whole-unit add-ons at the
+ * current store price (D5/D5b), and whether publishing is possible yet (D3c).
+ */
+export async function listingOptions(access: TenantAccess) {
+  return withTenant(access.tenantId, async (trx) => {
+    const resources = await trx.selectFrom('resources as r').innerJoin('branches as b', 'b.id', 'r.branch_id').leftJoin('resource_types as t', 't.id', 'r.resource_type_id')
+      .select(['r.id', 'r.name', 'r.branch_id', 'b.name as branch_name', 't.name_ar as type_name_ar', 't.name_en as type_name_en',
+        sql<string | null>`(select l.id from workspace_listings l where l.resource_id = r.id and l.status <> 'archived' limit 1)`.as('listing_id')])
+      .where('r.is_active', '=', true).orderBy('b.name').orderBy('r.sort').orderBy('r.name').execute();
+    const products = await trx.selectFrom('product_variants as v').innerJoin('products as p', 'p.id', 'v.product_id')
+      .select(['v.id as variant_id', 'p.name_ar', 'p.name_en', 'v.name_ar as variant_name_ar', 'v.name_en as variant_name_en', 'v.price_minor', 'v.sku'])
+      .where('v.is_active', '=', true).where('p.status', '=', 'active').orderBy('p.name_ar').orderBy('v.sort').limit(500).execute();
+    const account = await activeAccount(trx, access.tenantId);
+    return { resources, products, payment_account_ready: !!account };
+  });
+}
+
 export async function getListing(access: TenantAccess, id: string) {
   return withTenant(access.tenantId, (trx) => loadListing(trx, id));
 }

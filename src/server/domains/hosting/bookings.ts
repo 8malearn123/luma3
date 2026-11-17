@@ -410,7 +410,7 @@ export async function onWorkspaceRefunded(trx: Tx, _hostTenantId: string, wbId: 
     const w = await lockBooking(trx, wbId);
     const refunded = w.refunded_minor + refund.amountMinor;
     await trx.updateTable('workspace_bookings').set({ refunded_minor: refunded, payment_status: refunded >= w.paid_minor ? 'refunded' : 'partially_refunded' }).where('id', '=', w.id).execute();
-    await postRefund(trx, w, refund.refundId, refund.amountMinor);
+    await postRefund(trx, w, refund.refundId, refund.amountMinor, (w.terms_snapshot as Snapshot).tax);
     await refreshSettlement(trx, w.id);
   });
 }
@@ -754,6 +754,10 @@ export async function guestView(trx: Tx, w: NonNullable<WsRow>) {
   const { access_instructions_ar, access_instructions_en, ...terms } = snap;
   return {
     ...pickCommon(w), as: 'guest',
+    /** Her own provider profile that holds the space (appointments inside it must use it). */
+    guest_staff_id: w.guest_staff_id,
+    /** Space setup/cleanup buffers from the frozen terms: the host's preparation, outside her window. */
+    buffers: { setup_min: snap.setup_buffer_min, cleanup_min: snap.cleanup_buffer_min },
     host: w.host_snapshot,
     location_confirmed: confirmed,
     qr_token: confirmed ? w.qr_token : null,
@@ -763,6 +767,7 @@ export async function guestView(trx: Tx, w: NonNullable<WsRow>) {
       pay: w.status === 'held', cancel: canTransition('cancel', w.status, 'guest') && !(w.status === 'confirmed' && new Date() >= w.starts_at),
       check_in: w.status === 'confirmed', check_out: ['checked_in', 'in_use'].includes(w.status), review: w.status === 'completed' && !review,
       request_material: ['confirmed', 'checked_in', 'in_use'].includes(w.status),
+      add_appointment: ['confirmed', 'checked_in', 'in_use'].includes(w.status) && new Date() < w.ends_at,
     },
   };
 }
