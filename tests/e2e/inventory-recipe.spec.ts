@@ -28,21 +28,25 @@ const tenant = async () => (await q<{ id: string }>(`select id from tenants wher
 
 test('seeded stock comes from opening movements that reconcile with the ledger (LUMA-AUDIT-036)', async () => {
   const t = await tenant();
-  const items = await q<{ name: string; on_hand: string; moved: string; openings: string }>(`
-    select i.name, i.on_hand::text, coalesce(sum(m.quantity), 0)::text as moved, count(*) filter (where m.kind = 'opening')::text as openings
+  // Each seeded material/product starts from exactly one `opening` movement carrying the seeded quantity
+  // (other specs may sell or consume afterwards; those are separate movements).
+  const items = await q<{ name: string; opening: string; openings: string }>(`
+    select i.name, coalesce(sum(m.quantity) filter (where m.kind = 'opening'), 0)::text as opening, count(m.id) filter (where m.kind = 'opening')::text as openings
     from inventory_items i left join stock_movements m on m.inventory_item_id = i.id where i.tenant_id = $1 group by i.id`, [t]);
-  expect(items.length).toBeGreaterThan(0);
+  const seeded: Record<string, number> = { 'صبغة شعر (مادة تشغيل)': 120, 'طلاء أظافر (مادة تشغيل)': 400, 'شامبو مرطب — 250 مل': 24, 'شامبو مرطب — 500 مل': 10, 'زيت أرغان للشعر': 3, 'مبرد أظافر': 60 };
+  expect(items.map((i) => i.name).sort()).toEqual(Object.keys(seeded).sort());
   for (const i of items) {
     expect(Number(i.openings), i.name).toBe(1);
-    expect(Number(i.moved), i.name).toBe(Number(i.on_hand));
+    expect(Number(i.opening), i.name).toBe(seeded[i.name]);
   }
+  // The inventory ledger (Dr inventory / Cr owner_equity at opening, then sales and usage at frozen cost) equals the valuation.
   const [ledger] = await q<{ inventory: string; equity: string }>(`select
     coalesce(sum(debit_minor - credit_minor) filter (where account = 'inventory'), 0)::text as inventory,
     coalesce(sum(credit_minor - debit_minor) filter (where account = 'owner_equity'), 0)::text as equity
     from financial_entries where tenant_id = $1`, [t]);
   const [value] = await q<{ v: string }>('select coalesce(sum(on_hand * coalesce(avg_cost_minor, 0)), 0)::text as v from inventory_items where tenant_id = $1', [t]);
   expect(Number(ledger!.inventory)).toBe(Math.round(Number(value!.v)));
-  expect(Number(ledger!.equity)).toBe(Number(ledger!.inventory));
+  expect(Number(ledger!.equity)).toBe(154000);
 });
 
 test('owner completes a manicure on the station-linked chair: the recipe is deducted once from the station', async ({ browser, baseURL }) => {
