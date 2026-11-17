@@ -28,13 +28,13 @@ export function FoundingCard() {
   return (
     <Card title={t('admin.plans.founding_title')} actions={<Badge tone={f.enabled ? 'ok' : 'neutral'}>{f.enabled ? t('admin.plans.running') : t('admin.plans.disabled')}</Badge>}>
       <p className="text-sm">{t('admin.plans.founding_line', { pct: bpPct(f.discount_bp), total: f.total })}</p>
-      <div className="my-3 h-2 overflow-hidden rounded-full bg-luma-100" role="progressbar" aria-valuemin={0} aria-valuemax={f.total} aria-valuenow={f.taken}>
-        <div className="h-full bg-luma-600" style={{ width: `${f.total ? Math.min(100, (f.taken / f.total) * 100) : 0}%` }} />
+      <div className="my-3 h-2 overflow-hidden rounded-full bg-accent-soft" role="progressbar" aria-valuemin={0} aria-valuemax={f.total} aria-valuenow={f.taken}>
+        <div className="h-full bg-brand" style={{ width: `${f.total ? Math.min(100, (f.taken / f.total) * 100) : 0}%` }} />
       </div>
       <p className="text-sm text-ink-muted">{t('admin.plans.seats', { taken: f.taken, total: f.total, remaining: f.remaining })}</p>
       {f.holders.length ? (
         <details className="mt-3">
-          <summary className="cursor-pointer text-sm text-luma-700">{t('admin.plans.holders')} ({f.holders.length})</summary>
+          <summary className="cursor-pointer text-sm text-link">{t('admin.plans.holders')} ({f.holders.length})</summary>
           <ul className="mt-2 divide-y divide-line text-sm">
             {f.holders.map((h) => (
               <li key={h.id} className="flex justify-between gap-2 py-1.5">

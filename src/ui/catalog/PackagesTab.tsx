@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { Archive, ArrowDown, ArrowUp, Package, Plus, X } from 'lucide-react';
+import { Archive, ArrowDown, ArrowUp, Package, Pencil, Plus, X } from 'lucide-react';
 import { useI18n } from '@/i18n/client';
 import { api } from '../api';
 import { useApiQuery, useUnsavedChangesWarning } from '../hooks';
@@ -17,9 +17,12 @@ import { useFmt } from '../commerce/common';
 import { ApiErrorBox } from './common';
 import type { ServiceRow } from './ServicesPage';
 
-type Pkg = { id: string; name_ar: string | null; name_en: string | null; description_ar: string | null; description_en: string | null; price_minor: number; is_active: boolean; is_visible: boolean; service_ids: string[] };
+type Pkg = { id: string; name_ar: string | null; name_en: string | null; description_ar: string | null; description_en: string | null; price_minor: number; is_active: boolean; is_visible: boolean; service_ids: string[]; updated_at: string };
 
-/** Packages bundle 2–10 services at one price. The API supports create and archive (no edit). */
+/**
+ * Packages bundle 2–10 services at one price. Editing changes the package for
+ * new sales only; bookings already made keep their own prices and lines.
+ */
 export function PackagesTab() {
   const { t, pick } = useI18n();
   const access = useAccess();
@@ -29,6 +32,7 @@ export function PackagesTab() {
   const list = useApiQuery<Pkg[]>(['packages', access.slug], access.api('/packages'));
   const services = useApiQuery<ServiceRow[]>(['services', access.slug, ''], access.api('/services'));
   const [creating, setCreating] = useState(false);
+  const [editing, setEditing] = useState<Pkg | null>(null);
   const [archiveId, setArchiveId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<unknown>(null);
@@ -60,7 +64,7 @@ export function PackagesTab() {
           {list.data.map((p) => {
             const sum = sumOf(p.service_ids);
             return (
-              <Card key={p.id} title={pick(p.name_ar, p.name_en)} actions={canEdit ? <IconButton label={t('actions.archive')} onClick={() => setArchiveId(p.id)}><Archive className="size-4" /></IconButton> : null}>
+              <Card key={p.id} title={pick(p.name_ar, p.name_en)} actions={canEdit ? <span className="flex gap-1"><IconButton label={t('actions.edit')} onClick={() => setEditing(p)}><Pencil className="size-4" /></IconButton><IconButton label={t('actions.archive')} onClick={() => setArchiveId(p.id)}><Archive className="size-4" /></IconButton></span> : null}>
                 <div className="flex flex-col gap-2 text-sm">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="text-lg font-semibold" dir="ltr">{money(p.price_minor)}</span>
@@ -77,28 +81,32 @@ export function PackagesTab() {
         </div>
       )}
       {creating ? <PackageDrawer services={services.data ?? []} onClose={() => setCreating(false)} /> : null}
+      {editing ? <PackageDrawer key={editing.id} initial={editing} services={services.data ?? []} onClose={() => setEditing(null)} /> : null}
       <ConfirmDialog open={!!archiveId} onClose={() => setArchiveId(null)} onConfirm={archive} loading={busy} danger
         title={t('catalog_team.packages.archive_title')} body={t('catalog_team.packages.archive_body')} confirmLabel={t('actions.archive')} />
     </div>
   );
 }
 
-function PackageDrawer({ services, onClose }: { services: ServiceRow[]; onClose: () => void }) {
+function PackageDrawer({ services, onClose, initial }: { services: ServiceRow[]; onClose: () => void; initial?: Pkg }) {
   const { t, pick } = useI18n();
   const access = useAccess();
   const qc = useQueryClient();
   const toast = useToast();
   const { money } = useFmt();
-  const [name, setName] = useState<{ ar?: string; en?: string }>({});
-  const [desc, setDesc] = useState<{ ar?: string; en?: string }>({});
-  const [price, setPrice] = useState<number | null>(null);
-  const [ids, setIds] = useState<string[]>([]);
+  const [name, setName] = useState<{ ar?: string; en?: string }>(() => ({ ar: initial?.name_ar ?? undefined, en: initial?.name_en ?? undefined }));
+  const [desc, setDesc] = useState<{ ar?: string; en?: string }>(() => ({ ar: initial?.description_ar ?? undefined, en: initial?.description_en ?? undefined }));
+  const [price, setPrice] = useState<number | null>(initial?.price_minor ?? null);
+  const [ids, setIds] = useState<string[]>(initial?.service_ids ?? []);
   const [pickId, setPickId] = useState('');
-  const [active, setActive] = useState(true);
-  const [visible, setVisible] = useState(true);
+  const [active, setActive] = useState(initial?.is_active ?? true);
+  const [visible, setVisible] = useState(initial?.is_visible ?? true);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<unknown>(null);
-  const dirty = !!(name.ar || name.en || ids.length || price != null);
+  const dirty = initial
+    ? (name.ar ?? null) !== initial.name_ar || (name.en ?? null) !== initial.name_en || price !== initial.price_minor || ids.join() !== initial.service_ids.join()
+      || (desc.ar ?? null) !== initial.description_ar || (desc.en ?? null) !== initial.description_en || active !== initial.is_active || visible !== initial.is_visible
+    : !!(name.ar || name.en || ids.length || price != null);
   useUnsavedChangesWarning(dirty);
   const available = services.filter((s) => !s.archived_at && !ids.includes(s.id));
   const sum = ids.reduce((a, id) => a + (services.find((s) => s.id === id)?.price_minor ?? 0), 0);
@@ -107,23 +115,26 @@ function PackageDrawer({ services, onClose }: { services: ServiceRow[]; onClose:
   async function save() {
     setBusy(true); setErr(null);
     try {
-      await api(access.api('/packages'), { body: {
+      const body = {
         name_ar: name.ar?.trim() || null, name_en: name.en?.trim() || null, description_ar: desc.ar?.trim() || null, description_en: desc.en?.trim() || null,
         price_minor: price ?? -1, service_ids: ids, is_active: active, is_visible: visible,
-      } });
-      toast({ tone: 'ok', text: t('catalog_team.packages.created') });
+      };
+      if (initial) await api(access.api(`/packages/${initial.id}`), { method: 'PATCH', body: { ...body, updated_at: initial.updated_at } });
+      else await api(access.api('/packages'), { body });
+      toast({ tone: 'ok', text: t(initial ? 'catalog_team.packages.updated' : 'catalog_team.packages.created') });
       await qc.invalidateQueries({ queryKey: ['packages', access.slug] });
       onClose();
     } catch (e) { setErr(e); } finally { setBusy(false); }
   }
 
   return (
-    <Drawer open onClose={onClose} title={t('catalog_team.packages.new')} footer={<>
+    <Drawer open onClose={onClose} title={initial ? t('catalog_team.packages.edit') : t('catalog_team.packages.new')} footer={<>
       <Button variant="ghost" onClick={onClose}>{t('actions.cancel')}</Button>
-      <Button loading={busy} disabled={ids.length < 2} onClick={save}>{t('actions.create')}</Button>
+      <Button loading={busy} disabled={ids.length < 2 || (!!initial && !dirty)} onClick={save}>{initial ? t('actions.save') : t('actions.create')}</Button>
     </>}>
       <div className="flex flex-col gap-4">
         <ApiErrorBox err={err} />
+        {initial ? <p className="rounded-lg bg-info-bg p-2 text-xs text-info">{t('catalog_team.packages.edit_note')}</p> : null}
         <LocalizedInput label={t('fields.name')} required value={name} onChange={setName} />
         <LocalizedInput label={t('fields.description')} multiline maxLength={4000} value={desc} onChange={setDesc} />
         <div className="flex flex-col gap-2">

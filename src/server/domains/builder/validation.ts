@@ -2,7 +2,7 @@ import type { Tx } from '../../db/client';
 import { BLOCKS, collectReferences, validateBlocks, zLayout, type BlockIssue, type PageBlock, type SiteLayout } from '@/shared/builder/blocks';
 import { sanitizeBlocks } from './sanitize';
 
-export type RefWarning = { pageId: string | null; blockId: string | null; kind: string; targetId: string; code: 'archived' | 'hidden' | 'inactive' | 'missing_section' | 'wrong_kind' | 'feature_disabled' | 'broken_asset' };
+export type RefWarning = { pageId: string | null; blockId: string | null; kind: string; targetId: string; code: 'archived' | 'hidden' | 'inactive' | 'missing_section' | 'wrong_kind' | 'feature_disabled' | 'broken_asset' | 'component_disabled' | 'component_plan' };
 export type PageIssue = BlockIssue & { pageId: string | null };
 
 type Refs = ReturnType<typeof collectReferences>;

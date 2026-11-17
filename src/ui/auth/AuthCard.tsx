@@ -8,19 +8,19 @@ import { useI18n } from '@/i18n/client';
 export function AuthCard({ title, children, footer }: { title: string; children: ReactNode; footer?: ReactNode }) {
   const { t, locale, setLocale } = useI18n();
   return (
-    <div className="luma-pattern flex min-h-dvh items-center justify-center bg-gradient-to-b from-luma-100 to-luma-300/60 p-4">
+    <div className="luma-app luma-pattern flex min-h-dvh items-center justify-center bg-gradient-to-b from-accent-soft to-line-strong/60 p-4">
       <main id="main" className="w-full max-w-md">
         <div className="mb-6 flex flex-col items-center gap-2">
           <Link href="/" aria-label="LUMA"><LumaLogo variant="vertical" className="h-28 w-auto" /></Link>
-          <p className="font-serif text-sm text-luma-700" dir="ltr">{t('brand.tagline_en')}</p>
+          <p className="font-serif text-sm text-link" dir="ltr">{t('brand.tagline_en')}</p>
         </div>
-        <div className="rounded-3xl bg-white/95 p-6 shadow-xl">
-          <h1 className="mb-4 text-xl font-semibold text-luma-900">{title}</h1>
+        <div className="rounded-3xl bg-surface/95 p-6 shadow-xl">
+          <h1 className="mb-4 text-xl font-semibold text-heading">{title}</h1>
           {children}
         </div>
-        {footer ? <div className="mt-4 text-center text-sm text-luma-900">{footer}</div> : null}
+        {footer ? <div className="mt-4 text-center text-sm text-heading">{footer}</div> : null}
         <div className="mt-4 text-center">
-          <button onClick={() => setLocale(locale === 'ar' ? 'en' : 'ar')} className="text-xs text-luma-800 underline">{t('locale.switch')}</button>
+          <button onClick={() => setLocale(locale === 'ar' ? 'en' : 'ar')} className="text-xs text-heading underline">{t('locale.switch')}</button>
         </div>
       </main>
     </div>

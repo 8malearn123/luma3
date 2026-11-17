@@ -16,6 +16,17 @@
   --color-luma-700: #5b3764;
   --color-luma-800: #4a2c52;
   --color-luma-900: #331d39;
+  /* Semantic tokens (light). Each has a dark value in the dark-mode block below. */
+  --color-canvas: #fbf1f6;
+  --color-surface: #ffffff;
+  --color-surface-muted: #fbf1f6;
+  --color-accent-soft: #f7e1eb;
+  --color-primary: #5b3764;
+  --color-primary-hover: #4a2c52;
+  --color-on-primary: #ffffff;
+  --color-heading: #331d39;
+  --color-link: #5b3764;
+  --color-scrim: #2a2230;
   --color-ink: #2a2230;
   --color-ink-muted: #6b5f70;
   --color-line: #eadde4;
@@ -27,7 +38,28 @@
   --color-danger-bg: #fbe9e7;
   --color-info: #2b5a8a;
   --color-info-bg: #e6eff8;
+  /* Brand accents (2026-11-17 sweep): luma-500 for icons/indicators (non-text only — 4.3:1 on white),
+     luma-200 for the highlight stroke, soft rings and selected tints, luma-300 for stronger outlines. */
+  --color-brand: #9e6898;
+  --color-highlight: #e4b5ca;
+  --color-line-strong: #cf97ba;
+  /* Star ratings (icon only) and the WhatsApp share button (white label, 5.3:1, same in both themes). */
+  --color-rating: #d97706;
+  --color-whatsapp: #0f7b42;
 
+  --font-sans: 'IBM Plex Sans Arabic', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-display: 'Cinzel', 'IBM Plex Sans Arabic', serif;
+  --font-serif: 'EB Garamond', 'Amiri', serif;
+}
+
+/*
+ * Storefront tokens are declared `inline`: utilities reference the business's
+ * `--sf-*` variables directly (e.g. `background-color: var(--sf-primary, …)`),
+ * so the values set on the storefront wrapper apply to its subtree. A plain
+ * `@theme` would resolve `var(--sf-*)` once at :root, where they are undefined,
+ * and every storefront would fall back to the neutral theme (LUMA-AUDIT-003).
+ */
+@theme inline {
   --color-sf-primary: var(--sf-primary, #2f2a26);
   --color-sf-on-primary: var(--sf-on-primary, #ffffff);
   --color-sf-secondary: var(--sf-secondary, #8c7b6b);
@@ -38,20 +70,105 @@
   --color-sf-muted: var(--sf-muted, #6e655d);
   --color-sf-border: var(--sf-border, #e7e0d8);
 
-  --font-sans: 'IBM Plex Sans Arabic', system-ui, -apple-system, 'Segoe UI', sans-serif;
-  --font-display: 'Cinzel', 'IBM Plex Sans Arabic', serif;
-  --font-serif: 'EB Garamond', 'Amiri', serif;
   --font-sf-heading: var(--sf-font-heading, 'IBM Plex Sans Arabic', sans-serif);
   --font-sf-body: var(--sf-font-body, 'IBM Plex Sans Arabic', sans-serif);
 
   --radius-sf: var(--sf-radius, 10px);
 }
 
+/*
+ * Dark mode (DESIGN_GUIDE §11, decided 2026-11-15) — LUMA internal surfaces only.
+ * Applies inside `.luma-app` (dashboard, platform, account, workspace picker,
+ * new-business, invitation, maintenance and auth screens);
+ * the public storefront (.storefront) and marketing pages stay in their own
+ * light themes. Choice: <html data-theme="light|dark"> from the luma_theme
+ * cookie (set by the user-menu toggle, rendered on the server so there is no
+ * flash); without an explicit choice it follows prefers-color-scheme.
+ * The two blocks below must stay identical.
+ */
+:root[data-theme='dark'] .luma-app {
+  color-scheme: dark;
+  --color-canvas: #17111a;
+  --color-surface: #221a26;
+  --color-surface-muted: #2b2130;
+  --color-accent-soft: #3a2840;
+  --color-primary: #7d4d88;
+  --color-primary-hover: #6a3f74;
+  --color-on-primary: #ffffff;
+  --color-heading: #f7e9f0;
+  --color-link: #e4b5ca;
+  --color-scrim: #000000;
+  --color-ink: #ece4ef;
+  --color-ink-muted: #b9abbf;
+  --color-line: #3d3142;
+  --color-ok: #7fd1a6;
+  --color-ok-bg: #16301f;
+  --color-warn: #f2c46d;
+  --color-warn-bg: #3a2a08;
+  --color-danger: #ff9b92;
+  --color-danger-bg: #3d1614;
+  --color-info: #9cc3ef;
+  --color-info-bg: #14263a;
+  --color-brand: #c58fbf;
+  --color-highlight: #4d3655;
+  --color-line-strong: #75607d;
+  --color-rating: #f2c46d;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .luma-app {
+    color-scheme: dark;
+    --color-canvas: #17111a;
+    --color-surface: #221a26;
+    --color-surface-muted: #2b2130;
+    --color-accent-soft: #3a2840;
+    --color-primary: #7d4d88;
+    --color-primary-hover: #6a3f74;
+    --color-on-primary: #ffffff;
+    --color-heading: #f7e9f0;
+    --color-link: #e4b5ca;
+    --color-scrim: #000000;
+    --color-ink: #ece4ef;
+    --color-ink-muted: #b9abbf;
+    --color-line: #3d3142;
+    --color-ok: #7fd1a6;
+    --color-ok-bg: #16301f;
+    --color-warn: #f2c46d;
+    --color-warn-bg: #3a2a08;
+    --color-danger: #ff9b92;
+    --color-danger-bg: #3d1614;
+    --color-info: #9cc3ef;
+    --color-info-bg: #14263a;
+    --color-brand: #c58fbf;
+    --color-highlight: #4d3655;
+    --color-line-strong: #75607d;
+    --color-rating: #f2c46d;
+  }
+}
+/* No white flash around a dark dashboard: the page behind `.luma-app` (overscroll,
+   short pages) takes the dark canvas too. Kept in sync with --color-canvas above. */
+:root[data-theme='dark'] body:has(.luma-app) { background-color: #17111a; color-scheme: dark; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) body:has(.luma-app) { background-color: #17111a; color-scheme: dark; }
+}
+
+/* LumaLogo/LumaMark render a light-surface and a dark-surface image; show the one that
+   matches the theme (outside `.luma-app` it is always the light-surface artwork). */
+.luma-on-dark { display: none; }
+:root[data-theme='dark'] .luma-app .luma-on-light { display: none; }
+:root[data-theme='dark'] .luma-app .luma-on-dark { display: revert-layer; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .luma-app .luma-on-light { display: none; }
+  :root:not([data-theme='light']) .luma-app .luma-on-dark { display: revert-layer; }
+}
+
 @layer base {
   html { -webkit-text-size-adjust: 100%; }
-  body { @apply bg-luma-50 text-ink antialiased; font-family: var(--font-sans); }
-  :focus-visible { outline: 2px solid var(--color-luma-500); outline-offset: 2px; }
+  body { @apply bg-canvas text-ink antialiased; font-family: var(--font-sans); }
+  .luma-app { @apply bg-canvas text-ink; }
+  :focus-visible { outline: 2px solid var(--color-brand); outline-offset: 2px; }
   .storefront :focus-visible { outline-color: var(--sf-primary, #2f2a26); }
+  /* Re-resolve the radius on the storefront root for `rounded-[var(--radius-sf)]` users. */
+  .storefront { --radius-sf: var(--sf-radius, 10px); }
   [dir='rtl'] .flip-rtl { transform: scaleX(-1); }
   input, select, textarea, button { font: inherit; }
 }
@@ -60,7 +177,7 @@
   .luma-pattern {
     background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='120' viewBox='0 0 160 120'><g fill='none' stroke='%23f7e1eb' stroke-opacity='.35' stroke-width='1.2'><path d='M10 40c20-30 60-30 60 0s-40 40-60 10'/><path d='M90 20c30-10 60 10 50 40s-50 20-50-10'/><path d='M40 110c10-30 50-40 70-20'/></g></svg>");
   }
-  .skeleton { @apply animate-pulse rounded-md bg-luma-100; }
+  .skeleton { @apply animate-pulse rounded-md bg-accent-soft; }
 }
 
 @media (prefers-reduced-motion: reduce) {

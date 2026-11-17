@@ -19,7 +19,12 @@ type Line = {
 type Cart = {
   id: string | null; items: Line[]; item_count: number; subtotal_minor: number; currency: string; has_price_changes: boolean; has_problems: boolean;
   signed_in: boolean; verified: boolean; fulfillment_methods: Array<{ method: string; enabled: boolean }>;
+  /** Payment paths open right now, computed by the server (never trusted from here). */
+  payment?: { online: boolean; pay_at_pickup: boolean; accepting_orders: boolean; simulation: boolean };
 };
+
+/** Mirrors ORDER_PICKUP_HOLD_HOURS on the server (display only). */
+const PICKUP_HOLD_HOURS = 24;
 
 const btn = 'inline-flex items-center justify-center gap-2 rounded-[var(--radius-sf)] px-4 py-2.5 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed';
 const primary = `${btn} bg-sf-primary text-sf-on-primary hover:opacity-90`;
@@ -42,6 +47,7 @@ export function CartView({ slug }: { slug: string }) {
   const [applied, setApplied] = useState<{ code: string; discount_minor: number } | null>(null);
   const [couponErr, setCouponErr] = useState<string | null>(null);
   const [note, setNote] = useState('');
+  const [payChoice, setPayChoice] = useState<'online' | 'on_site' | null>(null);
   const addedRef = useRef(false);
 
   // ?add=&qty= → add once, then show the clean cart URL.
@@ -73,13 +79,17 @@ export function CartView({ slug }: { slug: string }) {
     catch (e) { setApplied(null); setCouponErr(msg(e)); }
   }
 
+  const payment = cart.data?.payment;
+  // Online when available, otherwise pay at pickup; the server re-checks the choice.
+  const choice: 'online' | 'on_site' = payChoice === 'on_site' && payment?.pay_at_pickup ? 'on_site' : payChoice === 'online' && payment?.online ? 'online' : payment?.online ? 'online' : 'on_site';
+  const closed = !!payment && !payment.accepting_orders;
   const checkout = useApiMutation<void, { id: string; checkout_path: string }>(
-    (_v, { idempotencyKey }) => api(`/api/v1/s/${slug}/orders`, { body: { fulfillment_method: 'pickup', ...(applied ? { coupon_code: applied.code } : {}), ...(note.trim() ? { note: note.trim() } : {}) }, idempotencyKey }),
+    (_v, { idempotencyKey }) => api(`/api/v1/s/${slug}/orders`, { body: { fulfillment_method: 'pickup', ...(payment ? { payment_choice: choice } : {}), ...(applied ? { coupon_code: applied.code } : {}), ...(note.trim() ? { note: note.trim() } : {}) }, idempotencyKey }),
     { onSuccess: (r) => { qc.invalidateQueries({ queryKey: key }); router.push(r.checkout_path); } },
   );
   useEffect(() => {
     const e = checkout.error;
-    if (e instanceof ApiError && ['prices_changed', 'out_of_stock', 'product_unavailable', 'max_per_order_exceeded'].includes(e.code)) cart.refetch();
+    if (e instanceof ApiError && ['prices_changed', 'out_of_stock', 'product_unavailable', 'max_per_order_exceeded', 'payment_unavailable', 'payment_option_not_allowed'].includes(e.code)) cart.refetch();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [checkout.error]);
 
@@ -157,6 +167,18 @@ export function CartView({ slug }: { slug: string }) {
               <label className="flex items-start gap-2 text-sm"><input type="radio" name="fulfillment" checked readOnly className="mt-1 accent-sf-primary" /><span>{t('commerce.cart.pickup')}<span className="block text-xs text-sf-muted">{t('commerce.cart.pickup_hint')}</span></span></label>
               <p className="text-xs text-sf-muted">{t('commerce.cart.delivery_unavailable')}</p>
             </fieldset>
+            {payment && !closed ? (
+              <fieldset className="flex flex-col gap-2">
+                <legend className="mb-1 text-sm font-medium">{t('commerce.cart.payment')}</legend>
+                {payment.online ? (
+                  <label className="flex items-start gap-2 text-sm"><input type="radio" name="payment" value="online" checked={choice === 'online'} onChange={() => setPayChoice('online')} className="mt-1 accent-sf-primary" /><span>{t('commerce.cart.pay_online')}{payment.simulation ? <span className="block text-xs text-sf-muted">{t('commerce.cart.test_payments')}</span> : null}</span></label>
+                ) : null}
+                {payment.pay_at_pickup ? (
+                  <label className="flex items-start gap-2 text-sm"><input type="radio" name="payment" value="on_site" checked={choice === 'on_site'} onChange={() => setPayChoice('on_site')} className="mt-1 accent-sf-primary" /><span>{t('commerce.cart.pay_at_pickup')}<span className="block text-xs text-sf-muted">{t('commerce.cart.pay_at_pickup_hint', { h: PICKUP_HOLD_HOURS })}</span></span></label>
+                ) : null}
+                {!payment.online ? <p className="text-xs text-sf-muted">{t('commerce.cart.online_unavailable')}</p> : null}
+              </fieldset>
+            ) : null}
             {c.signed_in ? (
               <div className="flex flex-col gap-1">
                 <label htmlFor="sf-coupon" className="text-sm font-medium">{t('commerce.cart.coupon')}</label>
@@ -186,7 +208,9 @@ export function CartView({ slug }: { slug: string }) {
             <p className="text-xs text-sf-muted">{t('commerce.cart.tax_note')}</p>
             {checkout.error ? <p role="alert" className="rounded-[var(--radius-sf)] bg-danger-bg p-2 text-sm text-danger">{msg(checkout.error)}</p> : null}
             {c.has_problems ? <p className="text-sm text-danger">{t('commerce.cart.fix_problems')}</p> : null}
-            {!c.signed_in ? (
+            {closed ? (
+              <p role="status" className="rounded-[var(--radius-sf)] border border-warn/30 bg-warn-bg p-3 text-sm">{t('commerce.cart.not_accepting')}</p>
+            ) : !c.signed_in ? (
               <>
                 <Link href={loginHref} className={primary}>{t('commerce.cart.sign_in_to_checkout')}</Link>
                 <p className="text-xs text-sf-muted">{t('commerce.cart.sign_in_note')}</p>
@@ -195,7 +219,7 @@ export function CartView({ slug }: { slug: string }) {
               <p className="text-sm text-warn">{t('commerce.cart.verify_note')}</p>
             ) : (
               <button className={primary} disabled={checkout.isPending || c.has_problems || c.has_price_changes} onClick={() => checkout.mutate()}>
-                {checkout.isPending ? <><Loader2 className="size-4 animate-spin" aria-hidden />{t('commerce.cart.creating')}</> : t('commerce.cart.checkout')}
+                {checkout.isPending ? <><Loader2 className="size-4 animate-spin" aria-hidden />{t('commerce.cart.creating')}</> : t(choice === 'on_site' && payment ? 'commerce.cart.place_order' : 'commerce.cart.checkout')}
               </button>
             )}
           </aside>

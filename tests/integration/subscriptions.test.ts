@@ -70,6 +70,23 @@ describe('plan limits & downgrades', () => {
     expect((await owner.call(branches.POST, { params: p, body: branch('South') })).status).toBe(201);
   });
 
+  it('an owner cannot self-activate a paid upgrade outside the trial; a platform grant can (LUMA-AUDIT-008)', async () => {
+    const owner = await signup('Paid upgrade owner');
+    const biz = await createBusinessFor(owner); // sanaa, trialing
+    const p = { tenantSlug: biz.slug };
+    await setSubscription(biz.tenantId, { status: 'active', current_period_end: new Date(Date.now() + 20 * 86_400_000) });
+    const up = await owner.call(changePlan.POST, { params: p, body: { plan_code: 'wahaj' } });
+    expect(up.status).toBe(409);
+    expect(up.body.error.code).toBe('upgrade_requires_payment');
+    expect((await owner.call(subscription.GET, { params: p })).body.data.subscription.plan.code).toBe('sanaa');
+    const sub = await subscriptionOf(biz.tenantId);
+    const admin = await platformUser('platform_owner', 'Grant admin');
+    await stepUp(admin);
+    const grant = await admin.call(subAction.POST, { params: { id: sub.id }, body: { action: 'change_plan', plan_code: 'wahaj', reason: 'administrative grant (test)' } });
+    expect(grant.status).toBe(200);
+    expect((await owner.call(subscription.GET, { params: p })).body.data.subscription.plan.code).toBe('wahaj');
+  });
+
   it('resolving an overage by archiving clears the transition state', async () => {
     const owner = await signup('Resolver');
     const biz = await createBusinessFor(owner, { plan_code: 'wahaj' });

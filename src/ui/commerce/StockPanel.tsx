@@ -63,9 +63,9 @@ export function StockPanel({ itemId, unit, onHand, reserved, canManage, onChange
   return (
     <div className="flex flex-col gap-3">
       <dl className="grid grid-cols-3 gap-2 text-center text-sm">
-        <div className="rounded-lg bg-luma-50 p-2"><dt className="text-xs text-ink-muted">{t('commerce.products.on_hand')}</dt><dd className="font-semibold">{qty(onHand)} {t(`commerce.inventory.unit.${unit}`)}</dd></div>
-        <div className="rounded-lg bg-luma-50 p-2"><dt className="text-xs text-ink-muted">{t('commerce.products.reserved')}</dt><dd className="font-semibold">{qty(reserved)}</dd></div>
-        <div className="rounded-lg bg-luma-50 p-2"><dt className="text-xs text-ink-muted">{t('commerce.products.available')}</dt><dd className="font-semibold">{qty(onHand - reserved)}</dd></div>
+        <div className="rounded-lg bg-surface-muted p-2"><dt className="text-xs text-ink-muted">{t('commerce.products.on_hand')}</dt><dd className="font-semibold">{qty(onHand)} {t(`commerce.inventory.unit.${unit}`)}</dd></div>
+        <div className="rounded-lg bg-surface-muted p-2"><dt className="text-xs text-ink-muted">{t('commerce.products.reserved')}</dt><dd className="font-semibold">{qty(reserved)}</dd></div>
+        <div className="rounded-lg bg-surface-muted p-2"><dt className="text-xs text-ink-muted">{t('commerce.products.available')}</dt><dd className="font-semibold">{qty(onHand - reserved)}</dd></div>
       </dl>
       {canManage ? (
         <div className="flex flex-wrap gap-2">

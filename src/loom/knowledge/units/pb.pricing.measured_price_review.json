@@ -1,0 +1,61 @@
+{
+  "id": "pb.pricing.measured_price_review",
+  "version": 1,
+  "title": {
+    "ar": "مراجعة سعر مدروسة",
+    "en": "Measured price review"
+  },
+  "applies_to": {
+    "sectors": [
+      "beauty"
+    ],
+    "detectors": [
+      "unserved_demand",
+      "margin_leak"
+    ],
+    "interventions": [
+      "price_review"
+    ],
+    "channels": [
+      "in_store"
+    ]
+  },
+  "guidance": {
+    "ar": "رفع السعر يُدرس كمقترح يحتاج اعتماد المالكة: ارفعي بخطوة صغيرة، راقبي معدل التحويل والإلغاء، ولا تخفضي السعر لمجرد أن منافسًا أرخص.",
+    "en": "A price increase is studied as a proposal the owner approves: raise in a small step, watch conversion and cancellations, and never cut the price only because a competitor is cheaper."
+  },
+  "when_not_to_use": {
+    "ar": "لا تصلح عندما تكون بيانات الطلب قليلة أو التكاليف ناقصة.",
+    "en": "Not suitable when demand data is thin or costs are incomplete."
+  },
+  "common_mistakes": [
+    {
+      "ar": "تغيير السعر تلقائيًا",
+      "en": "Changing the price automatically"
+    }
+  ],
+  "measurement": {
+    "primary": "sales.net_revenue",
+    "design": "pre_post_with_control"
+  },
+  "examples": {
+    "good": [
+      {
+        "ar": "مقترح رفع ٥٪ لخدمة محجوزة بالكامل لمدة شهر ثم مراجعة",
+        "en": "Propose +5% on a fully booked service for a month, then review"
+      }
+    ],
+    "bad": [
+      {
+        "ar": "خفض السعر لمطابقة منافس",
+        "en": "Cutting the price to match a competitor"
+      }
+    ]
+  },
+  "source": {
+    "type": "internal_review",
+    "ref": "Loom marketing methodology review, beauty pack v1",
+    "reviewed_at": "2026-11-01"
+  },
+  "owner": "loom.methodology"
+}

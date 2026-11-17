@@ -8,8 +8,8 @@ export default async function UnsubscribePage({ searchParams }: { searchParams: 
   const sp = await searchParams;
   const token = typeof sp.token === 'string' && sp.token.length >= 20 && sp.token.length <= 1000 ? sp.token : null;
   return (
-    <div className="flex min-h-dvh items-center justify-center bg-luma-50 p-4">
-      <div className="w-full max-w-md rounded-2xl border border-line bg-white p-6 shadow-sm">
+    <div className="flex min-h-dvh items-center justify-center bg-surface-muted p-4">
+      <div className="w-full max-w-md rounded-2xl border border-line bg-surface p-6 shadow-sm">
         <LumaLogo className="mx-auto mb-4 h-10 w-auto" />
         <UnsubscribeForm token={token} />
       </div>

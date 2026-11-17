@@ -121,7 +121,7 @@ function CategoryCard({ category, policy, canManage, onSaved }: { category: Cate
           {!tiersValid ? <p className="text-xs text-danger">{t('payroll.commission.tiers_invalid')}</p> : null}
         </div>
         {enabled && valid ? (
-          <p className="rounded-lg bg-luma-50 px-3 py-2 text-xs text-ink-muted">
+          <p className="rounded-lg bg-surface-muted px-3 py-2 text-xs text-ink-muted">
             {t('payroll.commission.example', { sales: money(sample), pct: percent(sampleRate), amount: money(Math.round((sample * sampleRate) / 10000)) })}
           </p>
         ) : null}

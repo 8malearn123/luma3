@@ -55,7 +55,7 @@ describe('physical stock count', () => {
     expect(applied.body.data.lines.find((l: any) => l.inventory_item_id === s.gloves.id)).toMatchObject({ variance: 0, flagged: false });
     expect(await stock(s.biz.tenantId, s.dye.id)).toEqual({ on_hand: 480, reserved: 0 });
     expect(await stock(s.biz.tenantId, s.productItem)).toEqual({ on_hand: 5, reserved: 0 }); // not counted → unchanged
-    expect((await movements(s.biz.tenantId, s.dye.id)).filter((m) => m.ref_type === 'stock_count')).toEqual([{ kind: 'adjustment', quantity: -10, ref_type: 'stock_count', ref_id: id }]);
+    expect((await movements(s.biz.tenantId, s.dye.id)).filter((m) => m.ref_type === 'stock_count')).toEqual([{ kind: 'count_adjustment', quantity: -10, ref_type: 'stock_count', ref_id: id }]);
     expect(await findStockMismatches(s.biz.tenantId)).toEqual([]);
 
     const n = await variance(s.biz.tenantId);

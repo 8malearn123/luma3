@@ -20,7 +20,7 @@ export function ServiceBadgeField({ value, onChange }: { value: BadgeValue; onCh
             <option value="custom">{t('business.badge.custom')}</option>
           </Select>
         )}</Field>
-        {preview ? <span className="mb-2 rounded-full bg-luma-700 px-2.5 py-0.5 text-xs font-semibold text-white" aria-label={t('business.badge.preview')}>{preview}</span> : null}
+        {preview ? <span className="mb-2 rounded-full bg-primary px-2.5 py-0.5 text-xs font-semibold text-on-primary" aria-label={t('business.badge.preview')}>{preview}</span> : null}
       </div>
       {value.kind === 'custom' ? (
         <div className="grid gap-3 sm:grid-cols-2">

@@ -41,7 +41,7 @@ export function ApiErrorBox({ err, onReload }: { err: unknown; onReload?: () => 
     return (
       <Alert tone="warn" title={err.code === 'plan_limit_reached' ? t('catalog_team.plan.limit_title') : t('catalog_team.plan.feature_title')}>
         <p className="flex items-start gap-1.5">
-          <Sparkles className="mt-0.5 size-4 shrink-0 text-luma-500" aria-hidden />
+          <Sparkles className="mt-0.5 size-4 shrink-0 text-brand" aria-hidden />
           <span>{err.code === 'plan_limit_reached'
             ? (limit ? t('catalog_team.plan.limit_body', { plan, feature, limit: String(limit) }) : t('catalog_team.plan.limit_body_zero', { plan, feature }))
             : t('catalog_team.plan.feature_body', { plan, feature })}</span>

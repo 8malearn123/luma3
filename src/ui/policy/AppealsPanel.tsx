@@ -72,7 +72,7 @@ function AppealCard({ a, endpoint, queryKey, writable, tz }: { a: Appeal; endpoi
     } catch (e) { if (!(e instanceof ApiError && e.message === 'cancelled')) setErr(e); } finally { setBusy(false); }
   }
   return (
-    <li className="rounded-xl border border-line bg-white p-4">
+    <li className="rounded-xl border border-line bg-surface p-4">
       <div className="flex flex-wrap items-center gap-2">
         <AppealStatus status={a.status} />
         <span className="font-medium">{a.customer_name ?? '—'}</span>
@@ -81,7 +81,7 @@ function AppealCard({ a, endpoint, queryKey, writable, tz }: { a: Appeal; endpoi
         <span className="text-xs text-ink-muted">{formatDateTime(a.created_at, { locale, tz, timeFormat })}</span>
       </div>
       {a.decision_reason ? <p className="mt-1 text-xs text-ink-muted">{t('policy.decisions.reason')}: {a.decision_reason}</p> : null}
-      <p className="mt-2 whitespace-pre-wrap rounded-lg bg-luma-50 p-2 text-sm"><span className="sr-only">{t('policy.appeals.message')}: </span>{a.message}</p>
+      <p className="mt-2 whitespace-pre-wrap rounded-lg bg-surface-muted p-2 text-sm"><span className="sr-only">{t('policy.appeals.message')}: </span>{a.message}</p>
       {a.resolution_note ? <p className="mt-2 text-sm"><span className="text-xs text-ink-muted">{t('policy.appeals.resolution_note')}: </span>{a.resolution_note}</p> : null}
       <FormErrorSummary message={err ? msg(err) : null} />
       {open && writable ? (

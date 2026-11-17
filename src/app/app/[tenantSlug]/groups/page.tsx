@@ -1,5 +1,7 @@
 import { Suspense } from 'react';
 import { requireTenantPage } from '@/server/pages';
+import { areaAvailable } from '@/server/tenancy/workspace-mode';
+import { NotAvailable } from '@/ui/expert/NotAvailable';
 import { featureEnabled, hasCapability } from '@/server/tenancy/access';
 import { getT } from '@/i18n/server';
 import { DeniedState, LoadingState } from '@/ui/components/feedback';
@@ -11,6 +13,8 @@ export const metadata = { title: 'Group sessions' };
 export default async function Page({ params }: { params: Promise<{ tenantSlug: string }> }) {
   const { tenantSlug } = await params;
   const { access } = await requireTenantPage(tenantSlug);
+  // Hidden for this business type (workspace-mode.ts): a direct URL shows «غير متاح», the API refuses too.
+  if (!areaAvailable(access, 'groups')) return <NotAvailable area="groups" />;
   if (!hasCapability(access, ['bookings.view_all', 'bookings.manage'])) return <DeniedState />;
   if (!featureEnabled(access, 'feature.group_sessions')) {
     const { t } = await getT();

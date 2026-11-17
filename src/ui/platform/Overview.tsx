@@ -44,19 +44,19 @@ export function PlatformOverview() {
         <Card title={t('platform.overview.trials_ending')}>
           {o.trials_ending_soon.length ? (
             <ul className="divide-y divide-line text-sm">{o.trials_ending_soon.map((s) => (
-              <li key={s.id} className="flex justify-between py-2"><Link className="text-luma-700 hover:underline" href={`/platform/tenants?q=${s.slug}`}>{s.name}</Link><When v={s.trial_ends_at} /></li>
+              <li key={s.id} className="flex justify-between py-2"><Link className="text-link hover:underline" href={`/platform/tenants?q=${s.slug}`}>{s.name}</Link><When v={s.trial_ends_at} /></li>
             ))}</ul>
           ) : <EmptyState title={t('platform.overview.none_ending')} />}
         </Card>
         <Card title={t('platform.sub_status.past_due')}>
           {o.past_due.length ? (
             <ul className="divide-y divide-line text-sm">{o.past_due.map((s) => (
-              <li key={s.id} className="flex justify-between py-2"><Link className="text-luma-700 hover:underline" href={`/platform/subscriptions?status=past_due`}>{s.name}</Link><span className="text-xs text-ink-muted">{t('platform.overview.grace_until')} <When v={s.grace_until} /></span></li>
+              <li key={s.id} className="flex justify-between py-2"><Link className="text-link hover:underline" href={`/platform/subscriptions?status=past_due`}>{s.name}</Link><span className="text-xs text-ink-muted">{t('platform.overview.grace_until')} <When v={s.grace_until} /></span></li>
             ))}</ul>
           ) : <EmptyState title={t('platform.overview.none_past_due')} />}
         </Card>
         {o.health ? (
-          <Card title={t('platform.overview.health')} actions={<Link href="/platform/integrations" className="text-sm text-luma-700 hover:underline">{t('actions.view')}</Link>}>
+          <Card title={t('platform.overview.health')} actions={<Link href="/platform/integrations" className="text-sm text-link hover:underline">{t('actions.view')}</Link>}>
             <dl className="grid grid-cols-2 gap-2 text-sm">
               {(['email', 'sms', 'whatsapp'] as const).map((c) => <div key={c} className="flex items-center justify-between gap-2"><dt>{t(`platform.channels.${c}`)}</dt><dd><IntegrationState state={o.health!.messaging[c]!} /></dd></div>)}
               <div className="flex items-center justify-between gap-2"><dt>{t('platform.integrations.ai')}</dt><dd><IntegrationState state={o.health.ai} /></dd></div>
@@ -68,7 +68,7 @@ export function PlatformOverview() {
           </Card>
         ) : null}
         {o.recent_sensitive ? (
-          <Card title={t('platform.overview.recent_sensitive')} actions={<Link href="/platform/audit?sensitive_only=1" className="text-sm text-luma-700 hover:underline">{t('actions.view')}</Link>}>
+          <Card title={t('platform.overview.recent_sensitive')} actions={<Link href="/platform/audit?sensitive_only=1" className="text-sm text-link hover:underline">{t('actions.view')}</Link>}>
             {o.recent_sensitive.length ? (
               <ul className="divide-y divide-line text-sm">{o.recent_sensitive.map((a) => (
                 <li key={a.id} className="flex items-start justify-between gap-2 py-2">

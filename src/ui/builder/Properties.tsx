@@ -72,8 +72,8 @@ function RichEditor({ label, value, onChange, blockId }: { label: string; value:
     <div className="flex flex-col gap-1.5">
       <div className="flex items-center justify-between">
         <label htmlFor={`rich-${blockId}-${lang}`} className="text-sm font-medium">{label}</label>
-        <div role="tablist" className="flex rounded-md bg-luma-100 p-0.5 text-xs">
-          {(['ar', 'en'] as const).map((l) => <button key={l} role="tab" type="button" aria-selected={lang === l} onClick={() => setLang(l)} className={cx('rounded px-2 py-0.5', lang === l ? 'bg-white shadow-sm' : 'text-ink-muted')}>{l === 'ar' ? 'ع' : 'EN'}</button>)}
+        <div role="tablist" className="flex rounded-md bg-accent-soft p-0.5 text-xs">
+          {(['ar', 'en'] as const).map((l) => <button key={l} role="tab" type="button" aria-selected={lang === l} onClick={() => setLang(l)} className={cx('rounded px-2 py-0.5', lang === l ? 'bg-surface shadow-sm' : 'text-ink-muted')}>{l === 'ar' ? 'ع' : 'EN'}</button>)}
         </div>
       </div>
       <Textarea id={`rich-${blockId}-${lang}`} rows={6} dir={lang === 'ar' ? 'rtl' : 'ltr'} lang={lang} maxLength={6000} value={text[lang]}
@@ -167,7 +167,7 @@ export function Properties({ slug, block, parent, pageBlocks, refs, pages, warni
       case 'number':
         return (
           <Field key={f.key} label={`${fl(f.key)}: ${props[f.key] ?? ''}`}>{(p) => (
-            <input {...p} type="range" min={f.min} max={f.max} step={f.step ?? 1} value={Number(props[f.key] ?? f.min)} onChange={(e) => set(f.key, Number(e.target.value), true)} className="accent-luma-700" />
+            <input {...p} type="range" min={f.min} max={f.max} step={f.step ?? 1} value={Number(props[f.key] ?? f.min)} onChange={(e) => set(f.key, Number(e.target.value), true)} className="accent-primary" />
           )}</Field>
         );
       case 'boolean':
@@ -225,7 +225,7 @@ export function Properties({ slug, block, parent, pageBlocks, refs, pages, warni
         return <Field key={f.key} label={fl(f.key)}>{(p) => <Input {...p} value={String(props[f.key] ?? '')} maxLength={f.max} onChange={(e) => set(f.key, e.target.value.trim() ? e.target.value : null, true)} />}</Field>;
       case 'before_after':
         return props.source === 'portfolio'
-          ? <p key={f.key} className="rounded-lg bg-luma-50 p-2 text-xs text-ink-muted">{t('expert.ba.from_portfolio')}</p>
+          ? <p key={f.key} className="rounded-lg bg-surface-muted p-2 text-xs text-ink-muted">{t('expert.ba.from_portfolio')}</p>
           : <BeforeAfterItemsEditor key={f.key} slug={slug} items={props.items ?? []} assets={refs.assets} onAssetsChange={onAssetsChange} onChange={(v, c) => set('items', v, c)} />;
       case 'instagram':
         return <InstagramConnectionField key={f.key} slug={slug} />;
@@ -258,7 +258,7 @@ export function Properties({ slug, block, parent, pageBlocks, refs, pages, warni
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center gap-2">
-        <BlockIcon name={d.icon} className="size-5 text-luma-700" />
+        <BlockIcon name={d.icon} className="size-5 text-link" />
         <h2 className="font-semibold">{d.label[locale]}</h2>
       </div>
       {parent ? <Button size="sm" variant="ghost" onClick={() => onSelect(parent.id)}>{t('builder.back_to_parent')}</Button> : null}
@@ -274,7 +274,7 @@ export function Properties({ slug, block, parent, pageBlocks, refs, pages, warni
         <fieldset className="flex flex-col gap-2 rounded-lg border border-line p-3">
           <legend className="px-1 text-sm font-medium">{t('builder.columns.children')}</legend>
           {(block.children ?? []).map((c, i) => (
-            <div key={c.id} className="flex items-center gap-1 rounded-md bg-luma-50 px-2 py-1 text-sm">
+            <div key={c.id} className="flex items-center gap-1 rounded-md bg-surface-muted px-2 py-1 text-sm">
               <BlockIcon name={BLOCKS[c.type].icon} className="size-4" />
               <button type="button" className="flex-1 truncate text-start hover:underline" onClick={() => onSelect(c.id)}>{BLOCKS[c.type].label[locale]}</button>
               <IconButton label={t('builder.canvas.move_up')} disabled={i === 0} className="size-7" onClick={() => onChange((b) => { const ch = [...(b.children ?? [])]; [ch[i - 1], ch[i]] = [ch[i]!, ch[i - 1]!]; return { ...b, children: ch }; })}><ArrowUp className="size-3.5" /></IconButton>

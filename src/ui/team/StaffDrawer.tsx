@@ -149,7 +149,7 @@ function StaffForm({ row, onClose, onOpenSchedule, onInvite }: { row: StaffRow |
 
         {!isNew ? (
           <section className="flex flex-col gap-2">
-            <h3 className="inline-flex items-center gap-2 font-semibold"><KeyRound className="size-4 text-luma-500" aria-hidden />{t('catalog_team.team.login')}</h3>
+            <h3 className="inline-flex items-center gap-2 font-semibold"><KeyRound className="size-4 text-brand" aria-hidden />{t('catalog_team.team.login')}</h3>
             {member ? (
               <p className="text-sm">
                 <span className="font-medium">{member.user?.display_name ?? '—'}</span>

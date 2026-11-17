@@ -83,14 +83,14 @@ export function DailyBars({ points, label, currency }: { points: Array<{ date: s
       <div dir="ltr" className="relative">
         <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="h-40 w-full" role="img" aria-label={label} onMouseLeave={() => setHover(null)}>
           <line x1={0} x2={W} y1={H - pad} y2={H - pad} className="stroke-line" strokeWidth={1} vectorEffect="non-scaling-stroke" />
-          {[0.5].map((f) => <line key={f} x1={0} x2={W} y1={(H - pad) * (1 - f)} y2={(H - pad) * (1 - f)} className="stroke-luma-100" strokeWidth={1} strokeDasharray="4 4" vectorEffect="non-scaling-stroke" />)}
+          {[0.5].map((f) => <line key={f} x1={0} x2={W} y1={(H - pad) * (1 - f)} y2={(H - pad) * (1 - f)} className="stroke-accent-soft" strokeWidth={1} strokeDasharray="4 4" vectorEffect="non-scaling-stroke" />)}
           {points.map((p, i) => {
             const bh = p.value > 0 ? Math.max(2, ((H - pad * 2) * p.value) / max) : 0;
             const x = i * slot + (slot - bw) / 2;
             return (
               <g key={p.date} onMouseEnter={() => setHover(i)} onFocus={() => setHover(i)} onBlur={() => setHover(null)} tabIndex={0} aria-label={`${dayLabel(p.date)}: ${money(p.value)}`} className="outline-none">
                 <rect x={i * slot} y={0} width={slot} height={H} fill="transparent" />
-                {bh > 0 ? <rect x={x} y={H - pad - bh} width={bw} height={bh} rx={Math.min(4, bw / 2)} className={hover === i ? 'fill-luma-800' : 'fill-luma-500'} /> : null}
+                {bh > 0 ? <rect x={x} y={H - pad - bh} width={bw} height={bh} rx={Math.min(4, bw / 2)} className={hover === i ? 'fill-primary-hover' : 'fill-brand'} /> : null}
               </g>
             );
           })}

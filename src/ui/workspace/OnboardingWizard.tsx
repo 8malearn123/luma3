@@ -16,7 +16,7 @@ import { AUDIENCES, BUSINESS_TYPES, CHARACTER_TRAITS, PRIORITIES, SPECIALTIES, t
 import { FONTS } from '@/shared/builder/theme';
 import { WEEKDAYS } from '@/shared/format';
 
-type Ob = { answers: OnboardingAnswers; completed_steps: number[]; current_step: number; version: number; draft_generated_at: string | null; pending_palette: { palette: Record<string, string>; seeds: string[] } | null };
+type Ob = { hours_check?: Array<{ branch_id: string; branch_name: string; closed_but_staffed: number[] }>; answers: OnboardingAnswers; completed_steps: number[]; current_step: number; version: number; draft_generated_at: string | null; pending_palette: { palette: Record<string, string>; seeds: string[] } | null };
 type Readiness = { ready: boolean; items: Array<{ key: string; ok: boolean; action_path: string }> };
 
 function toggle<T>(arr: T[] | undefined, v: T, max = 99) {
@@ -37,12 +37,13 @@ export function OnboardingWizard({ slug }: { slug: string }) {
   const [savedNote, setSavedNote] = useState(false);
   const [palette, setPalette] = useState<Record<string, string> | null>(null);
   const [generated, setGenerated] = useState<{ services_created: number } | null>(null);
+  const [openedAt, setOpenedAt] = useState<number | null>(null);
   useUnsavedChangesWarning(dirty);
 
   useEffect(() => {
     // Seeding editable local form state from server data when it arrives or the step changes.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (q.data && step === null) setStep(Math.min(q.data.current_step, 8));
+    if (q.data && step === null) { const s0 = Math.min(q.data.current_step, 8); setStep(s0); setOpenedAt(s0); }
   }, [q.data, step]);
   useEffect(() => {
     // Seeding editable local form state from server data when it arrives or the step changes.
@@ -89,26 +90,32 @@ export function OnboardingWizard({ slug }: { slug: string }) {
   }
 
   const steps = [1, 2, 3, 4, 5, 6, 7];
+  const doneCount = ob.completed_steps.filter((s) => s <= 7).length;
+  const isGenerated = !!generated || !!ob.draft_generated_at;
+  const hoursWarnings = (ob.hours_check ?? []).map((h) => t('onboarding.hours_mismatch', { branch: h.branch_name, days: h.closed_but_staffed.map((d) => WEEKDAYS[locale][d]).join('، ') }));
   return (
     <div className="mx-auto max-w-3xl">
-      <h1 className="text-2xl font-semibold text-luma-900">{t('onboarding.title')}</h1>
+      <h1 className="text-2xl font-semibold text-heading">{t('onboarding.title')}</h1>
       <p className="mb-4 text-sm text-ink-muted">{t('onboarding.subtitle')}</p>
       <ol className="mb-6 flex gap-1 overflow-x-auto" aria-label={t('onboarding.title')}>
         {steps.map((s) => (
           <li key={s} className="flex-1">
             <button onClick={() => !dirty && setStep(s)} aria-current={step === s ? 'step' : undefined}
-              className={cx('flex w-full min-w-10 flex-col items-center gap-1 rounded-lg p-1.5 text-xs', step === s ? 'bg-luma-700 text-white' : ob.completed_steps.includes(s) ? 'bg-luma-200 text-luma-900' : 'bg-white text-ink-muted')}>
-              <span className="font-semibold">{ob.completed_steps.includes(s) && step !== s ? <Check className="size-3.5" /> : s}</span>
-              <span className="hidden truncate sm:block">{t(`onboarding.steps.${s}.title`)}</span>
+              className={cx('flex w-full min-w-10 flex-col items-center gap-1 rounded-lg p-1.5 text-xs', step === s ? 'bg-primary text-on-primary' : ob.completed_steps.includes(s) ? 'bg-highlight text-heading' : 'bg-surface text-ink-muted')}>
+              <span className="font-semibold">{ob.completed_steps.includes(s) && step !== s ? <Check className="size-3.5" aria-hidden /> : s}</span>
+              <span className="sr-only">{t(`onboarding.steps.${s}.title`)} {step === s ? t('onboarding.step_current') : ob.completed_steps.includes(s) ? t('onboarding.step_done') : ''}</span>
+              <span className="hidden truncate sm:block" aria-hidden>{t(`onboarding.steps.${s}.title`)}</span>
             </button>
           </li>
         ))}
       </ol>
       {savedNote ? <Alert tone="ok" className="mb-3">{t('onboarding.saved_resume')}</Alert> : null}
-      <div className="rounded-2xl bg-white p-5 shadow-sm">
+      {/* Opening mid-way (e.g. step 1 was answered when the business was created) is explained, not silent (LUMA-AUDIT-049). */}
+      {!savedNote && openedAt && openedAt > 1 && step === openedAt && doneCount > 0 ? <Alert tone="info" className="mb-3">{t('onboarding.resume_note', { done: doneCount })}</Alert> : null}
+      <div className="rounded-2xl bg-surface p-5 shadow-sm">
         {step <= 7 ? (
           <>
-            <p className="text-xs font-medium text-luma-500">{t('onboarding.step_of', { n: step })}</p>
+            <p className="text-xs font-medium text-link">{t('onboarding.step_of', { n: step })}</p>
             <h2 className="text-lg font-semibold">{t(`onboarding.steps.${step}.title`)}</h2>
             <p className="mb-4 text-sm text-ink-muted">{t(`onboarding.steps.${step}.hint`)}</p>
             <FormErrorSummary message={err ? msg(err) : null} />
@@ -131,13 +138,13 @@ export function OnboardingWizard({ slug }: { slug: string }) {
                 <fieldset><legend className="mb-2 text-sm font-medium">{t('onboarding.fields.traits')} (≤3)</legend>
                   <div className="flex flex-wrap gap-2">{CHARACTER_TRAITS.map((tr) => (
                     <button key={tr} type="button" aria-pressed={(draft.traits ?? []).includes(tr)} onClick={() => set({ traits: toggle(draft.traits, tr, 3) })}
-                      className={cx('rounded-full border px-3 py-1 text-sm', (draft.traits ?? []).includes(tr) ? 'border-luma-700 bg-luma-700 text-white' : 'border-line')}>{t(`onboarding.traits.${tr}`)}</button>
+                      className={cx('rounded-full border px-3 py-1 text-sm', (draft.traits ?? []).includes(tr) ? 'border-link bg-primary text-on-primary' : 'border-line')}>{t(`onboarding.traits.${tr}`)}</button>
                   ))}</div>
                 </fieldset>
                 <fieldset><legend className="mb-2 text-sm font-medium">{t('onboarding.fields.reference_style')}</legend>
                   <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">{(['soft_minimal', 'classic_luxury', 'modern_bold', 'natural_warm'] as const).map((s) => (
                     <button key={s} type="button" aria-pressed={draft.reference_style === s} onClick={() => set({ reference_style: s })}
-                      className={cx('rounded-xl border p-3 text-sm', draft.reference_style === s ? 'border-luma-700 ring-2 ring-luma-200' : 'border-line')}>{t(`onboarding.styles.${s}`)}</button>
+                      className={cx('rounded-xl border p-3 text-sm', draft.reference_style === s ? 'border-link ring-2 ring-highlight' : 'border-line')}>{t(`onboarding.styles.${s}`)}</button>
                   ))}</div>
                 </fieldset>
                 <Field label={t('onboarding.fields.description')}>{(p) => <Textarea {...p} maxLength={600} value={draft.description ?? ''} onChange={(e) => set({ description: e.target.value })} />}</Field>
@@ -190,8 +197,8 @@ export function OnboardingWizard({ slug }: { slug: string }) {
                     {(draft.priorities?.length ? draft.priorities : [...PRIORITIES]).map((p: string, i: number, arr: string[]) => (
                       <li key={p} className="flex items-center gap-2 rounded-lg border border-line px-3 py-2">
                         <span className="w-5 text-xs text-ink-muted">{i + 1}</span><span className="flex-1 text-sm">{t(`onboarding.priorities.${p}`)}</span>
-                        <button type="button" aria-label={t('actions.move_up')} disabled={i === 0} className="rounded p-1 hover:bg-luma-100 disabled:opacity-30" onClick={() => { const a = [...arr]; [a[i - 1], a[i]] = [a[i]!, a[i - 1]!]; set({ priorities: a }); }}><ArrowUp className="size-4" /></button>
-                        <button type="button" aria-label={t('actions.move_down')} disabled={i === arr.length - 1} className="rounded p-1 hover:bg-luma-100 disabled:opacity-30" onClick={() => { const a = [...arr]; [a[i + 1], a[i]] = [a[i]!, a[i + 1]!]; set({ priorities: a }); }}><ArrowDown className="size-4" /></button>
+                        <button type="button" aria-label={t('actions.move_up')} disabled={i === 0} className="rounded p-1 hover:bg-accent-soft disabled:opacity-30" onClick={() => { const a = [...arr]; [a[i - 1], a[i]] = [a[i]!, a[i - 1]!]; set({ priorities: a }); }}><ArrowUp className="size-4" /></button>
+                        <button type="button" aria-label={t('actions.move_down')} disabled={i === arr.length - 1} className="rounded p-1 hover:bg-accent-soft disabled:opacity-30" onClick={() => { const a = [...arr]; [a[i + 1], a[i]] = [a[i]!, a[i + 1]!]; set({ priorities: a }); }}><ArrowDown className="size-4" /></button>
                       </li>
                     ))}
                   </ol>
@@ -217,6 +224,8 @@ export function OnboardingWizard({ slug }: { slug: string }) {
                     </div>
                   ))}
                   <Button variant="outline" size="sm" className="self-start" icon={<Plus className="size-4" />} onClick={() => set({ hours: [...(draft.hours ?? []), { weekday: 0, opens: '10:00', closes: '22:00' }] })}>{t('onboarding.add_hours')}</Button>
+                  <p className="text-xs text-ink-muted">{t('onboarding.hours_note')}</p>
+                  {hoursWarnings.map((w, i) => <Alert key={i} tone="warn">{w}</Alert>)}
                 </fieldset>
                 <div className="grid gap-4 sm:grid-cols-4">
                   {(['instagram', 'tiktok', 'snapchat', 'x'] as const).map((k) => (
@@ -238,7 +247,9 @@ export function OnboardingWizard({ slug }: { slug: string }) {
             <h2 className="text-lg font-semibold">{t('onboarding.generate')}</h2>
             <FormErrorSummary message={err ? msg(err) : null} />
             {generated ? <Alert tone="ok" title={t('onboarding.generated')}>{t('onboarding.generator_note')}</Alert> : null}
-            <Button size="lg" className="self-start" loading={busy} onClick={generate}>{t('onboarding.generate')}</Button>
+            {/* One primary action: generate first; once generated, opening the builder is the next step. */}
+            <Button size="lg" variant={isGenerated ? 'outline' : 'primary'} className="self-start" loading={busy} onClick={generate}>{t('onboarding.generate')}</Button>
+            {hoursWarnings.map((w, i) => <Alert key={i} tone="warn">{w}</Alert>)}
             <div>
               <h3 className="mb-2 font-semibold">{t('onboarding.readiness')}</h3>
               {readiness.data ? (
@@ -254,8 +265,8 @@ export function OnboardingWizard({ slug }: { slug: string }) {
               ) : <LoadingState rows={2} />}
             </div>
             <div className="flex flex-wrap gap-2">
-              <Link href={`/app/${slug}/builder`} className="rounded-lg bg-luma-700 px-4 py-2 text-sm font-medium text-white">{t('onboarding.open_builder')}</Link>
-              <Link href={`/app/${slug}`} className="rounded-lg border border-luma-300 px-4 py-2 text-sm">{t('onboarding.go_overview')}</Link>
+              <Link href={`/app/${slug}/builder`} className={cx('rounded-xl px-4 py-2 text-sm font-medium', isGenerated ? 'bg-primary text-on-primary hover:bg-primary-hover' : 'border border-line text-ink hover:bg-surface-muted')}>{t('onboarding.open_builder')}</Link>
+              <Link href={`/app/${slug}`} className="rounded-xl px-4 py-2 text-sm text-ink hover:bg-surface-muted">{t('onboarding.go_overview')}</Link>
             </div>
           </div>
         )}
@@ -281,7 +292,7 @@ function ChipSet({ label, options, prefix, value, onChange }: { label: string; o
     <fieldset><legend className="mb-2 text-sm font-medium">{label}</legend>
       <div className="flex flex-wrap gap-2">{options.map((o) => (
         <button key={o} type="button" aria-pressed={(value ?? []).includes(o)} onClick={() => onChange(toggle(value, o))}
-          className={cx('rounded-full border px-3 py-1 text-sm', (value ?? []).includes(o) ? 'border-luma-700 bg-luma-700 text-white' : 'border-line')}>{t(`${prefix}.${o}`)}</button>
+          className={cx('rounded-full border px-3 py-1 text-sm', (value ?? []).includes(o) ? 'border-link bg-primary text-on-primary' : 'border-line')}>{t(`${prefix}.${o}`)}</button>
       ))}</div>
     </fieldset>
   );

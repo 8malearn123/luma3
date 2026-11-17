@@ -1,0 +1,62 @@
+{
+  "id": "pb.operations.cross_training_shift",
+  "version": 1,
+  "title": {
+    "ar": "التدريب المتقاطع ووردية قبل الحملة",
+    "en": "Cross-training and a shift before the campaign"
+  },
+  "applies_to": {
+    "sectors": [
+      "beauty"
+    ],
+    "detectors": [
+      "unserved_demand",
+      "capacity_prerequisite"
+    ],
+    "interventions": [
+      "staff_cross_training",
+      "add_shift"
+    ],
+    "channels": [
+      "in_store"
+    ]
+  },
+  "guidance": {
+    "ar": "إذا كانت الطاقة هي القيد، فالخطوة الأولى تشغيلية: وردية إضافية في نافذة الطلب أو تدريب أخصائية حالية على الخدمة. ابدئي بتعديل الورديات قبل التوظيف، ولا تستنتجي الحاجة للتوظيف من عدد الحجوزات وحده.",
+    "en": "When capacity is the constraint the first step is operational: an extra shift in the demand window or training a current specialist on the service. Change shifts before hiring, and never infer hiring needs from booking counts alone."
+  },
+  "when_not_to_use": {
+    "ar": "لا يصلح إذا كان النقص مؤقتًا بسبب إجازة قصيرة معتمدة.",
+    "en": "Not suitable when the shortage is a short approved leave."
+  },
+  "common_mistakes": [
+    {
+      "ar": "إطلاق الحملة قبل توفر الطاقة",
+      "en": "Launching the campaign before capacity exists"
+    }
+  ],
+  "measurement": {
+    "primary": "capacity.occupancy",
+    "design": "observational"
+  },
+  "examples": {
+    "good": [
+      {
+        "ar": "تدريب الأخصائية الثانية على التنظيف العميق خلال أسبوعين",
+        "en": "Train the second specialist on deep cleansing within two weeks"
+      }
+    ],
+    "bad": [
+      {
+        "ar": "توظيف فوري بسبب أسبوع مزدحم",
+        "en": "Immediate hiring because of one busy week"
+      }
+    ]
+  },
+  "source": {
+    "type": "internal_review",
+    "ref": "Loom marketing methodology review, beauty pack v1",
+    "reviewed_at": "2026-11-01"
+  },
+  "owner": "loom.methodology"
+}

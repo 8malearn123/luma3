@@ -66,7 +66,7 @@ function RequestRow({ r, onOpen }: { r: HrRequest; onOpen: () => void }) {
   const days = useDays();
   return (
     <li>
-      <button type="button" onClick={onOpen} className="flex w-full flex-col gap-2 rounded-xl border border-line bg-white p-4 text-start hover:border-luma-300 sm:flex-row sm:items-center">
+      <button type="button" onClick={onOpen} className="flex w-full flex-col gap-2 rounded-xl border border-line bg-surface p-4 text-start hover:border-line-strong sm:flex-row sm:items-center">
         <span className="min-w-0 flex-1">
           <span className="flex flex-wrap items-center gap-2">
             <span className="font-medium">{r.staff_name}</span>

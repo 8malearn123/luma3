@@ -5,8 +5,9 @@ import { Errors } from '../../http/errors';
 import { audit, type AuditActor } from '../../infra/audit';
 import { hasCapability, requireWithinLimit, type TenantAccess } from '../../tenancy/access';
 import { assertTenantAssets } from '../assets/service';
+import { emitDomainEvent } from '../../infra/domain-events';
 import type {
-  addonInput, categoryInput, categoryPatch, packageInput, priceProposalInput, serviceInput, servicePatch, variantInput,
+  addonInput, categoryInput, categoryPatch, packageInput, packagePatch, priceProposalInput, serviceInput, servicePatch, variantInput,
 } from '@/shared/schemas/catalog';
 
 // ── Categories ──────────────────────────────────────────────────────────────
@@ -183,6 +184,9 @@ export async function updateService(access: TenantAccess, actor: AuditActor, id:
     }
     if (fields.image_asset_id) await assertTenantAssets(trx, access.tenantId, [fields.image_asset_id]);
     await trx.updateTable('services').set({ ...fields, price_minor: newPrice, version: cur.version + 1 }).where('id', '=', id).execute();
+    if (newPrice !== cur.price_minor || (fields.cost_minor !== undefined && fields.cost_minor !== cur.cost_minor)) {
+      await emitDomainEvent(trx, access.tenantId, { type: 'service.economics_changed', service_id: id, price_before: cur.price_minor, price_after: newPrice, cost_before: cur.cost_minor, cost_after: fields.cost_minor !== undefined ? fields.cost_minor : cur.cost_minor });
+    }
     if (staff) await setServiceStaff(trx, access.tenantId, id, staff);
     if (resource_requirements) await setResourceRequirements(trx, access, id, resource_requirements);
     await audit(trx, actor, 'service.updated', { tenantId: access.tenantId, targetType: 'service', targetId: id, data: { fields: Object.keys(fields), price_from: cur.price_minor, price_to: newPrice, proposal: proposalId } });
@@ -231,7 +235,8 @@ export async function decidePriceProposal(access: TenantAccess, actor: AuditActo
     if (p.status !== 'proposed') throw Errors.conflict('already_decided');
     await trx.updateTable('service_price_proposals').set({ status: decision, decided_by: actor.userId, decided_at: new Date() }).where('id', '=', proposalId).execute();
     if (decision === 'approved') {
-      await trx.updateTable('services').set({ price_minor: p.proposed_price_minor, version: sql`version + 1` }).where('id', '=', p.service_id).execute();
+      const svc = await trx.updateTable('services').set({ price_minor: p.proposed_price_minor, version: sql`version + 1` }).where('id', '=', p.service_id).returning('cost_minor').executeTakeFirst();
+      await emitDomainEvent(trx, access.tenantId, { type: 'service.economics_changed', service_id: p.service_id, price_before: p.current_price_minor, price_after: p.proposed_price_minor, cost_before: svc?.cost_minor ?? null, cost_after: svc?.cost_minor ?? null });
     }
     await audit(trx, actor, `service.price_${decision}`, { tenantId: access.tenantId, targetType: 'service', targetId: p.service_id, data: { from: p.current_price_minor, to: p.proposed_price_minor } });
     return { id: proposalId, status: decision };
@@ -295,6 +300,35 @@ export async function createPackage(access: TenantAccess, actor: AuditActor, inp
     const p = await trx.insertInto('service_packages').values({ tenant_id: access.tenantId, ...fields, name_ar: fields.name_ar ?? null, name_en: fields.name_en ?? null, description_ar: fields.description_ar ?? null, description_en: fields.description_en ?? null }).returningAll().executeTakeFirstOrThrow();
     await trx.insertInto('service_package_items').values(service_ids.map((sid, i) => ({ tenant_id: access.tenantId, package_id: p.id, service_id: sid, sequence: i }))).execute();
     await audit(trx, actor, 'package.created', { tenantId: access.tenantId, targetType: 'package', targetId: p.id });
+    return { ...p, service_ids };
+  });
+}
+
+/**
+ * Edits a package in place for NEW sales (owner decision R7). The id is kept,
+ * so storefront offer blocks and links that reference it keep working. Nothing
+ * already sold changes: bookings snapshot their own lines and prices, and
+ * membership/prepaid entitlements carry their own plan snapshot.
+ */
+export async function updatePackage(access: TenantAccess, actor: AuditActor, id: string, input: z.infer<typeof packagePatch>) {
+  return withTenant(access.tenantId, async (trx) => {
+    const cur = await trx.selectFrom('service_packages').selectAll().where('id', '=', id).where('archived_at', 'is', null).forUpdate().executeTakeFirst();
+    if (!cur) throw Errors.notFound('package');
+    if (new Date(input.updated_at).getTime() !== cur.updated_at.getTime()) throw Errors.versionConflict();
+    const { service_ids, updated_at: _u, ...fields } = input;
+    if (new Set(service_ids).size !== service_ids.length) throw Errors.invalid('duplicate_service', 'Each service can appear once');
+    const svc = await trx.selectFrom('services').select('id').where('id', 'in', service_ids).where('archived_at', 'is', null).execute();
+    if (svc.length !== service_ids.length) throw Errors.invalid('invalid_reference', 'Every package service must exist in your catalog');
+    const before = await trx.selectFrom('service_package_items').select('service_id').where('package_id', '=', id).orderBy('sequence').execute();
+    const p = await trx.updateTable('service_packages').set({
+      name_ar: fields.name_ar ?? null, name_en: fields.name_en ?? null, description_ar: fields.description_ar ?? null, description_en: fields.description_en ?? null,
+      price_minor: fields.price_minor, is_active: fields.is_active, is_visible: fields.is_visible, updated_at: new Date(),
+    }).where('id', '=', id).returningAll().executeTakeFirstOrThrow();
+    await trx.deleteFrom('service_package_items').where('package_id', '=', id).execute();
+    await trx.insertInto('service_package_items').values(service_ids.map((sid, i) => ({ tenant_id: access.tenantId, package_id: id, service_id: sid, sequence: i }))).execute();
+    await audit(trx, actor, 'package.updated', { tenantId: access.tenantId, targetType: 'package', targetId: id, data: {
+      price_minor: { from: cur.price_minor, to: p.price_minor }, service_ids: { from: before.map((b) => b.service_id), to: service_ids },
+    } });
     return { ...p, service_ids };
   });
 }

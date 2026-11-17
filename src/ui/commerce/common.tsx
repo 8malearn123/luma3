@@ -45,9 +45,9 @@ export function OffsetPager({ offset, limit, total, onChange }: { offset: number
   const page = Math.floor(offset / limit) + 1, pages = Math.ceil(total / limit);
   return (
     <nav aria-label="pagination" className="mt-3 flex items-center justify-between text-sm">
-      <button className="rounded-lg px-3 py-1.5 hover:bg-luma-100 disabled:opacity-40" disabled={offset === 0} onClick={() => onChange(Math.max(0, offset - limit))}>{t('pagination.prev')}</button>
+      <button className="rounded-lg px-3 py-1.5 hover:bg-accent-soft disabled:opacity-40" disabled={offset === 0} onClick={() => onChange(Math.max(0, offset - limit))}>{t('pagination.prev')}</button>
       <span className="text-ink-muted">{t('pagination.page', { n: `${page} / ${pages}` })}</span>
-      <button className="rounded-lg px-3 py-1.5 hover:bg-luma-100 disabled:opacity-40" disabled={offset + limit >= total} onClick={() => onChange(offset + limit)}>{t('pagination.next')}</button>
+      <button className="rounded-lg px-3 py-1.5 hover:bg-accent-soft disabled:opacity-40" disabled={offset + limit >= total} onClick={() => onChange(offset + limit)}>{t('pagination.next')}</button>
     </nav>
   );
 }

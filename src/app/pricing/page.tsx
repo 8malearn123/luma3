@@ -20,7 +20,7 @@ export default async function Pricing({ searchParams }: { searchParams: Promise<
     <>
       <SiteHeader />
       <main className="mx-auto max-w-6xl px-4 py-12">
-        <h1 className="text-center text-3xl font-semibold text-luma-900">{t('site.pricing_title')}</h1>
+        <h1 className="text-center text-3xl font-semibold text-heading">{t('site.pricing_title')}</h1>
         <p className="mt-2 text-center text-ink-muted">{t('site.pricing_sub')}</p>
         <PricingPlans data={JSON.parse(JSON.stringify(data))} promo={data.promotion_code?.valid ? code : undefined} />
       </main>

@@ -50,7 +50,7 @@ export function ActivityPage() {
   );
 }
 
-const TenantCell = ({ slug, name }: { slug: string; name: string }) => <Link className="text-luma-700 hover:underline" href={`/platform/tenants?q=${encodeURIComponent(slug)}`}>{name}</Link>;
+const TenantCell = ({ slug, name }: { slug: string; name: string }) => <Link className="text-link hover:underline" href={`/platform/tenants?q=${encodeURIComponent(slug)}`}>{name}</Link>;
 
 function BookingsTable({ path, page, setPage }: { path: string; page: number; setPage: (n: number) => void }) {
   const { t } = useI18n();

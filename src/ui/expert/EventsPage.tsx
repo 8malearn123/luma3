@@ -64,9 +64,9 @@ export function EventsPage() {
         <ul className="grid gap-3 md:grid-cols-2">
           {rows.map((r) => (
             <li key={r.id}>
-              <button type="button" onClick={() => open(r.id)} className="flex w-full flex-col gap-1 rounded-2xl border border-line bg-white p-4 text-start hover:border-luma-300 focus-visible:outline-2">
+              <button type="button" onClick={() => open(r.id)} className="flex w-full flex-col gap-1 rounded-2xl border border-line bg-surface p-4 text-start hover:border-line-strong focus-visible:outline-2">
                 <div className="flex items-start justify-between gap-2">
-                  <p className="font-semibold text-luma-900">{t(`expert.occasions.${r.occasion}`)} · <bdi>{r.customer_name}</bdi></p>
+                  <p className="font-semibold text-heading">{t(`expert.occasions.${r.occasion}`)} · <bdi>{r.customer_name}</bdi></p>
                   <Badge tone={TONE[r.status] ?? 'neutral'}>{t(`expert.events.status.${r.status}`)}</Badge>
                 </div>
                 <p className="flex items-center gap-1 text-sm"><CalendarClock className="size-4 text-ink-muted" aria-hidden />{when(r.starts_at)}</p>
@@ -115,11 +115,11 @@ function EventDrawer({ id, onClose, onChanged }: { id: string; onClose: () => vo
                   <dt className="text-ink-muted">{t('expert.events.when')}</dt><dd>{when(e.starts_at)}{e.ends_at ? ` → ${when(e.ends_at)}` : ''}</dd>
                   <dt className="text-ink-muted">{t('expert.events.where')}</dt><dd>{t(`expert.events.location.${e.location_type}`)}{e.location_text ? ` — ${e.location_text}` : ''}</dd>
                   <dt className="text-ink-muted">{t('expert.events.people_label')}</dt><dd>{e.people_count}</dd>
-                  <dt className="text-ink-muted">{t('expert.events.customer')}</dt><dd><bdi>{e.customer.display_name}</bdi>{e.contact_phone || e.customer.phone ? <> · <a dir="ltr" className="text-luma-700 underline" href={`tel:${e.contact_phone ?? e.customer.phone}`}>{e.contact_phone ?? e.customer.phone}</a></> : null}</dd>
+                  <dt className="text-ink-muted">{t('expert.events.customer')}</dt><dd><bdi>{e.customer.display_name}</bdi>{e.contact_phone || e.customer.phone ? <> · <a dir="ltr" className="text-link underline" href={`tel:${e.contact_phone ?? e.customer.phone}`}>{e.contact_phone ?? e.customer.phone}</a></> : null}</dd>
                   {e.services.length ? <><dt className="text-ink-muted">{t('expert.events.services')}</dt><dd>{e.services.map((s) => pick(s.name_ar, s.name_en)).join('، ')}</dd></> : null}
                   {e.staff_name ? <><dt className="text-ink-muted">{t('expert.events.specialist')}</dt><dd>{e.staff_name}</dd></> : null}
                 </dl>
-                {e.notes ? <p className="whitespace-pre-line rounded-lg bg-luma-50 p-3">{e.notes}</p> : null}
+                {e.notes ? <p className="whitespace-pre-line rounded-lg bg-surface-muted p-3">{e.notes}</p> : null}
                 {e.total_minor != null ? (
                   <div className="rounded-xl border border-line p-3">
                     <div className="flex justify-between"><span>{t('expert.events.total')}</span><span dir="ltr" className="font-semibold">{money(e.total_minor)}</span></div>
@@ -134,7 +134,7 @@ function EventDrawer({ id, onClose, onChanged }: { id: string; onClose: () => vo
                 {e.cancel_reason ? <Alert tone="warn">{t(`expert.events.cancelled_by.${e.cancel_source ?? 'business'}`)}: {e.cancel_reason}</Alert> : null}
                 {e.payments.length ? (
                   <div><p className="mb-1 font-medium">{t('expert.events.payments')}</p>
-                    <ul className="flex flex-col gap-1">{e.payments.map((p) => <li key={p.id} className="flex justify-between rounded-md bg-luma-50 px-2 py-1"><span>{t(`expert.events.pay_kind.${p.kind}`)} · {t(`expert.events.pay_status.${p.status}`)}</span><span dir="ltr">{money(p.amount_minor)}</span></li>)}</ul>
+                    <ul className="flex flex-col gap-1">{e.payments.map((p) => <li key={p.id} className="flex justify-between rounded-md bg-surface-muted px-2 py-1"><span>{t(`expert.events.pay_kind.${p.kind}`)} · {t(`expert.events.pay_status.${p.status}`)}</span><span dir="ltr">{money(p.amount_minor)}</span></li>)}</ul>
                   </div>
                 ) : null}
                 {complete.error ? <p role="alert" className="text-danger">{msg(complete.error)}</p> : null}

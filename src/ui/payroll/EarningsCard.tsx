@@ -57,7 +57,7 @@ export function EarningsCard() {
               <ul className="flex flex-col gap-1">
                 {q.data.slips.map((s) => (
                   <li key={s.id} className="flex items-center justify-between gap-2">
-                    <a href={access.api(`/payroll/slips/${s.id}`)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-luma-700 hover:underline">
+                    <a href={access.api(`/payroll/slips/${s.id}`)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-link hover:underline">
                       <FileText className="size-3.5" aria-hidden />{monthLabel(s.month)}
                     </a>
                     <span className="flex items-center gap-2"><span dir="ltr">{money(s.net_minor)}</span><Badge tone={s.paid_at ? 'ok' : 'neutral'}>{s.paid_at ? t('payroll.sheet.paid') : t('payroll.sheet.unpaid')}</Badge></span>

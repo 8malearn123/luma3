@@ -85,7 +85,7 @@ export function InstagramConnectionField({ slug }: { slug: string }) {
       {s ? (
         <div className="flex flex-wrap items-center gap-2 text-xs">
           <Badge tone={s.status === 'connected' ? 'ok' : s.status === 'error' ? 'danger' : 'neutral'}>{t(`expert.ig.status.${s.status}`)}</Badge>
-          {s.effective_handle ? <a className="inline-flex items-center gap-1 text-luma-700 underline" href={`https://www.instagram.com/${s.effective_handle}/`} target="_blank" rel="noreferrer">@{s.effective_handle}<ExternalLink className="size-3" aria-hidden /></a> : null}
+          {s.effective_handle ? <a className="inline-flex items-center gap-1 text-link underline" href={`https://www.instagram.com/${s.effective_handle}/`} target="_blank" rel="noreferrer">@{s.effective_handle}<ExternalLink className="size-3" aria-hidden /></a> : null}
         </div>
       ) : null}
       {s && !s.provider_configured ? <p className="text-xs text-ink-muted">{t('expert.ig.not_configured')}</p> : null}

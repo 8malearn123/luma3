@@ -38,6 +38,24 @@ Salons, beauty centers and spas have no entry, so they get the identity profile.
 - **What the map does not change.** The browser tab `<title>` of dashboard pages comes from static `metadata` and is not re-labelled. The visible page titles are.
 - **Overview page.** It is owned by another work stream. Its `nav.*` links are re-labelled automatically by `I18nLabelMap`, and `workspaceLabelKey()` is there if it needs anything more.
 
+### 1.1 Freelancer workspace rules, enforced on the server (LUMA-AUDIT-014, owner decision R5 of 2026-11-17)
+
+Hiding a nav item is not authorization. `src/server/tenancy/workspace-mode.ts` is applied when the tenant access is resolved (`resolveTenantAccess`), so pages, nav and every API route that checks a capability follow the same rule:
+
+| Expert workspace | Rule | Server effect |
+|---|---|---|
+| Hosting (offering spaces for rent) | never (salon feature; she books spaces through «احجزي مساحة عمل», `workspace.book`, unaffected) | `hosting.view` / `hosting.manage` removed → `/hosting/*` APIs 403 |
+| Group classes | never | `POST /group-sessions` → 403 `not_available` |
+| «مساعداتي» (team: specialists, working schedule, logins & invitations) | always, so she can add an assistant | unchanged |
+| Payroll, attendance, leave, staff files, HR requests | only while she has **another active staff member** (an active staff profile not linked to the owner, or another active membership) | `payroll.*`, `attendance.*`, `leave.*`, `hr.request`, `hr.configure`, `staff_file.manage` removed while solo; `/leave` and `/hr/requests*` (which also accept `schedule.manage`) → 403 `not_available`. Data is kept and reappears when an assistant is active again |
+| Branches | solo: one studio — the settings tab shows her single studio (address, hours) without «إضافة فرع» or the branch-limit banner; the overview hides the branch-limit nudge | `POST /branches` → 403 `not_available` while solo |
+
+A hidden page opened by URL (`/hosting`, `/groups`, `/payroll`) shows «غير متاح لنشاطك» (`src/ui/expert/NotAvailable.tsx`), not a permission error. `clientAccess().solo` tells the UI the mode. Salons and other types are unaffected.
+
+**Own schedule.** Whoever has `schedule.manage` (the owner, a freelancer, a manager with a staff profile) edits her own weekly hours, date exceptions and blocked time on «جدولي» (`/me`) with the same editor as the team schedule (`ScheduleTab ownOnly`). The read-only view with «تواصلي مع الإدارة لتعديل جدولك» is only for staff who cannot change schedules. The audit's inconsistency was: the studio's opening hours (settings → branch hours) were editable while her own staff hours on «جدولي» were read-only; both are now editable by her, and «جدولي» edits the hours that drive her bookable times.
+
+Tests: `tests/integration/expert-solo-mode.test.ts`, `tests/e2e/loom-and-expert.spec.ts` (freelancer journey).
+
 ## 2. Event bookings with a deposit
 
 ### Lifecycle

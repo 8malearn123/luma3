@@ -1,0 +1,22 @@
+# LUMA-AUDIT-001 reproduction (tests/integration, in-process route handlers, test data)
+## Base 66d9d74
+VERCEL+NEON defaults: {"APP_ENV":"review","DEV_OTP_ECHO":"true","AUTH_SECRET_derived":true}
+VERCEL embedded defaults: {"APP_ENV":"review","DEV_OTP_ECHO":"true","DEMO_MODE":"true"}
+review recovery response: 202 {"data":{"delivery":{"status":"simulated","channel":"email","dev_code":"362917"}}}
+review dev-outbox status: 200 messages: 2
+## After fix
+VERCEL+NEON defaults: {"APP_ENV":"review","AUTH_SECRET_derived":false}
+VERCEL embedded defaults: {"APP_ENV":"review"}
+review recovery response: 202 {"data":{"delivery":{"status":"unavailable","channel":"email"}}}
+review dev-outbox status: 404 messages: {"error":{"code":"not_found","message":"resource not found","request_id":"…"}}
+
+# LUMA-AUDIT-002: tests/integration/platform-mfa-routes.test.ts on base (route.ts/guard.ts/policies reverted)
+⎯⎯⎯⎯⎯⎯ Failed Tests 47 ⎯⎯⎯⎯⎯⎯⎯
+      Tests  47 failed | 62 passed (109)
+Real MFA bypasses on base (the 8 policy route modules, route({auth:'platform'})):
+  GET /platform/policies/rules, /appeals, /decisions, /escalations -> 200 with data for an unverified platform session
+  POST /platform/policies/rules, decisions, appeals/[id]/resolve, decisions/[id]/end, escalations/[id]/dismiss, PATCH rules/[id]
+    -> reached input validation (422) and, with valid input + password step-up, execute without MFA
+Other 39 base failures: platformRoute() parsed the request body before its MFA check, so an unverified
+session got 422 validation details instead of 403 (no bypass; schema probing only). Now route() checks
+session -> platform role (404) -> MFA (403 mfa_required) -> step-up -> input. After the fix: 109/109 pass.

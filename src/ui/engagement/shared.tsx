@@ -15,8 +15,8 @@ import { cx } from '../components/cx';
  * Confirmation that requires a written reason (void, reverse, cancel). Keeps the
  * text after a failure and shows the server's error inside the dialog.
  */
-export function ReasonDialog({ open, onClose, onConfirm, title, body, confirmLabel, danger = true, minLength = 3, maxLength = 300 }: {
-  open: boolean; onClose: () => void; onConfirm: (reason: string) => Promise<unknown>; title: ReactNode; body?: ReactNode; confirmLabel?: string; danger?: boolean; minLength?: number; maxLength?: number;
+export function ReasonDialog({ open, onClose, onConfirm, title, body, confirmLabel, cancelLabel, danger = true, minLength = 3, maxLength = 300 }: {
+  open: boolean; onClose: () => void; onConfirm: (reason: string) => Promise<unknown>; title: ReactNode; body?: ReactNode; confirmLabel?: string; cancelLabel?: string; danger?: boolean; minLength?: number; maxLength?: number;
 }) {
   const { t } = useI18n();
   const msg = useErrorMessage();
@@ -30,7 +30,7 @@ export function ReasonDialog({ open, onClose, onConfirm, title, body, confirmLab
   }
   return (
     <Dialog open={open} onClose={() => { if (!busy) onClose(); }} title={title} footer={<>
-      <Button variant="ghost" onClick={onClose} disabled={busy}>{t('actions.cancel')}</Button>
+      <Button variant="ghost" onClick={onClose} disabled={busy}>{cancelLabel ?? t('actions.cancel')}</Button>
       <Button variant={danger ? 'danger' : 'primary'} loading={busy} disabled={!ok} onClick={go}>{confirmLabel ?? t('actions.confirm')}</Button>
     </>}>
       <div className="flex flex-col gap-3">
@@ -57,8 +57,8 @@ export function CustomerPicker({ value, onChange, label }: { value: CustomerLite
   if (!canSearch) return <p className="text-sm text-ink-muted">{t('fe.common.no_customer_search')}</p>;
   if (value) {
     return (
-      <div className="flex items-center justify-between gap-2 rounded-lg border border-luma-300 bg-luma-50 px-3 py-2">
-        <span className="flex min-w-0 items-center gap-2"><UserRound className="size-4 shrink-0 text-luma-700" aria-hidden />
+      <div className="flex items-center justify-between gap-2 rounded-lg border border-line-strong bg-surface-muted px-3 py-2">
+        <span className="flex min-w-0 items-center gap-2"><UserRound className="size-4 shrink-0 text-link" aria-hidden />
           <span className="min-w-0"><span className="block truncate font-medium">{value.display_name}</span>{value.phone ? <span dir="ltr" className="block text-xs text-ink-muted">{value.phone}</span> : null}</span>
         </span>
         <Button size="sm" variant="ghost" onClick={() => onChange(null)}>{t('fe.common.change')}</Button>
@@ -79,10 +79,10 @@ export function CustomerPicker({ value, onChange, label }: { value: CustomerLite
         list.isLoading ? <Spinner className="m-2" /> : list.error ? <p className="text-xs text-danger">{t('states.error')}</p> : !list.data?.items.length ? (
           <p className="text-xs text-ink-muted">{t('fe.common.no_customers')}</p>
         ) : (
-          <ul className="flex flex-col divide-y divide-line rounded-lg border border-line bg-white" role="listbox" aria-label={t('fe.common.customer')}>
+          <ul className="flex flex-col divide-y divide-line rounded-lg border border-line bg-surface" role="listbox" aria-label={t('fe.common.customer')}>
             {list.data.items.map((c) => (
               <li key={c.id}>
-                <button type="button" role="option" aria-selected={false} onClick={() => { onChange(c); setQ(''); }} className="flex w-full items-center justify-between gap-2 px-3 py-2 text-start text-sm hover:bg-luma-50">
+                <button type="button" role="option" aria-selected={false} onClick={() => { onChange(c); setQ(''); }} className="flex w-full items-center justify-between gap-2 px-3 py-2 text-start text-sm hover:bg-surface-muted">
                   <span className="min-w-0 truncate">{c.display_name}</span>
                   <span className="flex shrink-0 items-center gap-2">
                     {c.phone ? <span dir="ltr" className="text-xs text-ink-muted">{c.phone}</span> : null}

@@ -56,7 +56,7 @@ export function SecurityPanel() {
           <ul className="divide-y divide-line">
             {q.data!.map((s) => (
               <li key={s.id} className="flex flex-wrap items-center gap-3 py-3 text-sm">
-                <MonitorSmartphone className="size-5 text-luma-500" aria-hidden />
+                <MonitorSmartphone className="size-5 text-brand" aria-hidden />
                 <div className="min-w-0 flex-1">
                   <p className="font-medium">{deviceLabel(s.user_agent) ?? t('account.security.unknown_device')} {s.current ? <Badge tone="ok">{t('account.security.current')}</Badge> : null}</p>
                   <p className="text-xs text-ink-muted">{t('account.security.last_seen')}: {formatDateTime(s.last_seen_at, { locale, timeFormat })}{s.ip ? <> · <span dir="ltr">{s.ip}</span></> : null}</p>

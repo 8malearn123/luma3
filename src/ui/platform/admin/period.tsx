@@ -25,7 +25,7 @@ export function PeriodPicker({ value, onChange }: { value: PeriodValue; onChange
     <div className="flex flex-wrap items-end gap-2" role="group" aria-label={t('admin.period.label')}>
       {presets.map(([k, v]) => (
         <button key={k} type="button" onClick={() => { setDraft(v); onChange(v); }}
-          className={`rounded-full border px-3 py-1.5 text-xs ${value.from === v.from && value.to === v.to ? 'border-luma-700 bg-luma-700 text-white' : 'border-line hover:bg-luma-50'}`}>
+          className={`rounded-full border px-3 py-1.5 text-xs ${value.from === v.from && value.to === v.to ? 'border-primary bg-primary text-on-primary' : 'border-line hover:bg-surface-muted'}`}>
           {t(`admin.period.${k}`)}
         </button>
       ))}
@@ -33,7 +33,7 @@ export function PeriodPicker({ value, onChange }: { value: PeriodValue; onChange
         <Input type="date" className="w-36" value={draft.from} onChange={(e) => setDraft({ ...draft, from: e.target.value })} /></label>
       <label className="flex items-center gap-1 text-xs text-ink-muted">{t('admin.period.to')}
         <Input type="date" className="w-36" value={draft.to} onChange={(e) => setDraft({ ...draft, to: e.target.value })} /></label>
-      <button type="button" className="rounded-lg bg-luma-100 px-3 py-2 text-xs font-medium text-luma-800 hover:bg-luma-200" onClick={() => draft.from && draft.to && onChange(draft)}>{t('admin.period.apply')}</button>
+      <button type="button" className="rounded-lg bg-accent-soft px-3 py-2 text-xs font-medium text-heading hover:bg-highlight" onClick={() => draft.from && draft.to && onChange(draft)}>{t('admin.period.apply')}</button>
     </div>
   );
 }
@@ -42,7 +42,7 @@ export function PeriodPicker({ value, onChange }: { value: PeriodValue; onChange
 export function CsvLink({ href, label }: { href: string; label?: string }) {
   const { t } = useI18n();
   return (
-    <a href={href} download className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-white px-3 py-1.5 text-sm hover:bg-luma-50">
+    <a href={href} download className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-surface px-3 py-1.5 text-sm hover:bg-surface-muted">
       <Download className="size-4" aria-hidden />{label ?? t('admin.export_csv')}
     </a>
   );

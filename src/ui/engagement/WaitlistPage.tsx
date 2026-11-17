@@ -51,10 +51,10 @@ export function WaitlistPage() {
             const o = e.latest_offer;
             const live = o && o.status === 'pending' && new Date(o.expires_at) > new Date();
             return (
-              <li key={e.id} className="rounded-2xl border border-line bg-white p-4">
+              <li key={e.id} className="rounded-2xl border border-line bg-surface p-4">
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <p className="font-semibold text-luma-900">{filter === 'open' ? <span className="me-1 text-xs text-ink-muted">#{idx + 1}</span> : null}{e.customer_name}</p>
+                    <p className="font-semibold text-heading">{filter === 'open' ? <span className="me-1 text-xs text-ink-muted">#{idx + 1}</span> : null}{e.customer_name}</p>
                     <p className="text-sm">{pick(e.service_name_ar, e.service_name_en)}{e.staff_name ? ` · ${t('booking.flow.with', { name: e.staff_name })}` : ` · ${t('booking.flow.any_staff')}`}</p>
                   </div>
                   <span className="flex flex-wrap items-center gap-1.5">
@@ -69,7 +69,7 @@ export function WaitlistPage() {
                   <div className="flex gap-2"><dt className="text-ink-muted">{t('engagement.waitlist.offers')}:</dt><dd>{e.offers}</dd></div>
                 </dl>
                 {o ? (
-                  <div className={`mt-3 rounded-lg border p-3 text-sm ${live ? 'border-warn/30 bg-warn-bg' : 'border-line bg-luma-50'}`}>
+                  <div className={`mt-3 rounded-lg border p-3 text-sm ${live ? 'border-warn/30 bg-warn-bg' : 'border-line bg-surface-muted'}`}>
                     <p className="flex items-center gap-1.5 font-medium"><Clock className="size-4" aria-hidden />{t('fe.waitlist.offered_slot')}: {when(o.slot_start)} · <bdi>{t('booking.flow.with', { name: o.staff_name })}</bdi></p>
                     <p className="mt-0.5 text-xs text-ink-muted">
                       {live ? t('fe.waitlist.expires_at', { time: when(o.expires_at) }) : `${t('fe.waitlist.offer_status')}: ${t(`fe.offer_status.${o.status === 'pending' ? 'expired' : o.status}`)}`}

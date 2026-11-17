@@ -55,7 +55,7 @@ export function ChainSteps({ chain, current, status }: { chain: string[]; curren
         return (
           <span key={`${r}-${i}`} className="inline-flex items-center gap-1">
             {i > 0 ? <span aria-hidden className="text-ink-muted">←</span> : null}
-            <span className={here ? 'rounded-md bg-warn-bg px-1.5 py-0.5 font-medium text-warn' : done ? 'rounded-md bg-ok-bg px-1.5 py-0.5 text-ok' : 'rounded-md bg-luma-50 px-1.5 py-0.5 text-ink-muted'}>
+            <span className={here ? 'rounded-md bg-warn-bg px-1.5 py-0.5 font-medium text-warn' : done ? 'rounded-md bg-ok-bg px-1.5 py-0.5 text-ok' : 'rounded-md bg-surface-muted px-1.5 py-0.5 text-ink-muted'}>
               {t(`hr.roles.${r}`)}
             </span>
           </span>

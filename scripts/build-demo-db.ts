@@ -6,8 +6,10 @@ import path from 'node:path';
  * Builds the embedded demo database (DB_DRIVER=pglite): migrates a fresh
  * in-process PostgreSQL, loads the demo data with the regular seed, and saves a
  * compressed snapshot to .demo-db/luma.tar.gz. The server starts from that
- * snapshot, so a deployment needs no database at all. Demo passwords are random
- * and written nowhere (sign in through password recovery).
+ * snapshot, so a deployment needs no database at all. Demo accounts sign in
+ * with the password given as the DEMO_ACCOUNT_PASSWORD build secret (R3: no
+ * one-click sign-in and no on-screen codes on a deployed build); without it the
+ * passwords are random and written nowhere, so nobody can sign in.
  */
 const outDir = path.join(process.cwd(), '.demo-db');
 mkdirSync(outDir, { recursive: true });
@@ -25,6 +27,8 @@ Object.assign(process.env, {
   STORAGE_DRIVER: 'db',
   SEED_CREDENTIALS_JSON: path.join(outDir, '.seed-credentials-discarded.json'),
 });
+
+if (!process.env.DEMO_ACCOUNT_PASSWORD) console.warn('[demo-db] DEMO_ACCOUNT_PASSWORD is not set: demo accounts get random, unrecorded passwords (nobody can sign in).');
 
 const t0 = Date.now();
 const { createPglite, pgliteSqlClient, registerPglite } = await import('../src/server/db/pglite');

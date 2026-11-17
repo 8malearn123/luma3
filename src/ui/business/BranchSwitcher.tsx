@@ -36,10 +36,10 @@ export function BranchSwitcher() {
   };
   return (
     <label className="inline-flex items-center gap-1 text-sm">
-      <MapPin className="size-4 text-luma-500" aria-hidden />
+      <MapPin className="size-4 text-brand" aria-hidden />
       <span className="sr-only">{t('business.branch.label')}</span>
       <select value={d.selected ?? 'all'} onChange={(e) => change(e.target.value)} data-testid="branch-switcher"
-        className="h-8 max-w-[11rem] rounded-lg border border-line bg-white px-2 text-sm">
+        className="h-8 max-w-[11rem] rounded-lg border border-line bg-surface px-2 text-sm">
         {d.allow_all ? <option value="all">{d.restricted ? t('business.branch.all_mine') : t('business.branch.all')}</option> : null}
         {d.branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
       </select>

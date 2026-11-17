@@ -4,7 +4,7 @@ import { env } from '../env';
 import { AppError, Errors } from '../http/errors';
 import { audit, type AuditActor } from '../infra/audit';
 import { channelStatus, sendTransactional, type DeliveryResult } from '../infra/messaging';
-import { enforce } from '../infra/rate-limit';
+import { enforce, hit, peek, resetKey } from '../infra/rate-limit';
 import { parseIdentifier } from '@/shared/phone';
 import { hashPassword, hashToken, newOtp, newToken, safeEqual, verifyPassword } from './crypto';
 
@@ -16,15 +16,30 @@ export const EPHEMERAL_SESSION_ABSOLUTE_HOURS = 24;
 const EPHEMERAL_SESSION_IDLE_HOURS = 12;
 const idleMs = (persistent: boolean) => (persistent ? SESSION_IDLE_DAYS * 86_400_000 : EPHEMERAL_SESSION_IDLE_HOURS * 3_600_000);
 const CODE_TTL_MIN = 10;
-const LOCK_AFTER_FAILURES = 8;
-const LOCK_MINUTES = 15;
+/**
+ * Sign-in throttling (LUMA-AUDIT-027). Nobody can lock someone else out with a
+ * handful of wrong passwords:
+ *  - per address: 30 attempts / 15 min (any identifiers);
+ *  - per address + identifier: 5 failures / 15 min, then that pair waits;
+ *  - per account (distributed guessing from many addresses): after 20 failures
+ *    within an hour, every further failure adds an exponential delay (2 s, 4 s,
+ *    … capped at 15 min) during which sign-in is refused — except from an
+ *    address this account recently signed in from, so the owner is not locked
+ *    out by strangers. A successful sign-in or password reset clears it.
+ */
+export const LOGIN_LIMITS = {
+  ipAttempts: 30, ipWindowSec: 900,
+  pairFailures: 5, pairWindowSec: 900,
+  accountFailures: 20, accountWindowSec: 3600, accountMaxDelaySec: 900,
+  knownAddressDays: 30,
+} as const;
 export const STEP_UP_WINDOW_MIN = 10;
 
 export type Purpose = 'verify_email' | 'verify_phone' | 'login' | 'recovery' | 'step_up';
 
 export type CodeDelivery = {
   status: DeliveryResult['status'];
-  /** Present ONLY when DEV_OTP_ECHO is enabled outside production. */
+  /** Present ONLY in local development with DEV_OTP_ECHO (never on any deployed build). */
   dev_code?: string;
   channel: 'email' | 'sms' | 'whatsapp';
 };
@@ -77,6 +92,15 @@ export async function consumeCode(destination: string, purpose: Purpose, code: s
     .where('id', '=', row.id).where('consumed_at', 'is', null).returning('id').executeTakeFirst();
   if (!consumed) throw Errors.invalid('code_invalid', 'The code is invalid or has expired');
   return { userId: row.user_id };
+}
+
+/**
+ * Whether one-time codes can reach people at all on this build (a connected
+ * provider, or the local development echo). False on a deployed build without
+ * a messaging provider: registration and recovery are then unavailable (R3).
+ */
+export function codeDeliveryAvailable(): boolean {
+  return channelStatus('email') !== 'disconnected' || channelStatus('sms') !== 'disconnected';
 }
 
 // ── Registration ────────────────────────────────────────────────────────────
@@ -151,32 +175,52 @@ export async function verifyContact(input: { identifier: string; code: string; i
 
 // ── Login / sessions ────────────────────────────────────────────────────────
 export async function login(input: { identifier: string; password: string; ip: string | null; userAgent: string | null; remember?: boolean }) {
+  const L = LOGIN_LIMITS;
   const id = parseIdentifier(input.identifier);
-  await enforce(`login:ip:${input.ip ?? 'unknown'}`, 30, 900);
+  const ipKey = input.ip ?? 'unknown';
+  await enforce(`login:ip:${ipKey}`, L.ipAttempts, L.ipWindowSec);
   if (!id) throw Errors.invalid('invalid_credentials', 'Incorrect sign-in details');
-  await enforce(`login:id:${id.value}`, 10, 900);
+  const pairKey = `login:fail:${ipKey}:${id.value}`;
+  const pair = await peek(pairKey, L.pairWindowSec);
+  if (pair.count >= L.pairFailures) throw Errors.rateLimited(pair.retryAfterSec);
 
   const user = await db().selectFrom('users').selectAll().where(id.kind === 'email' ? 'email' : 'phone', '=', id.value).executeTakeFirst();
-  if (user?.locked_until && user.locked_until > new Date()) {
+  if (user?.locked_until && user.locked_until > new Date() && !(await knownAddress(user.id, input.ip))) {
     throw new AppError(429, 'account_locked', 'Too many failed attempts. Try again later or reset your password.', {
       retry_after_sec: Math.ceil((user.locked_until.getTime() - Date.now()) / 1000),
     });
   }
   const ok = await verifyPassword(input.password, user?.password_hash);
   if (!user || !ok || user.status !== 'active') {
+    await hit(pairKey, L.pairFailures, L.pairWindowSec);
     if (user) {
-      const failures = user.failed_login_count + 1;
+      const acct = await hit(`login:acct-fail:${user.id}`, L.accountFailures, L.accountWindowSec);
+      const over = acct.count - L.accountFailures;
       await db().updateTable('users').set({
-        failed_login_count: failures,
-        locked_until: failures >= LOCK_AFTER_FAILURES ? new Date(Date.now() + LOCK_MINUTES * 60_000) : null,
+        failed_login_count: acct.count,
+        locked_until: over >= 0 ? new Date(Date.now() + Math.min(L.accountMaxDelaySec, 2 ** Math.min(over + 1, 20)) * 1000) : null,
       }).where('id', '=', user.id).execute();
     }
     throw Errors.invalid('invalid_credentials', 'Incorrect sign-in details');
   }
-  await db().updateTable('users').set({ failed_login_count: 0, locked_until: null }).where('id', '=', user.id).execute();
+  await clearLoginFailures(user.id, pairKey);
   const session = await createSession(user.id, input.ip, input.userAgent, undefined, { persistent: input.remember ?? false });
   await withCentral((trx) => audit(trx, { userId: user.id, kind: 'user', ip: input.ip }, 'auth.login', { targetType: 'session', targetId: session.id, data: { remember: session.persistent } }));
   return { ...session, userId: user.id };
+}
+
+/** True when this account signed in successfully from this address recently (a session was created from it). */
+async function knownAddress(userId: string, ip: string | null) {
+  if (!ip) return false;
+  const row = await db().selectFrom('sessions').select('id').where('user_id', '=', userId).where('ip', '=', ip)
+    .where('created_at', '>', new Date(Date.now() - LOGIN_LIMITS.knownAddressDays * 86_400_000)).limit(1).executeTakeFirst();
+  return !!row;
+}
+
+async function clearLoginFailures(userId: string, pairKey?: string) {
+  await db().updateTable('users').set({ failed_login_count: 0, locked_until: null }).where('id', '=', userId).execute();
+  await resetKey(`login:acct-fail:${userId}`);
+  if (pairKey) await resetKey(pairKey);
 }
 
 /**
@@ -374,6 +418,7 @@ export async function resetPassword(input: { identifier: string; code: string; n
     await trx.updateTable('sessions').set({ revoked_at: new Date(), revoke_reason: 'password_reset' }).where('user_id', '=', user.id).where('revoked_at', 'is', null).execute();
     await audit(trx, { userId: user.id, kind: 'user', ip: input.ip }, 'auth.password_reset', { targetType: 'user', targetId: user.id });
   });
+  await resetKey(`login:acct-fail:${user.id}`);
 }
 
 export async function changePassword(input: { userId: string; sessionId: string; currentPassword: string; newPassword: string; ip: string | null }) {
@@ -405,8 +450,8 @@ export function requireStepUp(u: SessionUser) {
   if (!hasRecentStepUp(u)) throw new AppError(401, 'reauthentication_required', 'Please confirm your password to continue');
 }
 
-/** Development-only dev outbox reader (labelled in the UI). */
+/** Local-development-only dev outbox reader (labelled in the UI). Absent (404) on every deployed build. */
 export async function devOutbox(destination: string) {
-  if (!env().devOtpEcho) throw Errors.notFound();
+  if (env().isDeployed || !env().devOtpEcho) throw Errors.notFound();
   return db().selectFrom('dev_message_outbox').selectAll().where('destination', '=', destination).orderBy('created_at', 'desc').limit(5).execute();
 }

@@ -31,7 +31,7 @@ export function CustomerPicker({ value, onChange, label }: { value: { id: string
     return (
       <div className="flex flex-col gap-1.5">
         <span className="text-sm font-medium">{label}</span>
-        <div className="flex items-center justify-between rounded-lg border border-line bg-luma-50 px-3 py-2 text-sm">
+        <div className="flex items-center justify-between rounded-lg border border-line bg-surface-muted px-3 py-2 text-sm">
           <span>{value.name}</span>
           <IconButton label={t('actions.clear')} onClick={() => onChange(null)}><Trash2 className="size-4" /></IconButton>
         </div>
@@ -43,10 +43,10 @@ export function CustomerPicker({ value, onChange, label }: { value: { id: string
       <Field label={label}>{(p) => <Input {...p} type="search" value={q} placeholder={t('policy.pick_customer')} onChange={(e) => setQ(e.target.value)} />}</Field>
       {res.isFetching ? <Spinner /> : null}
       {res.data?.items.length ? (
-        <ul className="rounded-lg border border-line bg-white" role="listbox" aria-label={label}>
+        <ul className="rounded-lg border border-line bg-surface" role="listbox" aria-label={label}>
           {res.data.items.map((c) => (
             <li key={c.id}>
-              <button type="button" role="option" aria-selected={false} className="flex w-full justify-between px-3 py-2 text-start text-sm hover:bg-luma-50" onClick={() => { onChange({ id: c.id, name: c.display_name }); setQ(''); }}>
+              <button type="button" role="option" aria-selected={false} className="flex w-full justify-between px-3 py-2 text-start text-sm hover:bg-surface-muted" onClick={() => { onChange({ id: c.id, name: c.display_name }); setQ(''); }}>
                 <span>{c.display_name}</span><span dir="ltr" className="text-ink-muted">{c.phone ?? ''}</span>
               </button>
             </li>
@@ -269,7 +269,7 @@ export function IncidentDrawer({ id, onClose, onCreateDecision }: { id: string; 
             {d.reviews.length ? (
               <ol className="flex flex-col gap-2 text-sm">
                 {d.reviews.map((r) => (
-                  <li key={r.id} className="border-s-2 border-luma-200 ps-3">
+                  <li key={r.id} className="border-s-2 border-highlight ps-3">
                     <p className="text-xs text-ink-muted">{fmt(r.created_at)} · {r.reviewer_scope === 'platform' ? t('policy.platform_reviewer') : r.reviewer_name ?? '—'}</p>
                     <p>{t(`policy.statuses.${r.from_status}`)} → {t(`policy.statuses.${r.to_status}`)}</p>
                     <p className="text-ink-muted">{r.note}</p>

@@ -33,7 +33,9 @@ export async function usageFor(trx: Tx, tenantId: string): Promise<Usage> {
       (select count(*)::int from services where tenant_id = ${tenantId} and archived_at is null) as "limit.services",
       (select count(*)::int from products where tenant_id = ${tenantId} and status <> 'archived') as "limit.products",
       (select count(*)::int from store_pages where tenant_id = ${tenantId} and kind = 'custom' and status = 'active') as "limit.custom_pages",
-      (select count(*)::int from ai_runs where tenant_id = ${tenantId} and status = 'succeeded' and created_at >= date_trunc('month', now())) as "limit.ai_runs_monthly"
+      (select count(*)::int from ai_runs where tenant_id = ${tenantId} and status = 'succeeded' and created_at >= date_trunc('month', now())) as "limit.ai_runs_monthly",
+      (select count(*)::int from stock_locations where tenant_id = ${tenantId} and is_active and not is_default) as "limit.stock_locations",
+      (select count(*)::int from workspace_listings where tenant_id = ${tenantId} and status = 'published') as "limit.hosting_spaces"
   `.execute(trx);
   const row = r.rows[0] ?? {};
   return Object.fromEntries(LIMIT_KEYS.map((k) => [k, Number(row[k] ?? 0)])) as Usage;
@@ -169,6 +171,12 @@ export async function changePlan(access: TenantAccess, actor: AuditActor, input:
       throw new AppError(409, 'downgrade_confirmation_required', 'This plan has lower limits than what you currently use. Confirm to continue; no data will be deleted.', { overages });
     }
     const direction = to.sort > from.sort ? 'upgrade' : 'downgrade';
+    // A paid upgrade is never activated without a verified payment or an explicit platform grant
+    // (platformSubscriptionAction 'change_plan'). No billing provider is connected yet, so outside the
+    // trial an owner's upgrade is refused; during the trial nothing is charged, so the change is allowed.
+    if (direction === 'upgrade' && sub.status !== 'trialing') {
+      throw new AppError(409, 'upgrade_requires_payment', 'Upgrading needs a payment, which is not available yet. Contact LUMA to upgrade your plan.', { from_plan: from.code, to_plan: to.code });
+    }
     const state = overageState(overages);
     await trx.updateTable('subscriptions').set({ plan_id: to.id, overage_state: state ? JSON.stringify(state) : null, version: sql`version + 1` }).where('id', '=', sub.id).execute();
     await recordEvent(trx, { tenantId: access.tenantId, subscriptionId: sub.id, kind: 'plan_changed', from: sub.status, to: sub.status, actorUserId: actor.userId, data: { from_plan: from.code, to_plan: to.code, direction, overages } });

@@ -37,6 +37,8 @@ export function clientAccess(a: TenantAccess) {
   return {
     tenantId: a.tenantId, slug: a.slug, name: a.name, status: a.status, businessType: a.businessType, timezone: a.timezone, currency: a.currency,
     role: a.role, staffProfileId: a.staffProfileId, capabilities: [...a.capabilities] as string[], readOnly: a.readOnly, support: a.role === 'support',
+    /** Solo freelancer (workspace-mode.ts): single studio, no team-admin areas until an assistant exists. */
+    solo: !!a.workspace?.solo,
     plan: { code: a.plan.planCode, status: a.plan.subscriptionStatus, features: Object.fromEntries([...a.plan.features].map(([k, v]) => [k, v])) },
   };
 }

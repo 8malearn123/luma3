@@ -35,10 +35,11 @@ export function useTeamCaps() {
     editStaff: access.can('staff.edit') && !access.readOnly,
     schedule: access.can('schedule.manage') || (access.can('schedule.view_own') && !!access.staffProfileId),
     manageSchedule: access.can('schedule.manage') && !access.readOnly,
-    leave: access.can('leave.approve', 'schedule.manage', 'leave.request'),
+    // R5: a solo freelancer has no leave / HR requests until an assistant exists (the server drops those capabilities too).
+    leave: access.can('leave.approve', 'schedule.manage', 'leave.request') && !access.solo,
     attendance: access.can('attendance.manage') || (access.can('attendance.own') && !!access.staffProfileId),
     members: access.can('team.manage'),
-    requests: access.can('hr.configure', 'leave.approve', 'schedule.manage') || (access.can('hr.request') && !!access.staffProfileId),
+    requests: (access.can('hr.configure', 'leave.approve', 'schedule.manage') || (access.can('hr.request') && !!access.staffProfileId)) && !access.solo,
     files: access.can('staff_file.manage'),
   };
 }
@@ -81,6 +82,7 @@ function TeamPageInner() {
 
       {tab === 'staff' ? (
         <div className="flex flex-col gap-3">
+          {access.solo ? <p className="rounded-xl bg-surface-muted p-3 text-sm text-ink-muted" data-testid="solo-team-hint">{t('workspace_mode.solo_team_hint')}</p> : null}
           <div className="flex flex-wrap items-center justify-between gap-2">
             <Checkbox label={t('catalog_team.team.show_inactive')} checked={showInactive} onChange={setShowInactive} />
             {limit ? <span className="text-xs text-ink-muted">{t('catalog_team.team.limit_note', { limit, n: (staff.data ?? []).filter((s) => s.is_active).length })}</span> : null}
@@ -93,11 +95,11 @@ function TeamPageInner() {
               {rows.map((s) => (
                 <li key={s.id}>
                   <button type="button" onClick={() => setParams({ staff: s.id })}
-                    className="flex w-full items-start gap-3 rounded-2xl border border-line bg-white p-4 text-start shadow-sm hover:border-luma-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-luma-300">
+                    className="flex w-full items-start gap-3 rounded-2xl border border-line bg-surface p-4 text-start shadow-sm hover:border-line-strong focus:outline-none focus-visible:ring-2 focus-visible:ring-line-strong">
                     {s.photo_asset_id
                       // eslint-disable-next-line @next/next/no-img-element
                       ? <img src={`/api/v1/media/${s.photo_asset_id}`} alt="" className="size-12 shrink-0 rounded-full border border-line object-cover" />
-                      : <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-luma-50"><ImageIcon className="size-5 text-luma-300" aria-hidden /></span>}
+                      : <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-surface-muted"><ImageIcon className="size-5 text-line-strong" aria-hidden /></span>}
                     <span className="min-w-0 flex-1">
                       <span className="block truncate font-medium">{pick(s.display_name, s.display_name_en)}</span>
                       <span className="block truncate text-xs text-ink-muted">{pick(s.title_ar, s.title_en) || '—'}</span>

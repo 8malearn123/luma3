@@ -23,7 +23,7 @@ export const variantInput = z.object({
   price_minor: money,
   cost_minor: money.nullable().optional(),
   is_active: z.boolean().optional(),
-  /** Only on creation: opening stock recorded as a 'receipt' movement. */
+  /** Only on creation: opening stock recorded as an 'opening' movement (at cost_minor when given). */
   initial_stock: z.number().int().min(0).max(1_000_000).optional(),
   low_stock_threshold: z.number().min(0).max(1_000_000).nullable().optional(),
 });
@@ -82,6 +82,21 @@ export const inventoryItemInput = z.object({
   low_stock_threshold: z.number().min(0).max(1_000_000).nullable().optional(),
   cost_per_unit_minor: money.nullable().optional(),
   initial_quantity: qty3.pipe(z.number().min(0).max(10_000_000)).optional(),
+  /** Where the opening quantity is (default: the branch's default location). */
+  location_id: z.string().uuid().optional(),
+  code: z.string().trim().min(1).max(40).nullable().optional(),
+  barcode: z.string().trim().min(1).max(64).nullable().optional(),
+  category: z.string().trim().max(80).nullable().optional(),
+  description: z.string().trim().max(1000).nullable().optional(),
+  image_asset_id: z.string().uuid().nullable().optional(),
+  /** e.g. "bottle": 1 storage unit = conversion_factor base units (1 bottle = 500 ml). */
+  storage_unit: z.string().trim().min(1).max(24).nullable().optional(),
+  conversion_factor: qty3.pipe(z.number().positive().max(1_000_000)).nullable().optional(),
+  is_tool: z.boolean().optional(),
+  freelancer_price_minor: money.nullable().optional(),
+  supplier_id: z.string().uuid().nullable().optional(),
+  track_batches: z.boolean().optional(),
+  track_expiry: z.boolean().optional(),
 }).strict();
 
 export const inventoryItemPatch = z.object({
@@ -90,6 +105,20 @@ export const inventoryItemPatch = z.object({
   low_stock_threshold: z.number().min(0).max(1_000_000).nullable().optional(),
   cost_per_unit_minor: money.nullable().optional(),
   is_active: z.boolean().optional(),
+  code: z.string().trim().min(1).max(40).nullable().optional(),
+  barcode: z.string().trim().min(1).max(64).nullable().optional(),
+  category: z.string().trim().max(80).nullable().optional(),
+  description: z.string().trim().max(1000).nullable().optional(),
+  image_asset_id: z.string().uuid().nullable().optional(),
+  /** e.g. "bottle": 1 storage unit = conversion_factor base units (1 bottle = 500 ml). */
+  storage_unit: z.string().trim().min(1).max(24).nullable().optional(),
+  conversion_factor: qty3.pipe(z.number().positive().max(1_000_000)).nullable().optional(),
+  is_tool: z.boolean().optional(),
+  freelancer_price_minor: money.nullable().optional(),
+  supplier_id: z.string().uuid().nullable().optional(),
+  track_batches: z.boolean().optional(),
+  track_expiry: z.boolean().optional(),
+  archived: z.boolean().optional(),
 }).strict();
 
 export const inventoryListQuery = z.object({
@@ -111,6 +140,11 @@ export const movementInput = z.discriminatedUnion('kind', [
     quantity: qty3.pipe(z.number().positive().max(10_000_000)),
     unit: z.enum(UNITS).optional(),
     reason: z.string().trim().max(500).optional(),
+    location_id: z.string().uuid().optional(),
+    /** Cost per entered unit (updates the weighted average); omitted = current average. */
+    unit_cost_minor: z.number().min(0).max(100_000_000).optional(),
+    batch_no: z.string().trim().min(1).max(60).optional(),
+    expiry_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   }).strict(),
   z.object({
     kind: z.literal('adjustment'),
@@ -120,6 +154,16 @@ export const movementInput = z.discriminatedUnion('kind', [
     reason: z.string().trim().min(3).max(500),
     /** Links a correction to a service visit whose actual usage differed from the recipe. */
     booking_item_id: z.string().uuid().optional(),
+    location_id: z.string().uuid().optional(),
+  }).strict(),
+  z.object({
+    kind: z.literal('waste'),
+    /** Positive quantity thrown away (damaged, expired, spilled). */
+    quantity: qty3.pipe(z.number().positive().max(10_000_000)),
+    unit: z.enum(UNITS).optional(),
+    reason: z.string().trim().min(3).max(500),
+    location_id: z.string().uuid().optional(),
+    batch_id: z.string().uuid().optional(),
   }).strict(),
 ]);
 export type MovementInput = z.infer<typeof movementInput>;
@@ -137,6 +181,8 @@ export const consumeInput = z.object({ booking_item_id: z.string().uuid() }).str
 // ── Physical stock counts ────────────────────────────────────────────────────
 export const stockCountInput = z.object({
   branch_id: z.string().uuid().optional(),
+  /** Count one location (default: the branch's default location). */
+  location_id: z.string().uuid().optional(),
   kind: z.enum(['retail', 'material', 'all']).default('all'),
   note: z.string().trim().max(500).optional(),
   /** Differences above this % of the system quantity are flagged; 0 flags any difference. */
@@ -195,6 +241,8 @@ export const checkoutInput = z.object({
   fulfillment_method: z.enum(['pickup', 'with_visit']).default('pickup'),
   booking_id: z.string().uuid().optional(),
   note: z.string().trim().max(500).optional(),
+  /** 'online' (full online payment) or 'on_site' (pay at pickup). Omitted: online when available, else pay at pickup. Checked server-side. */
+  payment_choice: z.enum(['online', 'on_site']).optional(),
 }).refine((v) => v.fulfillment_method !== 'with_visit' || !!v.booking_id, { message: 'Choose the visit to collect with', path: ['booking_id'] });
 export type CheckoutInput = z.infer<typeof checkoutInput>;
 

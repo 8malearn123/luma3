@@ -1,5 +1,5 @@
 import { route } from '@/server/http/route';
-import { publicTenant } from '@/server/domains/storefront-public';
+import { publicTenant, publicTenantForSale } from '@/server/domains/storefront-public';
 import { createEventRequest, listMyEventBookings } from '@/server/domains/events/service';
 import { eventRequestInput } from '@/shared/schemas/events';
 
@@ -15,7 +15,7 @@ export const POST = route({
   auth: 'user', requireVerified: true, idempotency: 'required', input: eventRequestInput,
   rateLimit: { scope: 'user', name: 'event_request', limit: 10, windowSec: 3600 },
   handler: async ({ params, user, input, actor, idempotencyKey }) => {
-    const t = await publicTenant(params.slug!);
+    const t = await publicTenantForSale(params.slug!);
     const r = await createEventRequest(t.id, user, input, idempotencyKey!, { ...actor, kind: 'customer' });
     return { status: r.status, data: r.body };
   },

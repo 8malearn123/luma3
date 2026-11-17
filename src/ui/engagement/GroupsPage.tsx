@@ -47,10 +47,10 @@ export function GroupsPage() {
             const pct = s.capacity ? Math.min(100, (s.seats_taken / s.capacity) * 100) : 0;
             const full = s.seats_taken >= s.capacity;
             return (
-              <li key={s.id} className="flex flex-col rounded-2xl border border-line bg-white p-4">
+              <li key={s.id} className="flex flex-col rounded-2xl border border-line bg-surface p-4">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <p className="font-semibold text-luma-900">{pick(s.title_ar, s.title_en)}</p>
+                    <p className="font-semibold text-heading">{pick(s.title_ar, s.title_en)}</p>
                     <p className="flex items-center gap-1 text-sm"><CalendarClock className="size-4 text-ink-muted" aria-hidden />{when(s.starts_at)}</p>
                     <p className="text-xs text-ink-muted">{t('engagement.groups.instructor')}: <bdi>{s.staff_name}</bdi> · {formatDuration(Math.round((Date.parse(s.ends_at) - Date.parse(s.starts_at)) / 60000), locale)}</p>
                   </div>
@@ -58,8 +58,8 @@ export function GroupsPage() {
                 </div>
                 <div className="mt-3">
                   <div className="mb-1 flex justify-between text-xs"><span>{t('engagement.groups.seats')}</span><span dir="ltr" className="font-medium">{s.seats_taken} / {s.capacity}</span></div>
-                  <div className="h-2 overflow-hidden rounded-full bg-luma-100" role="progressbar" aria-valuemin={0} aria-valuemax={s.capacity} aria-valuenow={s.seats_taken} aria-label={t('engagement.groups.seats')}>
-                    <div className="h-full rounded-full bg-luma-500" style={{ width: `${pct}%` }} />
+                  <div className="h-2 overflow-hidden rounded-full bg-accent-soft" role="progressbar" aria-valuemin={0} aria-valuemax={s.capacity} aria-valuenow={s.seats_taken} aria-label={t('engagement.groups.seats')}>
+                    <div className="h-full rounded-full bg-brand" style={{ width: `${pct}%` }} />
                   </div>
                 </div>
                 <div className="mt-3 flex items-center justify-between gap-2 text-sm">

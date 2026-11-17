@@ -36,7 +36,7 @@ export function MarketplaceFeesTab() {
             {!q.data.lines.length ? <EmptyState title={t('market.finance.empty')} /> : (
               <DataTable rows={q.data.lines} rowKey={(r) => r.id} caption={t('market.finance.title')} columns={[
                 { key: 'date', header: t('market.finance.date'), cell: (r) => <span className="whitespace-nowrap text-xs">{formatDateTime(r.created_at, { locale, tz: access.timezone })}</span> },
-                { key: 'booking', header: t('market.finance.booking'), cell: (r) => <Link className="text-luma-700 underline" href={`/app/${access.slug}/bookings?booking=${r.booking_id}`} dir="ltr">{r.booking_number}</Link> },
+                { key: 'booking', header: t('market.finance.booking'), cell: (r) => <Link className="text-link underline" href={`/app/${access.slug}/bookings?booking=${r.booking_id}`} dir="ltr">{r.booking_number}</Link> },
                 { key: 'base', header: t('market.finance.base'), cell: (r) => money(r.base_minor) },
                 { key: 'rate', header: t('market.finance.rate'), cell: (r) => `${r.rate_bp / 100}%` },
                 { key: 'fee', header: t('market.finance.fee'), cell: (r) => <span className="font-medium">{money(r.fee_minor)}</span> },

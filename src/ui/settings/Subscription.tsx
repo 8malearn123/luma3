@@ -72,7 +72,7 @@ export function SubscriptionSection({ slug, canManage, tz }: { slug: string; can
       <FormErrorSummary message={err && !(err instanceof ApiError && err.code === 'downgrade_confirmation_required') ? msg(err) : null} />
       <Card title={t('biz_settings.sub.current')}>
         <div className="flex flex-wrap items-center gap-3">
-          <p className="font-display text-2xl text-luma-700">{pick(s.plan.name_ar, s.plan.name_en)}</p>
+          <p className="font-display text-2xl text-link">{pick(s.plan.name_ar, s.plan.name_en)}</p>
           <Badge tone={s.status === 'active' ? 'ok' : s.status === 'trialing' ? 'info' : 'warn'}>{t(`platform.sub_status.${s.status}`)}</Badge>
           {s.cancel_at ? <Badge>{t('biz_settings.sub.cancels_on', { date: dt(s.cancel_at) })}</Badge> : null}
         </div>
@@ -101,7 +101,7 @@ export function SubscriptionSection({ slug, canManage, tz }: { slug: string; can
               <li key={u.key} className="rounded-xl border border-line p-3">
                 <p className="text-xs text-ink-muted">{featureLabel(u.key, locale)}</p>
                 <p className={cx('font-semibold', over && 'text-warn')}>{u.used} / {u.limit == null ? t('site.unlimited') : u.limit}</p>
-                {u.limit != null ? <div className="mt-1 h-1.5 rounded-full bg-luma-100" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label={featureLabel(u.key, locale)}><div className={cx('h-full rounded-full', over ? 'bg-warn' : 'bg-luma-500')} style={{ width: `${pct}%` }} /></div> : null}
+                {u.limit != null ? <div className="mt-1 h-1.5 rounded-full bg-accent-soft" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label={featureLabel(u.key, locale)}><div className={cx('h-full rounded-full', over ? 'bg-warn' : 'bg-brand')} style={{ width: `${pct}%` }} /></div> : null}
               </li>
             );
           })}
@@ -114,8 +114,8 @@ export function SubscriptionSection({ slug, canManage, tz }: { slug: string; can
               const isCurrent = p.code === s.plan.code;
               const up = p.sort > s.plan.sort;
               return (
-                <div key={p.id} className={cx('flex flex-col rounded-xl border p-4', isCurrent ? 'border-luma-500 bg-luma-50' : 'border-line')}>
-                  <p className="font-display text-lg text-luma-700">{pick(p.name_ar, p.name_en)}</p>
+                <div key={p.id} className={cx('flex flex-col rounded-xl border p-4', isCurrent ? 'border-brand bg-surface-muted' : 'border-line')}>
+                  <p className="font-display text-lg text-link">{pick(p.name_ar, p.name_en)}</p>
                   <p className="text-xs text-ink-muted">{pick(p.description_ar, p.description_en)}</p>
                   <p className="mt-2 text-sm">{p.price_monthly_minor == null ? t('platform.pricing_not_configured') : formatMoney(p.price_monthly_minor, p.currency, locale)}{p.price_monthly_minor != null && p.price_is_test ? <Badge tone="warn" className="ms-1">{t('platform.test_label')}</Badge> : null}</p>
                   <ul className="mt-2 flex-1 text-xs text-ink-muted">{Object.entries(p.features ?? {}).filter(([k]) => k.startsWith('limit.')).map(([k, f]) => <li key={k}>{featureLabel(k, locale)}: {f.enabled ? (f.limit ?? t('site.unlimited')) : 0}</li>)}</ul>

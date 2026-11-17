@@ -117,7 +117,7 @@ export function IntegrationsPage() {
             </table>
           ) : <p className="text-sm text-ink-muted">{t('platform.integrations.no_job_issues')}</p>}
           {h.jobs.recent_failures.length ? (
-            <details className="mt-3 text-xs"><summary className="cursor-pointer text-luma-700">{t('platform.integrations.recent_failures')}</summary>
+            <details className="mt-3 text-xs"><summary className="cursor-pointer text-link">{t('platform.integrations.recent_failures')}</summary>
               <ul className="mt-2 flex flex-col gap-1">{h.jobs.recent_failures.map((f) => <li key={f.id} dir="ltr"><span className="font-mono">{f.kind}</span> ×{f.attempts}: {f.last_error}</li>)}</ul>
             </details>
           ) : null}

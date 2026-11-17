@@ -63,16 +63,16 @@ function AnalyticsBody({ period }: { period: PeriodValue }) {
       </Card>
       <div className="grid gap-4 md:grid-cols-3">
         <Card title={t('admin.analytics.conversion')}>
-          <p className="text-3xl font-semibold text-luma-800">{pct(a.trial_conversion.rate)}</p>
+          <p className="text-3xl font-semibold text-heading">{pct(a.trial_conversion.rate)}</p>
           <p className="text-sm text-ink-muted">{t('admin.analytics.converted')}: {a.trial_conversion.converted} / {t('admin.analytics.trials')}: {a.trial_conversion.trials}</p>
         </Card>
         <Card title={t('admin.analytics.retention')}>
-          <p className="text-3xl font-semibold text-luma-800">{pct(a.provider_retention.rate)}</p>
+          <p className="text-3xl font-semibold text-heading">{pct(a.provider_retention.rate)}</p>
           <p className="text-sm text-ink-muted">{t('admin.analytics.retention_bookings')}: {a.provider_retention.booking_active_both} / {a.provider_retention.booking_active_previous}</p>
           <p className="mt-1 text-sm text-ink-muted">{t('admin.analytics.retention_subs')}: {pct(a.provider_retention.subscription_rate)}</p>
         </Card>
         <Card title={t('admin.analytics.rating')}>
-          <p className="text-3xl font-semibold text-luma-800">{a.average_rating.average ?? '—'} <span className="text-base">★</span></p>
+          <p className="text-3xl font-semibold text-heading">{a.average_rating.average ?? '—'} <span className="text-base">★</span></p>
           <p className="text-sm text-ink-muted">{t('admin.analytics.reviews', { n: a.average_rating.reviews })}</p>
         </Card>
       </div>
@@ -101,7 +101,7 @@ function AnalyticsBody({ period }: { period: PeriodValue }) {
         <div className="flex h-36 items-end gap-0.5" dir="ltr" role="img" aria-label={t('admin.analytics.peak')}>
           {a.peak_hours.by_hour.map((h) => (
             <div key={h.hour} className="flex flex-1 flex-col items-center gap-1">
-              <div className="w-full rounded-t bg-luma-500" style={{ height: `${(h.bookings / maxHour) * 100}%`, minHeight: h.bookings ? 2 : 0 }} title={`${h.hour}:00 — ${h.bookings}`} />
+              <div className="w-full rounded-t bg-brand" style={{ height: `${(h.bookings / maxHour) * 100}%`, minHeight: h.bookings ? 2 : 0 }} title={`${h.hour}:00 — ${h.bookings}`} />
               <span className="text-[9px] text-ink-muted">{h.hour % 3 === 0 ? h.hour : ''}</span>
             </div>
           ))}
@@ -121,7 +121,7 @@ function ReportsBody({ period }: { period: PeriodValue }) {
       <p className="mb-3 text-sm text-ink-muted">{t('admin.reports.subtitle')}</p>
       <div className="mb-3 flex flex-wrap gap-2">
         {REPORTS.map((k) => (
-          <button key={k} onClick={() => setKind(k)} className={`rounded-lg border px-3 py-1.5 text-sm ${kind === k ? 'border-luma-700 bg-luma-50 text-luma-800' : 'border-line'}`}>{t(`admin.reports.kinds.${k}`)}</button>
+          <button key={k} onClick={() => setKind(k)} className={`rounded-lg border px-3 py-1.5 text-sm ${kind === k ? 'border-primary bg-surface-muted text-heading' : 'border-line'}`}>{t(`admin.reports.kinds.${k}`)}</button>
         ))}
       </div>
       {q.data?.note ? <Alert tone="info" className="mb-3">{q.data.note}</Alert> : null}

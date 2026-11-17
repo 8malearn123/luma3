@@ -15,7 +15,8 @@ const ar = {
     dismiss: 'إخفاء', powered_by: 'بدعم من لوما · Powered by LUMA', page_empty: 'لا يوجد محتوى في هذه الصفحة بعد.',
     unavailable: 'هذا العنصر غير متاح حالياً.', service_unavailable: 'هذه الخدمة غير متاحة حالياً.', product_unavailable: 'هذا المنتج غير متاح حالياً.',
     not_bookable_online: 'الحجز الإلكتروني لهذه الخدمة غير متاح حالياً، تواصلي معنا للحجز.',
-    price_note: 'الأسعار المعروضة هي أسعار الخدمة الحالية. اطّلعي على', not_found: 'الصفحة غير موجودة', not_found_hint: 'ربما تم نقل هذا العنصر أو إخفاؤه.',
+    booking_unavailable_title: 'الحجز الإلكتروني غير متاح حالياً', booking_unavailable_hint: 'لا توجد مواعيد يمكن حجزها عبر المتجر الآن. تواصلي معنا وسنرتب موعدك.', back_to_store: 'العودة للمتجر',
+    price_note: 'الأسعار المعروضة هي أسعار الخدمة الحالية. اطّلعي على', not_found: 'الصفحة غير موجودة', not_found_hint: 'ربما تم نقل هذا العنصر أو إخفاؤه.', selling_paused: 'الحجز والطلب عبر الإنترنت غير متاحين حالياً لدى هذا النشاط. الحجوزات القائمة لم تتأثر؛ للاستفسار تواصلي مع النشاط مباشرة.',
     preview_banner: 'معاينة مسودة — هذه النسخة غير منشورة ولا يراها العملاء. الحجز والسلة معطّلان في المعاينة.',
     preview_booking_disabled: 'الحجز معطّل في المعاينة', preview_cart_disabled: 'السلة معطّلة في المعاينة',
     policy: {
@@ -42,16 +43,17 @@ const ar = {
     tabs: { label: 'أدوات المحرر', library: 'إضافة', pages: 'الصفحات', brand: 'الهوية', layout: 'التخطيط', assistant: 'المساعد' },
     save: {
       saving: 'جارٍ الحفظ…', saved_at: 'آخر حفظ {time}', all_saved: 'كل التغييرات محفوظة', unsaved: 'تغييرات غير محفوظة', error: 'تعذّر الحفظ', conflict: 'تعارض في التعديل',
+      retrying: 'لا يوجد اتصال — تغييراتك محفوظة هنا وسنعيد المحاولة تلقائياً', retry_now: 'أعيدي المحاولة الآن',
       before_publish: 'احفظي التغييرات أولاً قبل النشر.',
     },
     conflict: {
       title: 'تم تعديل المسودة من مكان آخر', body: 'عدّلت نافذة أو جهاز أو زميلة هذه المسودة بعد آخر تحميل. لن نحفظ فوق تعديلاتها دون موافقتك.',
-      reload: 'تحميل الأحدث (تجاهل تغييراتي)', keep: 'الإبقاء على تغييراتي والحفظ',
+      reload: 'تحميل الأحدث (تجاهل تغييراتي)', keep: 'الإبقاء على تغييراتي (الحفظ فوق التعديل الآخر)',
     },
     library: {
       hint: 'اسحبي المكوّن إلى اللوحة أو اضغطي + لإضافته بعد المكوّن المحدد.', drag: 'اسحبي {name}', drag_hint: 'اسحبي إلى اللوحة', add: 'إضافة',
       cat: { media: 'الصور والوسائط', content: 'المحتوى', catalog: 'الخدمات والعروض', commerce: 'المتجر', people: 'الفريق', trust: 'الثقة', info: 'المعلومات', layout: 'التخطيط' },
-      cannot: { limit_type: 'وصلتِ للحد الأقصى من هذا المكوّن في الصفحة', limit_total: 'وصلتِ للحد الأقصى من المكونات في الصفحة', needs_service: 'أضيفي خدمة أولاً', needs_product: 'أضيفي منتجاً أولاً', needs_page: 'أنشئي صفحة أولاً', feature: 'غير متاح في باقتك' },
+      cannot: { limit_type: 'وصلتِ للحد الأقصى من هذا المكوّن في الصفحة', limit_total: 'وصلتِ للحد الأقصى من المكونات في الصفحة', needs_service: 'أضيفي خدمة أولاً', needs_product: 'أضيفي منتجاً أولاً', needs_page: 'أنشئي صفحة أولاً', feature: 'غير متاح في باقتك', disabled: 'أوقفته لوما مؤقتاً', plan: 'يتطلب باقة أعلى' },
     },
     canvas: {
       label: 'لوحة المعاينة', drag: 'سحب {name}', sortable: 'مكوّن قابل لإعادة الترتيب', move_up: 'تحريك لأعلى', move_down: 'تحريك لأسفل', duplicate: 'تكرار',
@@ -60,7 +62,7 @@ const ar = {
     },
     warnings: {
       title: 'تنبيهات', block: 'هذا المكوّن يشير إلى عنصر غير متاح', count: '{n} تنبيه',
-      codes: { archived: '{kind} مؤرشف — ستظهر للعميلات رسالة بديلة', hidden: '{kind} مخفي — لن يظهر للعميلات', inactive: '{kind} غير نشط حالياً', missing_section: 'القسم المرتبط غير موجود في هذه الصفحة', wrong_kind: 'نوع التصنيف لا يطابق المكوّن', feature_disabled: 'غير متاح في باقتك — لن يظهر', broken_asset: 'الصورة لم تعد متاحة' },
+      codes: { archived: '{kind} مؤرشف — ستظهر للعميلات رسالة بديلة', hidden: '{kind} مخفي — لن يظهر للعميلات', inactive: '{kind} غير نشط حالياً', missing_section: 'القسم المرتبط غير موجود في هذه الصفحة', wrong_kind: 'نوع التصنيف لا يطابق المكوّن', feature_disabled: 'غير متاح في باقتك — لن يظهر', broken_asset: 'الصورة لم تعد متاحة', component_disabled: 'أوقفت لوما هذا المكوّن — احذفيه قبل النشر', component_plan: 'هذا المكوّن يتطلب باقة أعلى — احذفيه قبل النشر' },
       kinds: { service: 'الخدمة', product: 'المنتج', category: 'التصنيف', staff: 'الموظفة', page: 'الصفحة', package: 'الباقة', branch: 'الفرع', asset: 'الصورة', section: 'القسم', block: 'المكوّن' },
     },
     status: { archived: 'مؤرشف', hidden: 'مخفي', inactive: 'غير نشط', missing: 'غير موجود' },
@@ -90,6 +92,7 @@ const ar = {
     },
     brand: {
       colors_title: 'الألوان', fonts_title: 'الخطوط', shape_title: 'الأشكال والمسافات', identity_title: 'الشعار والنصوص',
+      color_picker: 'اختيار لون {name}', color_hex: 'رمز لون {name} (hex)',
       colors: { primary: 'الأساسي', on_primary: 'النص على الأساسي', secondary: 'الثانوي', accent: 'المميز', background: 'الخلفية', surface: 'البطاقات', text: 'النص', muted: 'النص الثانوي', border: 'الحدود' },
       contrast: 'تباين ضعيف بين «{a}» و«{b}»: {ratio}:1 (المطلوب {min}:1)', contrast_ok: 'تباين الألوان جيد للقراءة.',
       font_heading: 'خط العناوين', font_body: 'خط النصوص', sample: 'جمالكِ بلمسة خبيرة — Your beauty', radius: 'الزوايا', button_style: 'شكل الأزرار', card_style: 'شكل البطاقات', density: 'الكثافة', spacing: 'مقياس المسافات',
@@ -114,9 +117,17 @@ const ar = {
       note: 'ملاحظة على الإصدار (اختياري)', explain: 'النشر ينشئ نسخة ثابتة يمكن الرجوع إليها. الأسعار والمواعيد تُقرأ دائماً من بياناتك الحالية.',
       no_permission: 'النشر يحتاج صلاحية «نشر المتجر». يمكنكِ الحفظ والمعاينة.', done: 'تم نشر الإصدار {n}', first_done: 'تم نشر متجرك لأول مرة! أصبح متاحاً للعميلات.',
     },
+    booking_status: {
+      title: 'متجرك منشور لكن لا يمكن الحجز فيه الآن',
+      body: 'لا توجد خدمة متاحة للحجز الإلكتروني (خدمة نشطة وظاهرة مع أخصائية). ستظهر للعميلات رسالة «الحجز غير متاح حالياً» مع طريقة التواصل.',
+      action: 'مراجعة الخدمات',
+      archive_title: 'هذه آخر خدمة يمكن حجزها في متجرك المنشور',
+      archive_body: 'بعد الأرشفة لن تتمكن العميلات من الحجز إلكترونياً، وسيظهر لهن أن الحجز غير متاح حالياً حتى تضيفي أو تفعّلي خدمة أخرى.',
+    },
     versions: {
       title: 'الإصدارات', empty: 'لا توجد إصدارات منشورة بعد', empty_hint: 'كل نشر ينشئ إصداراً يمكنكِ الرجوع إليه.', v: 'الإصدار {n}', live: 'منشور', from: 'استرجاع للإصدار {n}',
       rollback: 'إعادة نشر هذا الإصدار', restore: 'نسخ إلى المسودة', rollback_confirm: 'إعادة نشر الإصدار {n}؟', restore_confirm: 'نسخ الإصدار {n} إلى المسودة؟',
+      notices: 'ملاحظات على هذا الإصدار ({n}):', blocked: 'لا يمكن نشر هذا الإصدار الآن:',
       rollback_body: 'يتغير التصميم فقط. الحجوزات والطلبات والمخزون والأسعار لا تتأثر، ومسودتك الحالية تبقى كما هي.',
       restore_body: 'ستُستبدل المسودة الحالية بمحتوى هذا الإصدار دون نشر. يمكنكِ المراجعة ثم النشر.', rolled_back: 'تمت إعادة النشر كإصدار {n}', restored: 'تم نسخ الإصدار {n} إلى المسودة',
     },
@@ -139,6 +150,7 @@ const ar = {
     },
   },
   errors: {
+    component_unavailable: 'هذا المكوّن غير متاح لمتجرك حالياً، ولم يُحفظ.', component_disabled: 'أوقفت لوما هذا المكوّن.', component_plan: 'هذا المكوّن يتطلب باقة أعلى.',
     invalid_blocks: 'بعض المكونات غير صالحة ولم تُحفظ.', invalid_layout: 'إعدادات التخطيط غير صالحة.', not_ready: 'أكملي قائمة الجاهزية قبل النشر.',
     publish_validation_failed: 'صحّحي المشكلات قبل النشر.', page_slug_fixed: 'لا يمكن تغيير عنوان هذه الصفحة.', page_not_archivable: 'الصفحات الأساسية لا تُؤرشف؛ يمكنكِ إخفاؤها من القائمة.',
     title_required: 'عنوان الصفحة مطلوب.', template_invalid: 'هذا القالب لم يعد صالحاً.', ai_unavailable: 'مساعد التخصيص غير متصل حالياً. المحرر اليدوي يعمل.',
@@ -165,7 +177,8 @@ const en: Shape<typeof ar> = {
     dismiss: 'Dismiss', powered_by: 'Powered by LUMA', page_empty: 'There is no content on this page yet.',
     unavailable: 'This item is currently unavailable.', service_unavailable: 'This service is currently unavailable.', product_unavailable: 'This product is currently unavailable.',
     not_bookable_online: 'Online booking is not available for this service right now — contact us to book.',
-    price_note: 'Prices shown are the current service prices. See the', not_found: 'Page not found', not_found_hint: 'This item may have moved or been hidden.',
+    booking_unavailable_title: 'Online booking is not available right now', booking_unavailable_hint: 'There are no appointments you can book through the store at the moment. Contact us and we will arrange your visit.', back_to_store: 'Back to the store',
+    price_note: 'Prices shown are the current service prices. See the', not_found: 'Page not found', not_found_hint: 'This item may have moved or been hidden.', selling_paused: 'Online booking and ordering are currently unavailable at this business. Existing bookings are not affected; contact the business directly with any questions.',
     preview_banner: 'Draft preview — this version is not published and customers cannot see it. Booking and cart are disabled in previews.',
     preview_booking_disabled: 'Booking is disabled in previews', preview_cart_disabled: 'Cart is disabled in previews',
     policy: {
@@ -192,16 +205,17 @@ const en: Shape<typeof ar> = {
     tabs: { label: 'Editor tools', library: 'Add', pages: 'Pages', brand: 'Brand', layout: 'Layout', assistant: 'Assistant' },
     save: {
       saving: 'Saving…', saved_at: 'Last saved {time}', all_saved: 'All changes saved', unsaved: 'Unsaved changes', error: 'Could not save', conflict: 'Edit conflict',
+      retrying: 'Connection lost — your changes are kept here and will be saved automatically', retry_now: 'Retry now',
       before_publish: 'Save your changes before publishing.',
     },
     conflict: {
       title: 'The draft was changed elsewhere', body: 'Another tab, device or teammate changed this draft since you loaded it. We will not overwrite their work without your decision.',
-      reload: 'Load latest (discard my changes)', keep: 'Keep my changes and save',
+      reload: 'Load latest (discard my changes)', keep: 'Keep my changes (overwrite the other edit)',
     },
     library: {
       hint: 'Drag a component onto the canvas, or press + to add it after the selected one.', drag: 'Drag {name}', drag_hint: 'Drag onto the canvas', add: 'Add',
       cat: { media: 'Images & media', content: 'Content', catalog: 'Services & offers', commerce: 'Shop', people: 'Team', trust: 'Trust', info: 'Information', layout: 'Layout' },
-      cannot: { limit_type: 'Maximum of this component on the page reached', limit_total: 'Maximum number of components on the page reached', needs_service: 'Add a service first', needs_product: 'Add a product first', needs_page: 'Create a page first', feature: 'Not included in your plan' },
+      cannot: { limit_type: 'Maximum of this component on the page reached', limit_total: 'Maximum number of components on the page reached', needs_service: 'Add a service first', needs_product: 'Add a product first', needs_page: 'Create a page first', feature: 'Not included in your plan', disabled: 'Temporarily turned off by LUMA', plan: 'Needs a higher plan' },
     },
     canvas: {
       label: 'Preview canvas', drag: 'Drag {name}', sortable: 'sortable component', move_up: 'Move up', move_down: 'Move down', duplicate: 'Duplicate',
@@ -210,7 +224,7 @@ const en: Shape<typeof ar> = {
     },
     warnings: {
       title: 'Warnings', block: 'This component points to something unavailable', count: '{n} warning(s)',
-      codes: { archived: '{kind} is archived — customers will see a fallback message', hidden: '{kind} is hidden — customers will not see it', inactive: '{kind} is currently inactive', missing_section: 'The linked section is not on this page', wrong_kind: 'Category type does not match the component', feature_disabled: 'Not included in your plan — it will not be shown', broken_asset: 'The image is no longer available' },
+      codes: { archived: '{kind} is archived — customers will see a fallback message', hidden: '{kind} is hidden — customers will not see it', inactive: '{kind} is currently inactive', missing_section: 'The linked section is not on this page', wrong_kind: 'Category type does not match the component', feature_disabled: 'Not included in your plan — it will not be shown', broken_asset: 'The image is no longer available', component_disabled: 'LUMA turned this component off — remove it before publishing', component_plan: 'This component needs a higher plan — remove it before publishing' },
       kinds: { service: 'Service', product: 'Product', category: 'Category', staff: 'Team member', page: 'Page', package: 'Package', branch: 'Branch', asset: 'Image', section: 'Section', block: 'Component' },
     },
     status: { archived: 'archived', hidden: 'hidden', inactive: 'inactive', missing: 'missing' },
@@ -240,6 +254,7 @@ const en: Shape<typeof ar> = {
     },
     brand: {
       colors_title: 'Colours', fonts_title: 'Fonts', shape_title: 'Shapes & spacing', identity_title: 'Logo & text',
+      color_picker: '{name} colour picker', color_hex: '{name} colour code (hex)',
       colors: { primary: 'Primary', on_primary: 'Text on primary', secondary: 'Secondary', accent: 'Accent', background: 'Background', surface: 'Cards', text: 'Text', muted: 'Secondary text', border: 'Borders' },
       contrast: 'Low contrast between “{a}” and “{b}”: {ratio}:1 (needs {min}:1)', contrast_ok: 'Colour contrast is good for reading.',
       font_heading: 'Heading font', font_body: 'Body font', sample: 'جمالكِ بلمسة خبيرة — Your beauty', radius: 'Corners', button_style: 'Button style', card_style: 'Card style', density: 'Density', spacing: 'Spacing scale',
@@ -264,9 +279,17 @@ const en: Shape<typeof ar> = {
       note: 'Version note (optional)', explain: 'Publishing creates a fixed version you can return to. Prices and appointments are always read from your current data.',
       no_permission: 'Publishing requires the “publish storefront” permission. You can save and preview.', done: 'Version {n} published', first_done: 'Your storefront is live for the first time!',
     },
+    booking_status: {
+      title: 'Your store is live, but nothing can be booked right now',
+      body: 'No service is bookable online (an active, visible service with a specialist). Customers will see “Online booking is not available right now” with your contact details.',
+      action: 'Review services',
+      archive_title: 'This is the last bookable service on your live store',
+      archive_body: 'After archiving, customers cannot book online and will be told booking is unavailable until you add or activate another service.',
+    },
     versions: {
       title: 'Versions', empty: 'No published versions yet', empty_hint: 'Every publish creates a version you can return to.', v: 'Version {n}', live: 'Live', from: 'Rollback to v{n}',
       rollback: 'Republish this version', restore: 'Copy into draft', rollback_confirm: 'Republish version {n}?', restore_confirm: 'Copy version {n} into the draft?',
+      notices: 'Notes on this version ({n}):', blocked: 'This version cannot be published right now:',
       rollback_body: 'Only the design changes. Bookings, orders, inventory and prices are not affected, and your current draft stays as it is.',
       restore_body: 'The current draft is replaced with this version without publishing. You can review it and then publish.', rolled_back: 'Republished as version {n}', restored: 'Version {n} copied into the draft',
     },
@@ -289,6 +312,7 @@ const en: Shape<typeof ar> = {
     },
   },
   errors: {
+    component_unavailable: 'This component is not available for your store right now and was not saved.', component_disabled: 'LUMA turned this component off.', component_plan: 'This component needs a higher plan.',
     invalid_blocks: 'Some components are invalid and were not saved.', invalid_layout: 'The layout settings are invalid.', not_ready: 'Complete the readiness checklist before publishing.',
     publish_validation_failed: 'Fix the problems before publishing.', page_slug_fixed: 'This page address cannot be changed.', page_not_archivable: 'Default pages cannot be archived; hide them from navigation instead.',
     title_required: 'A page title is required.', template_invalid: 'This template is no longer valid.', ai_unavailable: 'The customization assistant is not connected. The manual builder works.',

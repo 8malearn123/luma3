@@ -7,3 +7,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
 
 <!-- END:nextjs-agent-rules -->
+
+# Design guide (LUMA interfaces)
+
+Before adding or changing any internal screen or component, read and follow `docs/DESIGN_GUIDE.md` (Arabic). It keeps LUMA's identity (colours, logo, fonts) and adds the agreed UX rules: semantic tokens only (dark mode is enabled), RTL logical properties, one highlight per screen, shared components and states, AA accessibility, reduced motion, and a browser check before calling a screen done.

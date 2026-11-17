@@ -17,6 +17,7 @@ import { useAccess } from '../shell/access-context';
 import { OffsetPager, parseNum, qs, useFmt } from './common';
 import { StockPanel } from './StockPanel';
 import { CountsTab } from './CountsTab';
+import { BalancesTab, ConsumptionTab, InvoicesTab, LocationsTab, ReceiptsTab, ReportsTab, SuppliersTab, TasksTab, TransfersTab } from './StockOps';
 
 type Item = {
   id: string; name: string; kind: 'retail' | 'material' | 'both'; unit: Unit; on_hand: number; reserved: number; available: number;
@@ -30,7 +31,21 @@ export function InventoryPage() {
   const router = useRouter();
   const pathname = usePathname();
   const sp = useSearchParams();
-  const tab = (['items', 'counts', 'recipes', 'capacity'] as const).find((x) => x === sp.get('tab')) ?? 'items';
+  const can = access.can;
+  const feat = access.hasFeature;
+  // Tabs follow the role and the plan; the server enforces both again.
+  const tabs = ([
+    ['items', true], ['locations', true], ['balances', true],
+    ['transfers', feat('feature.inventory_transfers')],
+    ['receipts', feat('feature.purchasing') && can('purchasing.view', 'purchasing.receive')],
+    ['invoices', feat('feature.purchasing') && can('purchasing.manage', 'purchasing.pay', 'finance.view')],
+    ['suppliers', can('purchasing.view', 'purchasing.manage', 'inventory.manage')],
+    ['consumption', true],
+    ['counts', feat('feature.inventory_counts')],
+    ['reports', true], ['tasks', true], ['recipes', true], ['capacity', true],
+  ] as const).filter(([, ok]) => ok).map(([k]) => k);
+  type TabKey = (typeof tabs)[number];
+  const tab: TabKey = tabs.find((x) => x === sp.get('tab')) ?? 'items';
   const setParam = (k: string, v: string | null) => {
     const u = new URLSearchParams(sp.toString());
     if (v) u.set(k, v); else u.delete(k);
@@ -39,14 +54,15 @@ export function InventoryPage() {
   return (
     <div>
       <PageHeader title={t('commerce.inventory.title')} subtitle={t('commerce.inventory.subtitle')} />
-      <Tabs value={tab} onChange={(v) => setParam('tab', v === 'items' ? null : v)} items={[
-        { value: 'items', label: t('commerce.inventory.tab_items') },
-        { value: 'counts', label: t('commerce.inventory.tab_counts') },
-        { value: 'recipes', label: t('commerce.inventory.tab_recipes') },
-        { value: 'capacity', label: t('commerce.inventory.tab_capacity') },
-      ]} />
+      <div className="overflow-x-auto">
+        <Tabs value={tab} onChange={(v) => setParam('tab', v === 'items' ? null : v)} items={tabs.map((k) => ({ value: k, label: t(`inventory_ops.tabs.${k}`) }))} />
+      </div>
       {tab === 'items' ? <ItemsTab openId={sp.get('item')} setOpen={(id) => setParam('item', id)} initialIdle={sp.get('idle') === '1'} />
-        : tab === 'counts' ? <CountsTab openId={sp.get('count')} setOpen={(id) => setParam('count', id)} /> : tab === 'recipes' ? <RecipesTab /> : <CapacityTab />}
+        : tab === 'counts' ? <CountsTab openId={sp.get('count')} setOpen={(id) => setParam('count', id)} />
+        : tab === 'recipes' ? <RecipesTab /> : tab === 'capacity' ? <CapacityTab />
+        : tab === 'locations' ? <LocationsTab /> : tab === 'balances' ? <BalancesTab /> : tab === 'transfers' ? <TransfersTab />
+        : tab === 'receipts' ? <ReceiptsTab /> : tab === 'invoices' ? <InvoicesTab /> : tab === 'suppliers' ? <SuppliersTab />
+        : tab === 'consumption' ? <ConsumptionTab /> : tab === 'reports' ? <ReportsTab /> : <TasksTab />}
     </div>
   );
 }
@@ -178,7 +194,7 @@ function NewMaterialDrawer({ onClose, onCreated }: { onClose: () => void; onCrea
   const { t } = useI18n();
   const access = useAccess();
   const msg = useErrorMessage();
-  const [f, setF] = useState({ name: '', unit: 'ml' as Unit, threshold: '', initial: '', cost: null as number | null });
+  const [f, setF] = useState({ name: '', unit: 'ml' as Unit, threshold: '', initial: '', cost: null as number | null, code: '', category: '', storage_unit: '', factor: '', is_tool: false, track_expiry: false });
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<unknown>(null);
   useUnsavedChangesWarning(!!f.name);
@@ -186,7 +202,10 @@ function NewMaterialDrawer({ onClose, onCreated }: { onClose: () => void; onCrea
     setBusy(true); setErr(null);
     try {
       const r = await api<{ id: string }>(access.api('/inventory/items'), {
-        body: { name: f.name.trim(), unit: f.unit, low_stock_threshold: parseNum(f.threshold), ...(parseNum(f.initial) ? { initial_quantity: parseNum(f.initial) } : {}), ...(access.can('costs.view') && f.cost != null ? { cost_per_unit_minor: f.cost } : {}) },
+        body: { name: f.name.trim(), unit: f.unit, low_stock_threshold: parseNum(f.threshold), ...(parseNum(f.initial) ? { initial_quantity: parseNum(f.initial) } : {}), ...(access.can('costs.view') && f.cost != null ? { cost_per_unit_minor: f.cost } : {}),
+          ...(f.code.trim() ? { code: f.code.trim() } : {}), ...(f.category.trim() ? { category: f.category.trim() } : {}),
+          ...(f.storage_unit.trim() && parseNum(f.factor) ? { storage_unit: f.storage_unit.trim(), conversion_factor: parseNum(f.factor) } : {}),
+          ...(f.is_tool ? { is_tool: true } : {}), ...(f.track_expiry ? { track_batches: true, track_expiry: true } : {}) },
       });
       onCreated(r.id);
     } catch (e) { setErr(e); } finally { setBusy(false); }
@@ -201,6 +220,14 @@ function NewMaterialDrawer({ onClose, onCreated }: { onClose: () => void; onCrea
         <Field label={t('commerce.inventory.initial_quantity')}>{(p) => <Input {...p} inputMode="decimal" dir="ltr" value={f.initial} onChange={(e) => setF({ ...f, initial: e.target.value })} />}</Field>
         <Field label={t('commerce.inventory.threshold')}>{(p) => <Input {...p} inputMode="decimal" dir="ltr" value={f.threshold} onChange={(e) => setF({ ...f, threshold: e.target.value })} />}</Field>
         {access.can('costs.view') ? <Field label={t('commerce.inventory.cost_per_unit')}>{(p) => <MoneyInput {...p} value={f.cost} onChange={(m) => setF({ ...f, cost: m })} />}</Field> : null}
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Field label={t('inventory_ops.item.code')}>{(p) => <Input {...p} dir="ltr" maxLength={40} value={f.code} onChange={(e) => setF({ ...f, code: e.target.value })} />}</Field>
+          <Field label={t('inventory_ops.item.category')}>{(p) => <Input {...p} maxLength={80} value={f.category} onChange={(e) => setF({ ...f, category: e.target.value })} />}</Field>
+          <Field label={t('inventory_ops.item.storage_unit')} hint={t('inventory_ops.item.storage_hint')}>{(p) => <Input {...p} maxLength={24} value={f.storage_unit} onChange={(e) => setF({ ...f, storage_unit: e.target.value })} />}</Field>
+          <Field label={t('inventory_ops.item.factor')}>{(p) => <Input {...p} inputMode="decimal" dir="ltr" value={f.factor} onChange={(e) => setF({ ...f, factor: e.target.value })} />}</Field>
+        </div>
+        <Checkbox label={t('inventory_ops.item.is_tool')} description={t('inventory_ops.item.is_tool_hint')} checked={f.is_tool} onChange={(v) => setF({ ...f, is_tool: v })} />
+        <Checkbox label={t('inventory_ops.item.track_expiry')} checked={f.track_expiry} onChange={(v) => setF({ ...f, track_expiry: v })} />
       </div>
     </Drawer>
   );
@@ -317,7 +344,7 @@ function CapacityTab() {
   return (
     <div className="flex flex-col gap-3">
       <p className="text-sm text-ink-muted">{t('commerce.inventory.capacity_hint')}</p>
-      <details className="rounded-xl border border-line bg-white p-3 text-sm"><summary className="cursor-pointer font-medium">{t('commerce.inventory.method')}</summary><p className="mt-2 text-ink-muted">{t('commerce.inventory.method_text')}</p></details>
+      <details className="rounded-xl border border-line bg-surface p-3 text-sm"><summary className="cursor-pointer font-medium">{t('commerce.inventory.method')}</summary><p className="mt-2 text-ink-muted">{t('commerce.inventory.method_text')}</p></details>
       <div className="grid gap-3 md:grid-cols-2">
         {list.data.map((s) => {
           const e = s.estimate;
@@ -325,7 +352,7 @@ function CapacityTab() {
             <Card key={s.id} title={pick(s.name_ar, s.name_en)}>
               {e.status === 'ok' ? (
                 <div className="flex flex-col gap-2 text-sm">
-                  <p className="text-lg font-semibold text-luma-900">{t('commerce.inventory.enough_for', { n: e.bookings })}</p>
+                  <p className="text-lg font-semibold text-heading">{t('commerce.inventory.enough_for', { n: e.bookings })}</p>
                   <p className="text-ink-muted">{t('commerce.inventory.limiting', { name: e.lines.find((l) => l.inventoryItemId === e.limitingItemId)?.name ?? '' })}</p>
                   <ul className="flex flex-col gap-0.5 text-xs">
                     {e.lines.map((l) => <li key={l.inventoryItemId} className="flex justify-between gap-2"><span>{l.name} ({t(`commerce.inventory.unit.${l.unit}`)})</span><span dir="ltr">{qty(l.available)} ÷ {qty(l.perBooking)} = {l.bookings}</span></li>)}

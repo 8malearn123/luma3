@@ -1,0 +1,63 @@
+{
+  "id": "pb.retail.restock_fast_movers",
+  "version": 1,
+  "title": {
+    "ar": "إعادة طلب الأصناف سريعة الدوران",
+    "en": "Restock fast-moving items"
+  },
+  "applies_to": {
+    "sectors": [
+      "retail"
+    ],
+    "detectors": [
+      "slow_mover_bundle",
+      "capacity_prerequisite"
+    ],
+    "interventions": [
+      "restock",
+      "bundle_with_top_service"
+    ],
+    "channels": [
+      "in_store",
+      "storefront"
+    ]
+  },
+  "guidance": {
+    "ar": "في المتاجر يُعاد طلب الأصناف سريعة الدوران قبل الحملة وتُصرّف الراكدة بباقات مع الأصناف الرائجة.",
+    "en": "In shops, fast movers are restocked before a campaign and slow movers are bundled with popular items."
+  },
+  "when_not_to_use": {
+    "ar": "لا يصلح لقطاع التجميل (حزمة مختلفة).",
+    "en": "Not for the beauty sector (different pack)."
+  },
+  "common_mistakes": [
+    {
+      "ar": "نفاد الصنف أثناء العرض",
+      "en": "Running out during the promotion"
+    }
+  ],
+  "measurement": {
+    "primary": "inventory.cover_days",
+    "design": "observational"
+  },
+  "examples": {
+    "good": [
+      {
+        "ar": "طلب الصنف قبل العرض بأسبوع",
+        "en": "Order the item a week before the promotion"
+      }
+    ],
+    "bad": [
+      {
+        "ar": "عرض صنف غير متوفر",
+        "en": "Promoting an unavailable item"
+      }
+    ]
+  },
+  "source": {
+    "type": "internal_review",
+    "ref": "Loom retail pack draft (not enabled)",
+    "reviewed_at": "2026-11-01"
+  },
+  "owner": "loom.methodology"
+}

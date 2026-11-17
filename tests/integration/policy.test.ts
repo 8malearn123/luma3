@@ -22,6 +22,7 @@ import * as accountPolicy from '@/app/api/v1/account/policy/route';
 import * as accountAppeals from '@/app/api/v1/account/appeals/route';
 import * as media from '@/app/api/v1/media/[id]/route';
 import { storage } from '@/server/infra/storage';
+import { resetEnvCache } from '@/server/env';
 import { createBusinessFor, signup } from '../helpers/factory';
 import { addMember, expireStepUp, grantPlatformRole, hoursAgo, hoursFromNow, insertBooking, me, relationshipFor } from '../helpers/policy';
 
@@ -181,6 +182,13 @@ describe('decisions & authority', () => {
     await w.owner.call(transition.POST, { params: { ...w.p, id }, body: { to: 'confirmed', note: 'Checked' } });
     expect((await w.owner.call(escalate.POST, { params: { ...w.p, id }, body: { note: 'please review' } })).status).toBe(200);
     expect((await reviewer.call(media.GET, { params: { id: asset } })).status).toBe(200);
+    // Evidence is a platform-role route outside /api/v1/platform: it needs the second factor too.
+    process.env.PLATFORM_MFA_REQUIRED = 'true'; resetEnvCache();
+    try {
+      const denied = await reviewer.call(media.GET, { params: { id: asset } });
+      expect(denied.status).toBe(403);
+      expect(denied.body.error.code).toBe('mfa_required');
+    } finally { delete process.env.PLATFORM_MFA_REQUIRED; resetEnvCache(); }
   });
 
   it('a salon owner cannot create platform decisions or grant herself reviewer powers', async () => {

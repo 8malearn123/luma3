@@ -19,7 +19,7 @@ const ar = {
     finance: { subtitle: 'الأرقام محسوبة من القيود المحاسبية بتوقيت النشاط ({tz}). كل رقم يوضّح أساس حسابه.' },
     overview: {
       summary: 'ملخص الفترة', incomplete_body: 'بعض بيانات التكلفة غير مسجّلة، لذلك لا نعرض ربحاً ولا صافياً. أكملي التكاليف الناقصة لحساب الربح.',
-      net: 'الصافي (الربح)', not_computed: 'غير محسوب', incomplete: 'غير مكتمل', formula: 'مبيعات الخدمات + مبيعات المنتجات − المصروفات − تكلفة المنتجات − تكلفة المواد − العمولات − الرواتب',
+      net: 'الصافي (الربح)', not_computed: 'غير محسوب', incomplete: 'غير مكتمل', formula: 'مبيعات الخدمات + مبيعات المنتجات + صافي إيراد الاستضافة − المصروفات − مصاريف الاستضافة − تكلفة المنتجات − تكلفة المواد − العمولات − الرواتب',
       tax_collected: 'الضريبة المحصّلة', refunds_pending: 'قيد التنفيذ: {amount}', missing_lines: '{n} بنداً مباعاً بلا تكلفة',
       daily_collections: 'المتحصلات اليومية', max_day: 'أعلى يوم', chart_note: 'المبالغ المحصّلة فعلياً في كل يوم ({tz})، شاملة العرابين.',
       by_method: 'المتحصلات حسب طريقة الدفع', by_category: 'المصروفات حسب التصنيف', none: 'لا شيء في هذه الفترة.',
@@ -27,7 +27,7 @@ const ar = {
       tax_disclaimer: 'القيم المعروضة هي ما ضُبط في الإعدادات وليست استشارة ضريبية أو قانونية.',
     },
     basis: {
-      service_sales: 'تُسجّل عند اكتمال الخدمة (دون الضريبة).', product_sales: 'تُسجّل عند دفع الطلب (دون الضريبة).', collections: 'ما دُفع فعلاً في الفترة، شاملاً العرابين.',
+      service_sales: 'تُسجّل عند اكتمال الخدمة (دون الضريبة).', product_sales: 'تُسجّل عند دفع الطلب، ومنها منتجات بيعت لخبيرات مستضافات عند دفع حجز المساحة (دون الضريبة).', collections: 'ما دُفع فعلاً في الفترة، شاملاً العرابين.',
       booking_value: 'إجمالي {n} حجزاً يبدأ في الفترة — ليس إيراداً.', tax: 'حسب قواعد الضريبة المضبوطة فقط.', expenses: 'المصروفات غير الملغاة في الفترة.',
       commissions: 'العمولات المستحقة ناقص العكوسات.', fees: 'لا يبلّغ عنها مزوّد الدفع التجريبي.', deposits: 'مبالغ مدفوعة مقدماً لخدمات لم تُقدَّم بعد (التزام، لا إيراد).',
       receivables: 'خدمات مكتملة لم تُسدَّد بالكامل.',
@@ -124,7 +124,7 @@ const ar = {
     },
     account: {
       back: 'كل حجوزاتي', hold_pending: 'الحجز بانتظار الدفع', hold_until: 'الموعد محجوز لكِ حتى {time}.', complete_payment: 'إكمال الدفع',
-      discount: 'الخصم', refunded: 'المسترد', your_note: 'ملاحظتك', group_seats: 'عدد المقاعد: {n}', cancel_booking: 'إلغاء الحجز',
+      discount: 'الخصم', refunded: 'المسترد', your_note: 'ملاحظتك', group_seats: 'عدد المقاعد: {n}', keep_booking: 'الإبقاء على الحجز', cancel_booking: 'إلغاء الحجز',
       started_contact: 'بدأ موعد هذا الحجز؛ للتعديل تواصلي مع الصالون.', terms_snapshot: 'هذه الشروط كما كانت وقت الحجز، وهي التي تُطبَّق على حجزك.',
       payments: 'المدفوعات والإيصالات', receipts: 'الإيصالات', no_receipts: 'لا إيصالات صادرة بعد.',
       cancel_title: 'إلغاء الحجز', refund_preview: 'المبلغ الذي سيُسترد', fee_retained: 'رسوم الإلغاء المحتجزة',
@@ -163,7 +163,7 @@ const en: typeof ar = {
     finance: { subtitle: 'Figures come from the accounting ledger in the business timezone ({tz}). Each figure states its basis.' },
     overview: {
       summary: 'Period summary', incomplete_body: 'Some cost data is not recorded, so no profit or net figure is shown. Complete the missing costs to compute profit.',
-      net: 'Net (profit)', not_computed: 'Not computed', incomplete: 'Incomplete', formula: 'service sales + product sales − expenses − product costs − material costs − commissions − salaries',
+      net: 'Net (profit)', not_computed: 'Not computed', incomplete: 'Incomplete', formula: 'service sales + product sales + net hosting revenue − expenses − hosting expense − product costs − material costs − commissions − salaries',
       tax_collected: 'Tax collected', refunds_pending: 'Pending: {amount}', missing_lines: '{n} sold lines without a cost',
       daily_collections: 'Daily collections', max_day: 'Highest day', chart_note: 'Money actually captured each day ({tz}), including deposits.',
       by_method: 'Collections by payment method', by_category: 'Expenses by category', none: 'Nothing in this period.',
@@ -171,7 +171,7 @@ const en: typeof ar = {
       tax_disclaimer: 'Values shown are what is configured in settings, not tax or legal advice.',
     },
     basis: {
-      service_sales: 'Recognised when a service is completed (net of tax).', product_sales: 'Recognised when an order is paid (net of tax).', collections: 'Money actually received in the period, including deposits.',
+      service_sales: 'Recognised when a service is completed (net of tax).', product_sales: 'Recognised when an order is paid, including products sold to hosted experts when the space booking is paid (net of tax).', collections: 'Money actually received in the period, including deposits.',
       booking_value: 'Total of {n} bookings starting in the period — not revenue.', tax: 'Per the configured tax rules only.', expenses: 'Non-voided expenses in the period.',
       commissions: 'Commissions earned minus reversals.', fees: 'Not reported by the sandbox payment provider.', deposits: 'Prepaid for services not yet delivered (a liability, not revenue).',
       receivables: 'Completed services not yet fully paid.',
@@ -268,7 +268,7 @@ const en: typeof ar = {
     },
     account: {
       back: 'All my bookings', hold_pending: 'This booking is waiting for payment', hold_until: 'Your time is held until {time}.', complete_payment: 'Complete payment',
-      discount: 'Discount', refunded: 'Refunded', your_note: 'Your note', group_seats: 'Seats: {n}', cancel_booking: 'Cancel booking',
+      discount: 'Discount', refunded: 'Refunded', your_note: 'Your note', group_seats: 'Seats: {n}', keep_booking: 'Keep booking', cancel_booking: 'Cancel booking',
       started_contact: 'This appointment has started; please contact the salon for changes.', terms_snapshot: 'These are the terms as they were when you booked; they are the ones that apply.',
       payments: 'Payments and receipts', receipts: 'Receipts', no_receipts: 'No receipts issued yet.',
       cancel_title: 'Cancel booking', refund_preview: 'Amount to be refunded', fee_retained: 'Cancellation fee retained',

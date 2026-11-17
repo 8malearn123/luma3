@@ -1,0 +1,62 @@
+{
+  "id": "pb.cross_sell.service_product",
+  "version": 1,
+  "title": {
+    "ar": "توصية منتج مع الخدمة",
+    "en": "Recommend a product with the service"
+  },
+  "applies_to": {
+    "sectors": [
+      "beauty"
+    ],
+    "detectors": [
+      "cross_sell_affinity"
+    ],
+    "interventions": [
+      "bundle_with_service",
+      "in_store_recommendation"
+    ],
+    "channels": [
+      "in_store",
+      "storefront"
+    ]
+  },
+  "guidance": {
+    "ar": "إذا كانت عميلات خدمة معينة يشترين منتجًا أكثر من غيرهن، فلتقترحه الأخصائية بعد الخدمة بلطف، أو يُعرض معها في المتجر. تأكدي من توفر المخزون.",
+    "en": "When customers of a service buy a product more than others, let the specialist suggest it gently after the service, or show it next to the service online. Check stock first."
+  },
+  "when_not_to_use": {
+    "ar": "لا تصلح إذا كان المنتج غير متوفر أو بهامش سالب.",
+    "en": "Not suitable when the product is out of stock or has a negative margin."
+  },
+  "common_mistakes": [
+    {
+      "ar": "ضغط بيعي أثناء الخدمة",
+      "en": "Hard selling during the service"
+    }
+  ],
+  "measurement": {
+    "primary": "sales.attach_rate",
+    "design": "observational"
+  },
+  "examples": {
+    "good": [
+      {
+        "ar": "«هذا السيروم يحافظ على اللون بعد الصبغة» مع عيّنة",
+        "en": "“This serum helps keep your colour after the treatment” with a sample"
+      }
+    ],
+    "bad": [
+      {
+        "ar": "إلزام العميلة بشراء المنتج مع الحجز",
+        "en": "Forcing a product purchase with the booking"
+      }
+    ]
+  },
+  "source": {
+    "type": "internal_review",
+    "ref": "Loom marketing methodology review, beauty pack v1",
+    "reviewed_at": "2026-11-01"
+  },
+  "owner": "loom.methodology"
+}

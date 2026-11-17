@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { localizedTaxLabel } from '@/shared/tax-label';
 import { useQueryClient } from '@tanstack/react-query';
 import { DateTime } from 'luxon';
 import { Ban, CalendarClock, CircleCheck, Download, FileText, HandCoins, LogIn, Play, Printer, Undo2, UserX, Wallet, XCircle } from 'lucide-react';
@@ -124,10 +125,10 @@ export function BookingDrawer({ bookingId, onClose }: { bookingId: string; onClo
               <>
                 <p className="font-medium">{b.customer.display_name}{b.customer.has_account ? <Badge className="ms-2">{t('bookings_ui.detail.has_account')}</Badge> : null}</p>
                 {access.can('customers.view') && (b.customer.phone || b.customer.email) ? <p className="text-sm text-ink-muted" dir="ltr">{[b.customer.phone, b.customer.email].filter(Boolean).join(' · ')}</p> : null}
-                {b.customer.private_notes ? <p className="mt-1 rounded-lg bg-luma-50 p-2 text-sm"><span className="font-medium">{t('bookings_ui.detail.customer_private')}: </span>{b.customer.private_notes}</p> : null}
+                {b.customer.private_notes ? <p className="mt-1 rounded-lg bg-surface-muted p-2 text-sm"><span className="font-medium">{t('bookings_ui.detail.customer_private')}: </span>{b.customer.private_notes}</p> : null}
               </>
             ) : <p className="text-sm text-ink-muted">{t('states.unknown')}</p>}
-            {b.customer_note ? <p className="mt-2 rounded-lg bg-luma-50 p-2 text-sm"><span className="font-medium">{t('booking.dashboard.customer_note')}: </span>{b.customer_note}</p> : null}
+            {b.customer_note ? <p className="mt-2 rounded-lg bg-surface-muted p-2 text-sm"><span className="font-medium">{t('booking.dashboard.customer_note')}: </span>{b.customer_note}</p> : null}
             {b.internal_note ? <p className="mt-2 rounded-lg bg-warn-bg p-2 text-sm"><span className="font-medium">{t('booking.dashboard.internal_note')}: </span>{b.internal_note}</p> : null}
           </section>
 
@@ -149,7 +150,7 @@ export function BookingDrawer({ bookingId, onClose }: { bookingId: string; onClo
               <dl className="mt-3 flex flex-col gap-1 text-sm">
                 {b.subtotal_minor != null ? <Row label={t('commerce.orders.subtotal')} value={money(b.subtotal_minor)} /> : null}
                 {b.discount_minor ? <Row label={t('commerce.orders.discount')} value={`−${money(b.discount_minor)}`} /> : null}
-                {b.tax_minor ? <Row label={b.policy_snapshot?.tax_label || t('booking.checkout.tax')} value={money(b.tax_minor)} /> : null}
+                {b.tax_minor ? <Row label={localizedTaxLabel(b.policy_snapshot?.tax_label, locale, t('booking.checkout.tax'))} value={money(b.tax_minor)} /> : null}
                 <div className="flex justify-between border-t border-line pt-1 font-semibold"><dt>{t('fields.total')}</dt><dd dir="ltr">{money(b.total_minor)}</dd></div>
                 {b.deposit_due_minor ? <Row muted label={t('bookings_ui.detail.deposit_due')} value={money(b.deposit_due_minor)} /> : null}
                 <Row muted label={t('booking.checkout.paid')} value={money(b.paid_minor)} />
@@ -189,7 +190,7 @@ export function BookingDrawer({ bookingId, onClose }: { bookingId: string; onClo
           {b.events.length ? (
             <section>
               <h3 className="mb-2 text-sm font-semibold">{t('booking.dashboard.history')}</h3>
-              <ol className="flex flex-col gap-2 border-s-2 border-luma-100 ps-4">
+              <ol className="flex flex-col gap-2 border-s-2 border-accent-soft ps-4">
                 {b.events.map((e) => (
                   <li key={e.id} className="text-sm">
                     <p className="font-medium">{eventLabel(t, e)}</p>
@@ -218,7 +219,7 @@ export function BookingDrawer({ bookingId, onClose }: { bookingId: string; onClo
 }
 
 function Row({ label, value, muted, strong }: { label: string; value: string; muted?: boolean; strong?: boolean }) {
-  return <div className={`flex justify-between ${muted ? 'text-ink-muted' : ''} ${strong ? 'font-semibold text-luma-900' : ''}`}><dt>{label}</dt><dd dir="ltr">{value}</dd></div>;
+  return <div className={`flex justify-between ${muted ? 'text-ink-muted' : ''} ${strong ? 'font-semibold text-heading' : ''}`}><dt>{label}</dt><dd dir="ltr">{value}</dd></div>;
 }
 
 function eventLabel(t: (k: string, v?: Record<string, string | number>) => string, e: BookingEvent) {
@@ -405,7 +406,7 @@ function RescheduleDialog({ booking, onClose, onDone }: { booking: BookingDetail
         <FormErrorSummary message={m.error && !(m.error instanceof ApiError && m.error.code === 'price_changed') ? msg(m.error) : null} />
         <p className="text-ink-muted">{t('bookings_ui.reschedule.intro')}</p>
         <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" className="size-4 accent-luma-700" checked={keepStaff} onChange={(e) => { setKeepStaff(e.target.checked); setSlot(null); setPriceChange(null); }} />
+          <input type="checkbox" className="size-4 accent-primary" checked={keepStaff} onChange={(e) => { setKeepStaff(e.target.checked); setSlot(null); setPriceChange(null); }} />
           {t('bookings_ui.reschedule.keep_staff')}
         </label>
         <SlotPicker branchId={booking.branch_id} items={items} timezone={booking.timezone} value={slot} onChange={(o) => { setSlot(o); setPriceChange(null); m.reset(); }} />
@@ -429,8 +430,8 @@ function Documents({ booking }: { booking: BookingDetail }) {
   if (!(canReceipt && captured.length) && !canInvoice) return null;
   const links = (id: string) => (
     <span className="flex flex-wrap gap-2">
-      <a className="inline-flex items-center gap-1 text-sm text-luma-800 underline" href={access.api(`/finance/invoices/${id}/pdf`)} target="_blank" rel="noopener"><Download className="size-4" aria-hidden />{t('bookings_ui.docs.pdf')}</a>
-      <a className="inline-flex items-center gap-1 text-sm text-luma-800 underline" href={access.api(`/finance/invoices/${id}/pdf?format=html`)} target="_blank" rel="noopener"><Printer className="size-4" aria-hidden />{t('bookings_ui.docs.print')}</a>
+      <a className="inline-flex items-center gap-1 text-sm text-heading underline" href={access.api(`/finance/invoices/${id}/pdf`)} target="_blank" rel="noopener"><Download className="size-4" aria-hidden />{t('bookings_ui.docs.pdf')}</a>
+      <a className="inline-flex items-center gap-1 text-sm text-heading underline" href={access.api(`/finance/invoices/${id}/pdf?format=html`)} target="_blank" rel="noopener"><Printer className="size-4" aria-hidden />{t('bookings_ui.docs.print')}</a>
     </span>
   );
   return (

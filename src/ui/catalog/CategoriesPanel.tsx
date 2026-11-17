@@ -47,10 +47,10 @@ export function CategoriesPanel({ categories, canEdit }: { categories: UseQueryR
   };
 
   return (
-    <details className="group rounded-2xl border border-line bg-white shadow-sm">
+    <details className="group rounded-2xl border border-line bg-surface shadow-sm">
       <summary className="flex cursor-pointer list-none items-center justify-between gap-2 p-4">
-        <span className="inline-flex items-center gap-2 font-semibold"><FolderTree className="size-4 text-luma-500" aria-hidden />{t('catalog_ui.categories')}
-          <span className="rounded-full bg-luma-100 px-1.5 text-xs font-normal">{rows.length}</span></span>
+        <span className="inline-flex items-center gap-2 font-semibold"><FolderTree className="size-4 text-brand" aria-hidden />{t('catalog_ui.categories')}
+          <span className="rounded-full bg-accent-soft px-1.5 text-xs font-normal">{rows.length}</span></span>
         <span className="text-xs text-ink-muted group-open:hidden">{t('catalog_team.categories.expand')}</span>
       </summary>
       <div className="flex flex-col gap-3 border-t border-line p-4">
@@ -94,7 +94,7 @@ export function CategoriesPanel({ categories, canEdit }: { categories: UseQueryR
           ) : <p className="text-sm text-ink-muted">{t('catalog_team.categories.empty')}</p>
         )}
         {canEdit ? (adding ? (
-          <div className="flex flex-col gap-2 rounded-xl bg-luma-50/60 p-3 sm:flex-row sm:items-end">
+          <div className="flex flex-col gap-2 rounded-xl bg-surface-muted/60 p-3 sm:flex-row sm:items-end">
             <div className="flex-1"><LocalizedInput label={t('catalog_team.categories.new_name')} required value={name} onChange={setName} maxLength={160} /></div>
             <div className="flex gap-2">
               <Button size="sm" loading={busy} disabled={!(name.ar || name.en)}

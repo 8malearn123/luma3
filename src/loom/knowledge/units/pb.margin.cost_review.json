@@ -1,0 +1,60 @@
+{
+  "id": "pb.margin.cost_review",
+  "version": 1,
+  "title": {
+    "ar": "مراجعة مكونات التكلفة",
+    "en": "Review cost components"
+  },
+  "applies_to": {
+    "sectors": [
+      "beauty"
+    ],
+    "detectors": [
+      "margin_leak"
+    ],
+    "interventions": [
+      "cost_review"
+    ],
+    "channels": [
+      "in_store"
+    ]
+  },
+  "guidance": {
+    "ar": "الهامش الضعيف يُعالج قبل أي ترويج: راجعي كميات المواد في الوصفة، وعمولة الأخصائية، ورسوم السوق. الترويج لخدمة بهامش ضعيف يزيد الخسارة.",
+    "en": "A thin margin is fixed before any promotion: review recipe quantities, specialist commission and marketplace fees. Promoting a thin-margin service increases the loss."
+  },
+  "when_not_to_use": {
+    "ar": "لا تصلح إذا كانت التكاليف غير مسجلة (ابدئي بتسجيلها).",
+    "en": "Not suitable when costs are not recorded (record them first)."
+  },
+  "common_mistakes": [
+    {
+      "ar": "ترويج خدمة قبل معرفة هامشها",
+      "en": "Promoting a service before knowing its margin"
+    }
+  ],
+  "measurement": {
+    "primary": "economics.unit_margin",
+    "design": "observational"
+  },
+  "examples": {
+    "good": [
+      {
+        "ar": "مراجعة كمية الصبغة لكل جلسة مع المورد",
+        "en": "Review dye quantity per session with the supplier"
+      }
+    ],
+    "bad": [
+      {
+        "ar": "رفع العمولة مع خصم في الشهر نفسه",
+        "en": "Raising commission and discounting in the same month"
+      }
+    ]
+  },
+  "source": {
+    "type": "internal_review",
+    "ref": "Loom marketing methodology review, beauty pack v1",
+    "reviewed_at": "2026-11-01"
+  },
+  "owner": "loom.methodology"
+}

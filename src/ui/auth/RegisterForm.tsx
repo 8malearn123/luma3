@@ -49,7 +49,7 @@ export function RegisterForm({ next }: { next: string }) {
             {(p) => <Input {...p} inputMode="numeric" autoComplete="one-time-code" dir="ltr" maxLength={6} value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))} className="text-center font-mono text-lg tracking-[0.4em]" />}
           </Field>
           <Button type="submit" loading={busy} size="lg" disabled={code.length !== 6}>{t('auth.verify_cta')}</Button>
-          <button type="button" className="text-sm text-luma-700 underline" onClick={() => setStage('form')}>{t('actions.back')}</button>
+          <button type="button" className="text-sm text-link underline" onClick={() => setStage('form')}>{t('actions.back')}</button>
         </form>
       </AuthCard>
     );

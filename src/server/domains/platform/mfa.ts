@@ -22,13 +22,29 @@ export async function startEnrollment(user: SessionUser, actor: AuditActor) {
     await trx.updateTable('users').set({ mfa_pending_secret_enc: encryptSecret(secret) }).where('id', '=', user.userId).execute();
     await audit(trx, actor, 'platform.mfa.enrollment_started', { targetType: 'user', targetId: user.userId });
   });
-  return { secret, otpauth_uri: otpauthUri(secret, u.email ?? u.phone ?? user.userId), digits: 6, period: 30, algorithm: 'SHA1' };
+  return {
+    secret, otpauth_uri: otpauthUri(secret, u.email ?? u.phone ?? user.userId), digits: 6, period: 30, algorithm: 'SHA1',
+    // Embedded demo only: every serverless instance holds its own copy of the data, so the confirming
+    // request may reach an instance that never saw this enrolment. The pending secret travels back sealed
+    // (AES-GCM under the build secret) and bound to this user; it is accepted only in that mode.
+    ...(embeddedDb() ? { pending_token: encryptSecret(JSON.stringify({ u: user.userId, s: secret })) } : {}),
+  };
 }
 
-async function checkCode(userId: string, code: string, which: 'active' | 'pending') {
+const embeddedDb = () => env().DB_DRIVER === 'pglite';
+
+export function pendingFromToken(userId: string, token: string | undefined): string | null {
+  if (!token || !embeddedDb()) return null;
+  try {
+    const p = JSON.parse(decryptSecret(token)) as { u?: unknown; s?: unknown };
+    return p.u === userId && typeof p.s === 'string' ? encryptSecret(p.s) : null;
+  } catch { return null; }
+}
+
+async function checkCode(userId: string, code: string, which: 'active' | 'pending', pendingToken?: string) {
   await enforce(`mfa:${userId}`, 10, 900);
   const u = await loadUser(userId);
-  const enc = which === 'active' ? u.mfa_totp_secret_enc : u.mfa_pending_secret_enc;
+  const enc = which === 'active' ? u.mfa_totp_secret_enc : (u.mfa_pending_secret_enc ?? pendingFromToken(userId, pendingToken));
   if (!enc) throw Errors.invalid(which === 'active' ? 'mfa_not_enabled' : 'mfa_not_pending', 'No authenticator is being set up');
   const step = verifyTotp(decryptSecret(enc), code, { afterStep: u.mfa_last_step });
   if (step === null) throw Errors.invalid('mfa_code_invalid', 'The authenticator code is incorrect');
@@ -36,8 +52,8 @@ async function checkCode(userId: string, code: string, which: 'active' | 'pendin
 }
 
 /** Proves possession of the pending secret, enables MFA and verifies this session. */
-export async function activateEnrollment(user: SessionUser, code: string, actor: AuditActor) {
-  const { step, enc } = await checkCode(user.userId, code, 'pending');
+export async function activateEnrollment(user: SessionUser, code: string, actor: AuditActor, pendingToken?: string) {
+  const { step, enc } = await checkCode(user.userId, code, 'pending', pendingToken);
   await withCentral(async (trx) => {
     await trx.updateTable('users').set({ mfa_totp_secret_enc: enc, mfa_pending_secret_enc: null, mfa_enabled_at: new Date(), mfa_last_step: step })
       .where('id', '=', user.userId).execute();
@@ -48,9 +64,14 @@ export async function activateEnrollment(user: SessionUser, code: string, actor:
 }
 
 // ── WhatsApp one-time code (the default second factor) ─────────────────────
-/** Embedded demo database only: the second factor is this fixed code; nothing is sent. */
+/**
+ * Local embedded demo database only (PGlite on a developer machine): the second
+ * factor is this fixed code; nothing is sent. NEVER accepted on a deployed build
+ * (review, production, or any Vercel preview), where TOTP is the only factor
+ * unless a WhatsApp provider is connected.
+ */
 export const DEMO_MFA_CODE = '2002';
-export const demoMfa = () => env().DB_DRIVER === 'pglite' && !env().isProduction;
+export const demoMfa = () => env().DB_DRIVER === 'pglite' && !env().isDeployed;
 
 /**
  * Sends a one-time code to the administrator's WhatsApp number. Reports exactly
@@ -60,6 +81,8 @@ export const demoMfa = () => env().DB_DRIVER === 'pglite' && !env().isProduction
 export async function sendWhatsappCode(user: SessionUser, actor: AuditActor) {
   if (demoMfa()) return { channel: 'whatsapp' as const, demo: true };
   const u = await loadUser(user.userId);
+  // Once an authenticator app is enrolled it is the only second factor (LUMA-AUDIT-028).
+  if (u.mfa_enabled_at && u.mfa_totp_secret_enc) throw Errors.invalid('mfa_use_authenticator', 'Use the code from your authenticator app');
   if (!u.phone) throw Errors.invalid('mfa_no_phone', 'Add a mobile number to your account to receive the code on WhatsApp');
   const delivery = await issueCode({ userId: user.userId, purpose: 'step_up', channel: 'whatsapp', destination: u.phone, locale: user.locale });
   if (delivery.status === 'unavailable') throw Errors.unavailable('whatsapp_unavailable', 'WhatsApp messages cannot be sent right now');
@@ -68,8 +91,9 @@ export async function sendWhatsappCode(user: SessionUser, actor: AuditActor) {
 }
 
 /**
- * Second-factor check for the current session: the WhatsApp code (or the
- * demo's fixed code), or a code from an authenticator app if one is set up.
+ * Second-factor check for the current session: a code from the authenticator
+ * app when one is enrolled (then nothing else is accepted); otherwise the
+ * WhatsApp code; or the fixed code of the LOCAL embedded demo only.
  */
 export async function verifySession(user: SessionUser, code: string, actor: AuditActor) {
   try {
@@ -77,12 +101,11 @@ export async function verifySession(user: SessionUser, code: string, actor: Audi
       if (code !== DEMO_MFA_CODE) throw Errors.invalid('mfa_code_invalid', 'The verification code is incorrect');
     } else {
       const u = await loadUser(user.userId);
-      let step: number | null = null;
-      if (u.mfa_totp_secret_enc && /^\d{6}$/.test(code)) {
+      if (u.mfa_enabled_at && u.mfa_totp_secret_enc) {
+        // Enrolled: only the authenticator app counts; a WhatsApp/SMS code is never accepted (LUMA-AUDIT-028).
         await enforce(`mfa:${user.userId}`, 10, 900);
-        step = verifyTotp(decryptSecret(u.mfa_totp_secret_enc), code, { afterStep: u.mfa_last_step });
-      }
-      if (step !== null) {
+        const step = /^\d{6}$/.test(code) ? verifyTotp(decryptSecret(u.mfa_totp_secret_enc), code, { afterStep: u.mfa_last_step }) : null;
+        if (step === null) throw Errors.invalid('mfa_code_invalid', 'The verification code is incorrect');
         await db().updateTable('users').set({ mfa_last_step: step }).where('id', '=', user.userId).execute();
       } else {
         if (!u.phone) throw Errors.invalid('mfa_code_invalid', 'The verification code is incorrect');

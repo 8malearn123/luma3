@@ -62,7 +62,7 @@ export function SlotPicker({ branchId, items, timezone, value, onChange, showPri
             const active = iso === selectedDay;
             return (
               <button key={iso} type="button" disabled={!n} aria-pressed={active} onClick={() => { setDay(iso); onChange(null); }}
-                className={cx('flex min-w-0 flex-col items-center rounded-lg border px-0.5 py-1.5 text-xs disabled:opacity-40', active ? 'border-luma-700 bg-luma-700 text-white' : 'border-line bg-white hover:bg-luma-50')}>
+                className={cx('flex min-w-0 flex-col items-center rounded-lg border px-0.5 py-1.5 text-xs disabled:opacity-40', active ? 'border-primary bg-primary text-on-primary' : 'border-line bg-surface hover:bg-surface-muted')}>
                 <span className="truncate">{d.setLocale(locale).toFormat('ccc')}</span>
                 <span className="text-sm font-semibold">{d.setLocale(locale).toFormat('d')}</span>
               </button>
@@ -89,7 +89,7 @@ export function SlotPicker({ branchId, items, timezone, value, onChange, showPri
                   return (
                     <li key={`${o.start}-${o.items.map((i) => i.staff_id).join('-')}`}>
                       <button type="button" role="option" aria-selected={active} onClick={() => onChange(o)}
-                        className={cx('flex w-full flex-col items-start rounded-lg border px-3 py-2 text-start text-sm', active ? 'border-luma-700 bg-luma-50 ring-2 ring-luma-200' : 'border-line bg-white hover:bg-luma-50')}>
+                        className={cx('flex w-full flex-col items-start rounded-lg border px-3 py-2 text-start text-sm', active ? 'border-primary bg-surface-muted ring-2 ring-highlight' : 'border-line bg-surface hover:bg-surface-muted')}>
                         <span className="font-semibold">{time(o.start, tz)}</span>
                         <span className="truncate text-xs text-ink-muted">{staff}</span>
                         {o.total_gap_min ? <span className="text-xs text-warn">{t('bookings_ui.slots.gap', { n: o.total_gap_min })}</span> : null}

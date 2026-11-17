@@ -1,0 +1,62 @@
+{
+  "id": "pb.presentation.photos_description",
+  "version": 1,
+  "title": {
+    "ar": "صور حقيقية ووصف واضح",
+    "en": "Real photos and a clear description"
+  },
+  "applies_to": {
+    "sectors": [
+      "beauty"
+    ],
+    "detectors": [
+      "offering_presentation",
+      "conversion_friction"
+    ],
+    "interventions": [
+      "add_images",
+      "improve_description"
+    ],
+    "channels": [
+      "storefront"
+    ]
+  },
+  "guidance": {
+    "ar": "الخدمة التي تُشاهد ولا تُحجز تحتاج عرضًا أوضح: صور حقيقية من المنشأة، والمدة، وما يشمله السعر، ولمن تناسب. استخدمي لغة واقعية دون وعود علاجية.",
+    "en": "A service that is viewed but not booked needs a clearer presentation: real photos from the business, duration, what the price includes and who it suits. Use realistic language with no therapeutic promises."
+  },
+  "when_not_to_use": {
+    "ar": "لا يصلح إذا كانت المشاهدات قليلة جدًا لاستنتاج شيء.",
+    "en": "Not suitable when there are too few views to conclude anything."
+  },
+  "common_mistakes": [
+    {
+      "ar": "صور مخزنة لا تمثل المنشأة",
+      "en": "Stock photos that do not represent the business"
+    }
+  ],
+  "measurement": {
+    "primary": "demand.view_to_booking",
+    "design": "pre_post_with_control"
+  },
+  "examples": {
+    "good": [
+      {
+        "ar": "ثلاث صور قبل/بعد حقيقية بإذن العميلة مع المدة والسعر",
+        "en": "Three real before/after photos with consent, plus duration and price"
+      }
+    ],
+    "bad": [
+      {
+        "ar": "«نتائج مضمونة ١٠٠٪»",
+        "en": "“100% guaranteed results”"
+      }
+    ]
+  },
+  "source": {
+    "type": "internal_review",
+    "ref": "Loom marketing methodology review, beauty pack v1",
+    "reviewed_at": "2026-11-01"
+  },
+  "owner": "loom.methodology"
+}

@@ -24,9 +24,11 @@ export function demoEnv(secret: string): Record<string, string> {
     DB_APP_ROLE: 'luma_app',
     AUTH_SECRET: secret,
     PAYMENT_SANDBOX_WEBHOOK_SECRET: `${secret}-sandbox`,
+    VERCEL_ENV: 'preview',
     STORAGE_DRIVER: 'db',
-    DEMO_MODE: 'true',
-    DEV_OTP_ECHO: 'true',
+    // R3: a deployed build has no one-click demo sign-in and no on-screen codes (both refuse to start);
+    // demo accounts sign in with the password given to the build.
+    DEMO_ACCOUNT_PASSWORD: process.env.DEMO_ACCOUNT_PASSWORD ?? 'demo-e2e-password-0123',
     NEXT_DIST_DIR: DIST,
   };
 }

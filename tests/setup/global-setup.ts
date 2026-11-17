@@ -19,6 +19,9 @@ export default async function setup() {
       // TRUNCATE bypasses row-level triggers (append-only guards are UPDATE/DELETE triggers).
       await client.query(`truncate ${rows.map((r) => `"${r.tablename}"`).join(', ')} restart identity cascade`);
     }
+    // Loom keeps its own tables in schema loom (metric definitions are code-mirrored and kept).
+    const loom = await client.query<{ tablename: string }>(`select tablename from pg_tables where schemaname = 'loom' and tablename <> 'metric_definitions'`);
+    if (loom.rows.length) await client.query(`truncate ${loom.rows.map((r) => `loom."${r.tablename}"`).join(', ')} restart identity cascade`);
   } finally {
     await client.end();
   }
