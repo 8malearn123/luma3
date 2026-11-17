@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import { withTenant } from '@/server/db/client';
-import { publicTenant } from '@/server/domains/storefront-public';
+import { publicTenant, storefrontSelling } from '@/server/domains/storefront-public';
 import { getSessionUser } from '@/server/pages';
 import { AppError } from '@/server/http/errors';
 import { badgeOf } from '@/shared/badges';
@@ -16,6 +16,8 @@ export default async function BookingPage({ params, searchParams }: { params: Pr
   const sp = await searchParams;
   let tenant;
   try { tenant = await publicTenant(slug); } catch (e) { if (e instanceof AppError) notFound(); throw e; }
+  // R4: no booking flow once the subscription lapsed beyond its grace window (the layout shows the notice).
+  if (!(await storefrontSelling(tenant.id))) return null;
   const data = await withTenant(tenant.id, async (trx) => {
     const services = await trx.selectFrom('services as s').leftJoin('categories as c', 'c.id', 's.category_id')
       .select(['s.id', 's.name_ar', 's.name_en', 's.description_ar', 's.description_en', 's.price_minor', 's.price_display', 's.duration_min', 's.category_id', 'c.name_ar as category_ar', 'c.name_en as category_en', 'c.sort as category_sort', 's.sort', 's.branch_id', 's.badge_kind', 's.badge_text_ar', 's.badge_text_en'])

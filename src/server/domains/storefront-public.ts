@@ -15,6 +15,40 @@ export async function publicTenant(slug: string): Promise<PublicTenant> {
 
 import { withSystem } from '../db/client';
 import { loadEntitlements } from '../tenancy/access';
+
+/**
+ * R4 / LUMA-AUDIT-012: whether the storefront may take NEW bookings, orders
+ * and purchases. The same rule that makes the dashboard read-only applies:
+ * the subscription is active/trialing, or past_due still inside its grace
+ * window (grace_until). After that the store stays visible with a notice;
+ * existing bookings, orders and their payments are untouched.
+ */
+export async function storefrontSelling(tenantId: string): Promise<boolean> {
+  const ent = await withSystem('storefront: subscription check', (trx) => loadEntitlements(trx, tenantId));
+  return !ent.readOnly;
+}
+
+export async function requireStorefrontSelling(tenantId: string) {
+  if (!(await storefrontSelling(tenantId))) {
+    throw Errors.conflict('storefront_unavailable', 'This business is not taking new bookings or orders right now');
+  }
+}
+
+/** publicTenant() for endpoints that create a new booking, order or purchase. */
+export async function publicTenantForSale(slug: string): Promise<PublicTenant> {
+  const t = await publicTenant(slug);
+  await requireStorefrontSelling(t.id);
+  return t;
+}
+
+/** For storefront pages: false (show the notice) when the subscription lapsed beyond its grace window. */
+export async function storefrontSellingBySlug(slug: string): Promise<boolean> {
+  try {
+    return await storefrontSelling((await publicTenant(slug)).id);
+  } catch {
+    return true; // unknown/unpublished stores are handled (404) by the page itself
+  }
+}
 import type { PlanFeatureKey } from '@/shared/plans';
 
 /** Plan features are enforced on public endpoints too, not only hidden in menus. */

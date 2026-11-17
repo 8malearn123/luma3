@@ -9,6 +9,8 @@ import { loadStorefront } from './_data';
 import { storefrontBadge } from '@/server/domains/marketplace';
 import { MarketAttribution } from '@/ui/storefront/MarketAttribution';
 import { VerifiedStrip } from '@/ui/storefront/VerifiedStrip';
+import { storefrontSellingBySlug } from '@/server/domains/storefront-public';
+import { translate } from '@/i18n';
 
 type Props = { children: React.ReactNode; params: Promise<{ slug: string }> };
 
@@ -38,12 +40,19 @@ export default async function StorefrontLayout({ children, params }: Props) {
   const active = ['services', 'products', 'team', 'about', 'contact'].includes(seg) ? seg : seg === 'pages' ? (data.pages.find((p) => p.slug === path.split('/')[4])?.kind ?? '') : seg === '' ? 'home' : '';
   void pk;
   const badge = await storefrontBadge(slug).catch(() => ({ verified: false }));
+  // R4: after the subscription's grace window the store stays visible but takes no new bookings/orders.
+  const selling = await storefrontSellingBySlug(slug);
   return (
     <>
       <link rel="stylesheet" href={fontHref(data.brand)} precedence="default" />
       <StorefrontShell ctx={{ data, locale }} activePath={active}>
         <MarketAttribution slug={slug} />
         {badge.verified ? <VerifiedStrip locale={locale} /> : null}
+        {!selling ? (
+          <p role="status" data-testid="storefront-selling-paused" className="mx-4 mt-4 rounded-sf border border-sf-border bg-sf-surface px-4 py-3 text-center text-sm sm:mx-6">
+            {translate(locale, 'storefront.selling_paused')}
+          </p>
+        ) : null}
         {children}
       </StorefrontShell>
     </>

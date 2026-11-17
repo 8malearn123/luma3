@@ -1,13 +1,13 @@
 import { expect, test } from '@playwright/test';
 import { ACCOUNTS, demoSignIn, english } from './helpers';
 
-/** Phone layout (RTL, Arabic): the demo switcher and dashboards fit the screen. */
+/** Phone layout (RTL, Arabic): the login page and dashboards fit the screen. */
 async function noHorizontalScroll(page: import('@playwright/test').Page) {
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow).toBeLessThanOrEqual(1);
 }
 
-test('Arabic, phone: login with the demo switcher, owner dashboard and storefront fit the screen', async ({ page, baseURL }) => {
+test('Arabic, phone: password login, owner dashboard and storefront fit the screen', async ({ page, baseURL }) => {
   await page.context().addCookies([{ name: 'luma_locale', value: 'ar', url: baseURL! }]);
   await page.goto('/auth/login');
   await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');

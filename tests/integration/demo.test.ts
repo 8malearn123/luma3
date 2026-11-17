@@ -12,11 +12,18 @@ describe('demo role switching', () => {
     expect((await c.call(users.GET)).status).toBe(404);
   });
 
-  it('is absent in production even if DEMO_MODE is on', async () => {
-    process.env.APP_ENV = 'production'; process.env.DEMO_MODE = 'true'; resetEnvCache();
-    const c = new TestClient();
-    expect((await c.call(users.GET)).status).toBe(404);
-    expect((await c.call(signIn.POST, { body: { key: '00000000-0000-0000-0000-000000000000' } })).status).toBe(404);
+  it('is absent on every deployed build; DEMO_MODE there refuses to start instead of enabling it (R3)', async () => {
+    process.env.PAYMENT_SANDBOX_WEBHOOK_SECRET = 'test-webhook-secret-long-enough-0123';
+    for (const appEnv of ['review', 'production']) {
+      process.env.APP_ENV = appEnv; process.env.DEMO_MODE = 'true'; process.env.DEV_OTP_ECHO = 'false'; resetEnvCache();
+      const c = new TestClient();
+      const r = await c.call(users.GET);
+      expect(r.status).toBe(500); // misconfiguration: the server refuses to serve
+      process.env.DEMO_MODE = 'false'; resetEnvCache();
+      expect((await c.call(users.GET)).status).toBe(404);
+      expect((await c.call(signIn.POST, { body: { key: '00000000-0000-0000-0000-000000000000' } })).status).toBe(404);
+    }
+    process.env.DEV_OTP_ECHO = 'true'; process.env.PAYMENT_SANDBOX_WEBHOOK_SECRET = 'test-webhook-secret';
   });
 
   it('never signs into a non-demo account', async () => {

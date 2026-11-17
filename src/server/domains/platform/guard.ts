@@ -1,9 +1,8 @@
 import type { z } from 'zod';
-import { env } from '../../env';
 import { mfaGate, platformMfaState } from './mfa-state';
 import { route, type RouteContext } from '../../http/route';
 import { AppError } from '../../http/errors';
-import { requireStepUp, type SessionUser } from '../../auth/service';
+import type { SessionUser } from '../../auth/service';
 import { platformCapabilities, type PlatformCapability } from '../../auth/capabilities';
 
 export { MFA_SESSION_HOURS, platformMfaState, type PlatformMfaState } from './mfa-state';
@@ -34,17 +33,16 @@ type PlatformDef<S extends z.ZodTypeAny | undefined> = {
  * hiding existence), least-privilege capability, then MFA, then step-up.
  */
 export function platformRoute<S extends z.ZodTypeAny | undefined = undefined>(def: PlatformDef<S>) {
+  // route() enforces, in order: session, platform role/capability (404), MFA (403 mfa_required), step-up.
   return route<S, 'platform'>({
     auth: 'platform',
     platformCapability: def.platformCapability,
     input: def.input,
     rateLimit: def.rateLimit,
     idempotency: def.idempotency,
-    handler: async (ctx) => {
-      if (!def.mfaExempt) await requirePlatformMfa(ctx.user);
-      if (def.stepUp) requireStepUp(ctx.user);
-      return def.handler(ctx);
-    },
+    mfaExempt: def.mfaExempt,
+    stepUp: def.stepUp,
+    handler: def.handler,
   });
 }
 

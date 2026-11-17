@@ -12,6 +12,7 @@ import { itinerariesForDate } from '../booking/engine';
 import { loadEngineInput, resolveItems } from '../booking/loader';
 import { createHold } from '../booking/service';
 import type { waitlistJoinInput } from '@/shared/schemas/waitlist';
+import { requireStorefrontSelling } from '../storefront-public';
 
 /**
  * Waitlist (spec §24). Declared ranking policy: entries are ranked by request
@@ -107,6 +108,7 @@ export async function offerFreedSlot(trx: Tx, tenantId: string, bookingId: strin
 export async function acceptOffer(user: SessionUser, offerId: string, idempotencyKey: string, actor: AuditActor) {
   const ref = (await sql<{ tenant_id: string; tenant_slug: string }>`select * from app.waitlist_offer_ref(${user.userId}, ${offerId})`.execute(db())).rows[0];
   if (!ref) throw Errors.notFound('offer');
+  await requireStorefrontSelling(ref.tenant_id); // R4: a lapsed subscription (after grace) takes no new bookings
   const offer = await withTenant(ref.tenant_id, async (trx) => {
     const o = await trx.selectFrom('waitlist_offers as o').innerJoin('waitlist_entries as e', 'e.id', 'o.waitlist_entry_id')
       .select(['o.id', 'o.status', 'o.expires_at', 'o.slot_start', 'o.staff_id', 'e.service_id', 'e.branch_id', 'e.id as entry_id'])

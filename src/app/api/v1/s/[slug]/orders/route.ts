@@ -2,6 +2,7 @@ import { route } from '@/server/http/route';
 import { createOrderFromCart } from '@/server/domains/commerce/orders';
 import { cartIdentity, resolveShop } from '@/server/domains/commerce/cart-cookie';
 import { checkoutInput } from '@/shared/schemas/commerce';
+import { requireStorefrontSelling } from '@/server/domains/storefront-public';
 import { attachConversionSession, sessionFromRequest } from '@/server/domains/analytics/events';
 
 /**
@@ -14,6 +15,7 @@ export const POST = route({
   rateLimit: { scope: 'user', limit: 20, windowSec: 600, name: 'checkout' },
   handler: async ({ req, params, user, input, idempotencyKey, actor }) => {
     const shop = await resolveShop(params.slug!);
+    await requireStorefrontSelling(shop.tenantId); // R4: no new orders after the subscription's grace window
     const ident = cartIdentity(req, user);
     const r = await createOrderFromCart({
       tenantId: shop.tenantId, user: { userId: user.userId, displayName: user.displayName, phone: user.phone, email: user.email },
