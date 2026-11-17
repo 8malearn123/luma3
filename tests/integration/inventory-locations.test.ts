@@ -157,8 +157,8 @@ describe('stock locations and transfers', () => {
     expect(b[s.main]).toMatchObject({ on_hand: 18, available: 18 });
     expect(b[st]).toMatchObject({ on_hand: 0, in_transit: 2, available: 0 });
     // Neither the destination nor the source can issue the in-transit quantity.
-    expect((await s.owner.call(issue.POST, { params: s.p, body: { inventory_item_id: dye, location_id: st, quantity: 1, reason: 'test use' } })).status).toBe(409);
-    expect((await s.owner.call(issue.POST, { params: s.p, body: { inventory_item_id: dye, location_id: s.main, quantity: 19, reason: 'test use' } })).status).toBe(409);
+    expect((await s.owner.call(issue.POST, { params: s.p, body: { inventory_item_id: dye, location_id: st, quantity: 1, reason: 'test use' }, idempotencyKey: true })).status).toBe(409);
+    expect((await s.owner.call(issue.POST, { params: s.p, body: { inventory_item_id: dye, location_id: s.main, quantity: 19, reason: 'test use' }, idempotencyKey: true })).status).toBe(409);
     const r = await s.owner.call(transferReceive.POST, { params: { ...s.p, id: t.body.data.id }, body: {} });
     expect(r.body.data.status).toBe('completed');
     expect((await bal(s, dye))[st]).toMatchObject({ on_hand: 2, in_transit: 0 });
@@ -177,7 +177,7 @@ describe('costing (weighted average, D15)', () => {
     const item = (await s.owner.call(itemOne.GET, { params: { ...s.p, id: dye } })).body.data;
     expect(item).toMatchObject({ avg_cost_minor: 150, stock_value_minor: 3000, on_hand: 20 });
     // 1 l at 100 per l = 0.1 per ml.
-    const issued = await s.owner.call(issue.POST, { params: s.p, body: { inventory_item_id: dye, quantity: 5, reason: 'training' } });
+    const issued = await s.owner.call(issue.POST, { params: s.p, body: { inventory_item_id: dye, quantity: 5, reason: 'training' }, idempotencyKey: true });
     expect(issued.body.data.total_cost_minor).toBe(750);
     const hist = (await s.owner.call(itemMoves.GET, { params: { ...s.p, id: dye } })).body.data.items as any[];
     const cons = hist.find((m) => m.kind === 'consumption');
@@ -413,5 +413,66 @@ describe('isolation, roles and plans', () => {
     const up = await s.owner.call(changePlan.POST, { params: s.p, body: { plan_code: 'wahaj' } });
     expect(up.status).toBe(200);
     expect((await bal(s, dye))[st]!.on_hand).toBe(4);
+  });
+});
+
+describe('manual issue idempotency (LUMA-AUDIT-011)', () => {
+  const consumptionsOf = (tenantId: string, itemId: string) => withTenant(tenantId, (trx) => trx.selectFrom('stock_movements').select('id')
+    .where('inventory_item_id', '=', itemId).where('kind', '=', 'consumption').execute());
+
+  it('requires a key, replays the same operation once, refuses a reused key with another payload, and posts separate operations', async () => {
+    const s = await shop();
+    const dye = await material(s, { initial_quantity: 100, cost_per_unit_minor: 10 });
+    const body = { inventory_item_id: dye, quantity: 3, reason: 'training session' };
+    const noKey = await s.owner.call(issue.POST, { params: s.p, body });
+    expect(noKey.status).toBe(422);
+    expect(noKey.body.error.code).toBe('idempotency_key_required');
+
+    const key = `issue-${randomUUID()}`;
+    const first = await s.owner.call(issue.POST, { params: s.p, body, idempotencyKey: key });
+    expect(first.status).toBe(201);
+    const again = await s.owner.call(issue.POST, { params: s.p, body, idempotencyKey: key });
+    expect(again.status).toBe(201);
+    expect(again.body.data.id).toBe(first.body.data.id);
+    expect(await onHand(s.biz.tenantId, dye)).toBe(97);
+
+    const reused = await s.owner.call(issue.POST, { params: s.p, body: { ...body, quantity: 4 }, idempotencyKey: key });
+    expect(reused.status).toBe(422);
+    expect(reused.body.error.code).toBe('idempotency_key_reused');
+
+    // A genuinely separate issue (same item, same quantity) carries its own key and posts.
+    const second = await s.owner.call(issue.POST, { params: s.p, body, idempotencyKey: `issue-${randomUUID()}` });
+    expect(second.status).toBe(201);
+    expect(second.body.data.id).not.toBe(first.body.data.id);
+    expect(await onHand(s.biz.tenantId, dye)).toBe(94);
+    expect(await consumptionsOf(s.biz.tenantId, dye)).toHaveLength(2);
+
+    // A refused issue (insufficient stock) leaves no key record: the same key can be retried after a fix.
+    const k2 = `issue-${randomUUID()}`;
+    expect((await s.owner.call(issue.POST, { params: s.p, body: { ...body, quantity: 500 }, idempotencyKey: k2 })).status).toBe(409);
+    expect((await s.owner.call(issue.POST, { params: s.p, body: { ...body, quantity: 500 }, idempotencyKey: k2 })).status).toBe(409);
+    expect(await findStockMismatches(s.biz.tenantId)).toEqual([]);
+  });
+
+  it('concurrent retries of one operation create exactly one consumption movement', async () => {
+    const s = await shop();
+    const dye = await material(s, { initial_quantity: 50, cost_per_unit_minor: 10 });
+    const key = `issue-${randomUUID()}`;
+    const body = { inventory_item_id: dye, quantity: 2, reason: 'parallel retry' };
+    const results = await Promise.all(Array.from({ length: 6 }, () => s.owner.call(issue.POST, { params: s.p, body, idempotencyKey: key })));
+    for (const r of results) expect([201, 409]).toContain(r.status);
+    const ok = results.filter((r) => r.status === 201);
+    expect(ok.length).toBeGreaterThanOrEqual(1);
+    expect(new Set(ok.map((r) => r.body.data.id)).size).toBe(1);
+    // Any 409 is "request_in_progress", never a second posting.
+    for (const r of results.filter((x) => x.status === 409)) expect(r.body.error.code).toBe('request_in_progress');
+    expect(await consumptionsOf(s.biz.tenantId, dye)).toHaveLength(1);
+    expect(await onHand(s.biz.tenantId, dye)).toBe(48);
+
+    // Two genuinely separate concurrent issues both succeed.
+    const sep = await Promise.all([1, 2].map(() => s.owner.call(issue.POST, { params: s.p, body, idempotencyKey: `issue-${randomUUID()}` })));
+    expect(sep.map((r) => r.status)).toEqual([201, 201]);
+    expect(await consumptionsOf(s.biz.tenantId, dye)).toHaveLength(3);
+    expect(await onHand(s.biz.tenantId, dye)).toBe(44);
   });
 });

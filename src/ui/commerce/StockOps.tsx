@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type ReactNode } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import { ArrowLeftRight, ClipboardList, Factory, MapPin, PackageCheck, Plus, Receipt, Trash2 } from 'lucide-react';
 import { useI18n } from '@/i18n/client';
 import { api, newIdempotencyKey } from '../api';
@@ -600,8 +600,15 @@ export function ConsumptionTab() {
     { key: 'date', header: t('inventory_ops.common.date'), className: 'hidden xl:table-cell', cell: (c) => when(c.created_at) },
     { key: 'actions', header: '', cell: (c) => (canAdjust && c.status !== 'cancelled' && c.source === 'service' ? <Button size="sm" variant="ghost" onClick={() => setEditing(c)}>{t('inventory_ops.consumption.correct')}</Button> : null) },
   ];
+  // One Idempotency-Key per user operation: a retry of the same issue (double click,
+  // timeout) reuses it, so the server posts it once; a changed form is a new operation.
+  const op = useRef<{ key: string; body: string } | null>(null);
   const issue = () => s.run(async () => {
-    await api(access.api('/inventory/issue'), { body: { inventory_item_id: f.inventory_item_id, ...(f.location_id ? { location_id: f.location_id } : {}), quantity: parseNum(f.quantity), reason: f.reason.trim() } });
+    const body = { inventory_item_id: f.inventory_item_id, ...(f.location_id ? { location_id: f.location_id } : {}), quantity: parseNum(f.quantity), reason: f.reason.trim() };
+    const sig = JSON.stringify(body);
+    if (op.current?.body !== sig) op.current = { key: newIdempotencyKey(), body: sig };
+    await api(access.api('/inventory/issue'), { body, idempotencyKey: op.current.key });
+    op.current = null;
     setF({ inventory_item_id: '', location_id: '', quantity: '', reason: '' }); list.refetch(); toast({ tone: 'ok', text: t('inventory_ops.common.saved') });
   });
   return (
