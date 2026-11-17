@@ -50,7 +50,8 @@ function SaveIndicator({ b }: { b: BuilderApi }) {
   const msg = useErrorMessage();
   const time = b.lastSavedAt ? new Intl.DateTimeFormat(locale === 'ar' ? 'ar-SA-u-nu-latn' : 'en-SA', { hour: 'numeric', minute: '2-digit' }).format(b.lastSavedAt) : null;
   if (b.status === 'saving') return <span className="inline-flex items-center gap-1 text-xs text-ink-muted" role="status"><Loader2 className="size-3.5 animate-spin" aria-hidden />{t('builder.save.saving')}</span>;
-  if (b.status === 'error') return <span className="inline-flex items-center gap-1 text-xs text-danger" role="alert" title={msg(b.error)}><CloudOff className="size-3.5" aria-hidden />{t('builder.save.error')} <button className="underline" onClick={() => void b.retry()}>{t('actions.retry')}</button></span>;
+  if (b.status === 'error') return <span className="inline-flex items-center gap-1 text-xs text-danger" role="alert" title={msg(b.error)}><CloudOff className="size-3.5" aria-hidden />{t('builder.save.error')} <button type="button" className="underline" onClick={() => void b.retry()}>{t('actions.retry')}</button></span>;
+  if (b.status === 'retrying') return <span className="inline-flex items-center gap-1 text-xs text-warn" role="status"><CloudOff className="size-3.5" aria-hidden />{t('builder.save.retrying')} <button type="button" className="underline" onClick={() => void b.retry()}>{t('builder.save.retry_now')}</button></span>;
   if (b.status === 'conflict') return <span className="inline-flex items-center gap-1 text-xs text-danger" role="alert"><AlertTriangle className="size-3.5" aria-hidden />{t('builder.save.conflict')}</span>;
   if (b.dirty.length) return <span className="text-xs text-warn" role="status">{t('builder.save.unsaved')}</span>;
   return <span className="inline-flex items-center gap-1 text-xs text-ink-muted" role="status"><CheckCircle2 className="size-3.5 text-ok" aria-hidden />{time ? t('builder.save.saved_at', { time }) : t('builder.save.all_saved')}</span>;

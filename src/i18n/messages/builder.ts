@@ -42,11 +42,12 @@ const ar = {
     tabs: { label: 'أدوات المحرر', library: 'إضافة', pages: 'الصفحات', brand: 'الهوية', layout: 'التخطيط', assistant: 'المساعد' },
     save: {
       saving: 'جارٍ الحفظ…', saved_at: 'آخر حفظ {time}', all_saved: 'كل التغييرات محفوظة', unsaved: 'تغييرات غير محفوظة', error: 'تعذّر الحفظ', conflict: 'تعارض في التعديل',
+      retrying: 'لا يوجد اتصال — تغييراتك محفوظة هنا وسنعيد المحاولة تلقائياً', retry_now: 'أعيدي المحاولة الآن',
       before_publish: 'احفظي التغييرات أولاً قبل النشر.',
     },
     conflict: {
       title: 'تم تعديل المسودة من مكان آخر', body: 'عدّلت نافذة أو جهاز أو زميلة هذه المسودة بعد آخر تحميل. لن نحفظ فوق تعديلاتها دون موافقتك.',
-      reload: 'تحميل الأحدث (تجاهل تغييراتي)', keep: 'الإبقاء على تغييراتي والحفظ',
+      reload: 'تحميل الأحدث (تجاهل تغييراتي)', keep: 'الإبقاء على تغييراتي (الحفظ فوق التعديل الآخر)',
     },
     library: {
       hint: 'اسحبي المكوّن إلى اللوحة أو اضغطي + لإضافته بعد المكوّن المحدد.', drag: 'اسحبي {name}', drag_hint: 'اسحبي إلى اللوحة', add: 'إضافة',
@@ -194,11 +195,12 @@ const en: Shape<typeof ar> = {
     tabs: { label: 'Editor tools', library: 'Add', pages: 'Pages', brand: 'Brand', layout: 'Layout', assistant: 'Assistant' },
     save: {
       saving: 'Saving…', saved_at: 'Last saved {time}', all_saved: 'All changes saved', unsaved: 'Unsaved changes', error: 'Could not save', conflict: 'Edit conflict',
+      retrying: 'Connection lost — your changes are kept here and will be saved automatically', retry_now: 'Retry now',
       before_publish: 'Save your changes before publishing.',
     },
     conflict: {
       title: 'The draft was changed elsewhere', body: 'Another tab, device or teammate changed this draft since you loaded it. We will not overwrite their work without your decision.',
-      reload: 'Load latest (discard my changes)', keep: 'Keep my changes and save',
+      reload: 'Load latest (discard my changes)', keep: 'Keep my changes (overwrite the other edit)',
     },
     library: {
       hint: 'Drag a component onto the canvas, or press + to add it after the selected one.', drag: 'Drag {name}', drag_hint: 'Drag onto the canvas', add: 'Add',
