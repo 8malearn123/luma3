@@ -74,14 +74,16 @@ const now = DateTime.now().setZone(TZ);
 const start = now.plus({ minutes: 15 + (15 - (now.minute % 15)) }).startOf('minute');
 const DATE = start.toISODate()!;
 const HHMM = start.toFormat('HH:mm');
-const fitsToday = start.plus({ minutes: 120 }) <= start.endOf('day').minus({ minutes: 1 });
+// The day must hold the 2-hour space and also the deliberately too-long probe appointment (start+30,
+// 90 min + 15 min cleanup = start+135), or the probe is refused for crossing midnight instead of the window.
+const fitsToday = start.plus({ minutes: 135 }) <= start.endOf('day').minus({ minutes: 1 });
 
 let host: Page;
 let expert: Page;
 let bookingId = '';
 
 test.beforeAll(async ({ browser, baseURL }) => {
-  test.skip(!fitsToday, 'A 2-hour space starting within the hour must end before midnight (Asia/Riyadh); re-run earlier in the day.');
+  test.skip(!fitsToday, 'A 2-hour space starting within the hour (plus the probe appointment) must end before midnight (Asia/Riyadh); re-run earlier in the day.');
   await wholeDayToday();
   host = await signedIn(browser, baseURL!, 'owner@noura.demo', '/app/noura-salon/hosting');
   expert = await signedIn(browser, baseURL!, 'lamar@lamar.demo', '/app/lamar-makeup/workspace');
