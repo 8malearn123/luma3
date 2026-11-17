@@ -6,7 +6,6 @@ import { signIn } from './helpers';
  * comes back, and a concurrent edit (409) asks the owner to choose — never a
  * silent loss. Also LUMA-AUDIT-019's Library state is checked in the UI.
  */
-test.use({ launchOptions: { executablePath: process.env.PW_CHROMIUM ?? '/opt/pw-browsers/chromium' } });
 
 // One sign-in for the file (sign-in attempts are rate limited).
 let state: Awaited<ReturnType<import('@playwright/test').BrowserContext['storageState']>>;

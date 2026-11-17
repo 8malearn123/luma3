@@ -7,7 +7,6 @@ import { creds, failOnPageErrors, signIn } from './helpers';
  * (returns to the invitation) → accepts → lands in the business dashboard with
  * the invited role. Also: a different signed-in account cannot use the link.
  */
-test.use({ launchOptions: { executablePath: process.env.PW_CHROMIUM ?? '/opt/pw-browsers/chromium' } });
 
 const EVIDENCE = 'docs/remediation/evidence/sec';
 const shot = async (page: Page, name: string) => {

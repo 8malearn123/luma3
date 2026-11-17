@@ -13,7 +13,7 @@ import { creds, failOnPageErrors } from './helpers';
  * Time independence: today's opening hours and Huda's working hours cover the whole day, the
  * salon's notice period is 0 and no deposit is asked, in the disposable E2E database (setup only).
  */
-test.use({ launchOptions: { executablePath: '/opt/pw-browsers/chromium' }, viewport: { width: 1280, height: 900 } });
+test.use({ viewport: { width: 1280, height: 900 } }); // browser path comes from playwright.config.ts (only when present)
 
 const TZ = 'Asia/Riyadh';
 type Row = Record<string, unknown>;

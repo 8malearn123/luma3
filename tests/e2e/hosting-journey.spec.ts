@@ -18,7 +18,7 @@ import { creds, failOnPageErrors, noHorizontalScroll } from './helpers';
  * hour. The test environment widens today's opening/working hours and the expert's notice period
  * in the disposable E2E database (setup only — every hosting record is created through the UI).
  */
-test.use({ launchOptions: { executablePath: '/opt/pw-browsers/chromium' }, viewport: { width: 1280, height: 900 } });
+test.use({ viewport: { width: 1280, height: 900 } }); // browser path comes from playwright.config.ts (only when present)
 test.describe.configure({ mode: 'serial' });
 
 const TZ = 'Asia/Riyadh';

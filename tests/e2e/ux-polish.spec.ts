@@ -6,7 +6,6 @@ import { signIn } from './helpers';
  * LUMA-AUDIT-035 dark mode (toggle, SSR, scope), 041 accessible names,
  * 049 onboarding/account/denied-state polish.
  */
-test.use({ launchOptions: { executablePath: process.env.PW_CHROMIUM ?? '/opt/pw-browsers/chromium' } });
 
 const EVIDENCE = process.env.EVIDENCE_DIR;
 const shot = async (page: Page, name: string) => {

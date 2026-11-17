@@ -9,7 +9,6 @@ import { signIn } from './helpers';
  * sample of real text/background pairs) and no horizontal overflow at 1440 and 375 px.
  * The light theme is checked with the same audit so the sweep did not regress it.
  */
-test.use({ launchOptions: { executablePath: process.env.PW_CHROMIUM ?? '/opt/pw-browsers/chromium' } });
 
 const EVIDENCE = process.env.EVIDENCE_DIR;
 const REPORT = process.env.DARK_REPORT; // optional JSON-lines dump of every page audit

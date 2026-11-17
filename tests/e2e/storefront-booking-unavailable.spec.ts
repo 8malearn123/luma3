@@ -7,7 +7,6 @@ import { signIn } from './helpers';
  * leads to a clear unavailable state with contact options (no dead end).
  * Uses lamar-makeup and restores its services afterwards.
  */
-test.use({ launchOptions: { executablePath: process.env.PW_CHROMIUM ?? '/opt/pw-browsers/chromium' } });
 
 const SLUG = 'lamar-makeup';
 const H = { 'x-luma-csrf': '1' };
