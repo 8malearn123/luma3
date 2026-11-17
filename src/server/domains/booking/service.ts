@@ -36,7 +36,7 @@ function serializeItinerary(it: Itinerary, resolved: ResolvedItem[]) {
     items: it.items.map((p) => {
       const r = resolved.find((x) => x.key === p.key)!;
       return {
-        key: p.key, service_id: p.serviceId, staff_id: p.staffId, staff_name: r.staffTerms[p.staffId]!.name,
+        key: p.key, service_id: p.serviceId, staff_id: p.staffId, staff_name: r.staffTerms[p.staffId]!.name, staff_name_en: r.staffTerms[p.staffId]!.nameEn,
         start: new Date(p.start).toISOString(), end: new Date(p.end).toISOString(),
         price_minor: r.staffTerms[p.staffId]!.priceMinor, duration_min: r.staffTerms[p.staffId]!.durationMin,
       };

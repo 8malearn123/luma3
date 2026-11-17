@@ -8,12 +8,13 @@ import { api, ApiError, newIdempotencyKey } from '../api';
 import { useErrorMessage } from '../hooks';
 import { formatDateTime, formatMoney, formatTime } from '@/shared/format';
 import type { PaymentTerms } from '@/shared/payments';
+import { localizedTaxLabel } from '@/shared/tax-label';
 
 type Booking = {
   id: string; number: string; status: string; payment_status: string; starts_at: string; ends_at: string; timezone: string;
   subtotal_minor: number; discount_minor: number; tax_minor: number; total_minor: number; deposit_due_minor: number; paid_minor: number; currency: string;
-  payment_terms: PaymentTerms; hold_expires_at: string | null; policy_snapshot: { free_cancellation_hours?: number; late_cancellation_fee_bp?: number };
-  items: Array<{ id: string; service_name_ar: string | null; service_name_en: string | null; staff_name: string; starts_at: string; ends_at: string; line_total_minor: number }>;
+  payment_terms: PaymentTerms; hold_expires_at: string | null; policy_snapshot: { free_cancellation_hours?: number; late_cancellation_fee_bp?: number; tax_label?: string | null };
+  items: Array<{ id: string; service_name_ar: string | null; service_name_en: string | null; staff_name: string; staff_name_en?: string | null; starts_at: string; ends_at: string; line_total_minor: number }>;
 };
 
 const sfBtn = 'inline-flex items-center justify-center gap-2 rounded-[var(--radius-sf)] px-4 py-2.5 text-sm font-medium transition disabled:opacity-50';
@@ -116,7 +117,7 @@ export function BookingCheckout({ slug, bookingId, timezone, returningPaymentId,
         <ul className="flex flex-col gap-2 text-sm">
           {b.items.map((i) => (
             <li key={i.id} className="flex justify-between gap-2">
-              <span><span className="font-medium">{pick(i.service_name_ar, i.service_name_en)}</span> <span className="text-sf-muted">· {i.staff_name} · {formatTime(i.starts_at, { tz: timezone, locale, timeFormat })}</span></span>
+              <span><span className="font-medium">{pick(i.service_name_ar, i.service_name_en)}</span> <span className="text-sf-muted">· {pick(i.staff_name, i.staff_name_en)} · {formatTime(i.starts_at, { tz: timezone, locale, timeFormat })}</span></span>
               <span>{formatMoney(i.line_total_minor, b.currency, locale)}</span>
             </li>
           ))}
@@ -124,7 +125,7 @@ export function BookingCheckout({ slug, bookingId, timezone, returningPaymentId,
         <p className="mt-2 text-xs text-sf-muted">{formatDateTime(b.starts_at, { tz: timezone, locale, timeFormat, weekday: true })}</p>
         <dl className="mt-3 grid grid-cols-2 gap-1 border-t border-sf-border pt-3 text-sm">
           {b.discount_minor ? <><dt>{t('finance.discounts')}</dt><dd className="text-end">−{formatMoney(b.discount_minor, b.currency, locale)}</dd></> : null}
-          {b.tax_minor ? <><dt>{t('booking.checkout.tax')}</dt><dd className="text-end">{formatMoney(b.tax_minor, b.currency, locale)}</dd></> : null}
+          {b.tax_minor ? <><dt>{localizedTaxLabel(b.policy_snapshot?.tax_label, locale, t('booking.checkout.tax'))}</dt><dd className="text-end">{formatMoney(b.tax_minor, b.currency, locale)}</dd></> : null}
           <dt className="font-semibold">{t('booking.flow.total')}</dt><dd className="text-end font-semibold">{formatMoney(b.total_minor, b.currency, locale)}</dd>
           {b.paid_minor ? <><dt>{t('booking.checkout.paid')}</dt><dd className="text-end">{formatMoney(b.paid_minor, b.currency, locale)}</dd></> : null}
         </dl>

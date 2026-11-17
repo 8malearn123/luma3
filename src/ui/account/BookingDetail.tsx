@@ -18,7 +18,7 @@ import { useToast } from '../components/toast';
 import { cx } from '../components/cx';
 import { ReasonDialog, Row, useMountTime } from '../engagement/shared';
 
-type Item = { id: string; service_id: string; variant_id: string | null; staff_id: string; service_name_ar: string | null; service_name_en: string | null; staff_name: string; starts_at: string; ends_at: string; duration_min: number; line_total_minor: number; addon_ids: string[] };
+type Item = { id: string; service_id: string; variant_id: string | null; staff_id: string; service_name_ar: string | null; service_name_en: string | null; staff_name: string; staff_name_en?: string | null; starts_at: string; ends_at: string; duration_min: number; line_total_minor: number; addon_ids: string[] };
 type Detail = {
   id: string; number: string; status: string; payment_status: string; starts_at: string; ends_at: string; timezone: string; branch_id: string;
   subtotal_minor: number; discount_minor: number; tax_minor: number; total_minor: number; deposit_due_minor: number; paid_minor: number; refunded_minor: number; currency: string;
@@ -80,7 +80,7 @@ export function BookingDetail({ id }: { id: string }) {
             <li key={i.id} className="flex items-start justify-between gap-3 py-2 text-sm">
               <div className="min-w-0">
                 <p className="font-medium">{pick(i.service_name_ar, i.service_name_en)}</p>
-                <p className="text-xs text-ink-muted">{formatTime(i.starts_at, { tz: b.timezone, locale, timeFormat })}–{formatTime(i.ends_at, { tz: b.timezone, locale, timeFormat })} · <bdi>{t('account.bookings.with', { name: i.staff_name })}</bdi></p>
+                <p className="text-xs text-ink-muted">{formatTime(i.starts_at, { tz: b.timezone, locale, timeFormat })}–{formatTime(i.ends_at, { tz: b.timezone, locale, timeFormat })} · <bdi>{t('account.bookings.with', { name: pick(i.staff_name, i.staff_name_en) })}</bdi></p>
               </div>
               <span dir="ltr" className="shrink-0">{money(i.line_total_minor)}</span>
             </li>
@@ -189,11 +189,11 @@ function CancelTerms({ b, money }: { b: Detail; money: (v: number) => string }) 
   );
 }
 
-type Option = { start: string; end: string; items: Array<{ key: string; service_id: string; staff_id: string; staff_name: string; start: string; end: string; price_minor: number }> };
+type Option = { start: string; end: string; items: Array<{ key: string; service_id: string; staff_id: string; staff_name: string; staff_name_en?: string | null; start: string; end: string; price_minor: number }> };
 type Search = { timezone: string; days: Record<string, Option[]>; next_available_date: string | null };
 
 function ReschedulePanel({ b, onDone }: { b: Detail; onDone: () => void }) {
-  const { t, locale, timeFormat } = useI18n();
+  const { t, locale, pick, timeFormat } = useI18n();
   const msg = useErrorMessage();
   const toast = useToast();
   const tz = b.timezone;
@@ -271,7 +271,7 @@ function ReschedulePanel({ b, onDone }: { b: Detail; onDone: () => void }) {
         {chosen ? (
           <div className="rounded-lg border border-luma-300 bg-luma-50 p-3 text-sm">
             <p className="font-medium">{formatDateTime(chosen.start, { tz, locale, timeFormat, weekday: true })}</p>
-            <p className="text-xs text-ink-muted">{chosen.items.map((i) => t('account.bookings.with', { name: i.staff_name })).join(' · ')}</p>
+            <p className="text-xs text-ink-muted">{chosen.items.map((i) => t('account.bookings.with', { name: pick(i.staff_name, i.staff_name_en) })).join(' · ')}</p>
             {newTotal != null && newTotal !== b.subtotal_minor ? <p className="mt-1 text-xs text-warn">{t('fe.account.price_may_change')}</p> : null}
             <div className="mt-2 flex justify-end"><Button loading={save.isPending} onClick={() => setConfirm(true)}>{t('fe.account.confirm_new_time')}</Button></div>
           </div>

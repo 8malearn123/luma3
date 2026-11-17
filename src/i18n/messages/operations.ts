@@ -6,7 +6,7 @@ const ar = {
     actions: { approve: 'موافقة', reject: 'رفض', check_in: 'تسجيل الحضور', start: 'بدء الخدمة', complete: 'إنهاء الخدمة', no_show: 'تسجيل عدم حضور', cancel: 'إلغاء', reschedule: 'تغيير الموعد', collect: 'تحصيل دفعة', refund: 'استرداد', receipt: 'إيصال', invoice: 'فاتورة' },
     flow: {
       title: 'احجزي موعدك', step_service: 'الخدمة', step_staff: 'الأخصائية', step_time: 'الموعد', step_review: 'المراجعة',
-      choose_service: 'اختاري الخدمة', choose_staff: 'اختاري الأخصائية', any_staff: 'أي أخصائية متاحة', any_staff_note: 'نختار أول أخصائية متاحة في الوقت الذي تختارينه وفق قاعدة معلنة (الأقل انشغالاً في ذلك اليوم).',
+      choose_service: 'اختاري الخدمة', choose_staff: 'اختاري الأخصائية', staff_for: 'الأخصائية للخدمة {n} ({service})', any_staff: 'أي أخصائية متاحة', any_staff_note: 'نختار أول أخصائية متاحة في الوقت الذي تختارينه وفق قاعدة معلنة (الأقل انشغالاً في ذلك اليوم).',
       choose_time: 'اختاري الوقت', no_times: 'لا توجد مواعيد متاحة في هذه الأيام.', next_available: 'أقرب يوم متاح: {date}', try_separate: 'جرّبي أياماً أخرى أو احجزي كل خدمة على حدة.',
       add_service: 'إضافة خدمة أخرى', remove_service: 'إزالة', summary: 'ملخص الحجز', total: 'الإجمالي', duration: 'المدة الإجمالية', gap: 'فاصل {n} دقيقة قبل هذه الخدمة',
       with: 'مع {name}', sign_in: 'سجّلي الدخول لإكمال الحجز', sign_in_note: 'سنحفظ اختياراتك ونعيد التحقق من الموعد والسعر بعد تسجيل الدخول.', reserve: 'احجزي هذا الموعد',
@@ -87,7 +87,7 @@ const en: Shape<typeof ar> = {
     actions: { approve: 'Approve', reject: 'Reject', check_in: 'Check in', start: 'Start service', complete: 'Complete', no_show: 'Mark no-show', cancel: 'Cancel', reschedule: 'Reschedule', collect: 'Collect payment', refund: 'Refund', receipt: 'Receipt', invoice: 'Invoice' },
     flow: {
       title: 'Book an appointment', step_service: 'Service', step_staff: 'Specialist', step_time: 'Time', step_review: 'Review',
-      choose_service: 'Choose a service', choose_staff: 'Choose a specialist', any_staff: 'Any available specialist', any_staff_note: 'We assign the first specialist free at your chosen time using a declared rule (least busy that day).',
+      choose_service: 'Choose a service', choose_staff: 'Choose a specialist', staff_for: 'Specialist for service {n} ({service})', any_staff: 'Any available specialist', any_staff_note: 'We assign the first specialist free at your chosen time using a declared rule (least busy that day).',
       choose_time: 'Choose a time', no_times: 'No available times on these days.', next_available: 'Next available day: {date}', try_separate: 'Try other days or book each service separately.',
       add_service: 'Add another service', remove_service: 'Remove', summary: 'Booking summary', total: 'Total', duration: 'Total duration', gap: '{n}-minute gap before this service',
       with: 'with {name}', sign_in: 'Sign in to complete your booking', sign_in_note: 'We keep your selection and re-check the time and price after you sign in.', reserve: 'Reserve this time',

@@ -240,6 +240,8 @@ async function refund(s: Salon, c: TestClient, paymentId: string, amount: number
   return rf.id;
 }
 const reversals = (s: Salon) => withTenant(s.tenantId, (trx) => trx.selectFrom('marketplace_commission_reversals').select(['refund_minor', 'cumulative_refund_minor', 'fee_reversed_minor']).orderBy('created_at').execute());
+/** Platform fee as Loom sees it (loom_export.transactions, redefined net of reversals in 0870). */
+const loomFee = (s: Salon, id: string) => withTenant(s.tenantId, (trx) => trx.selectFrom('loom_export.transactions').select('platform_fee_minor').where('id', '=', id).executeTakeFirstOrThrow()).then((r) => Number(r.platform_fee_minor));
 
 describe('marketplace commission reversal on refund after completion (R1)', () => {
   it('partial refunds reverse proportionally (half-up), the full remainder reverses the rest, repeats never double-reverse', async () => {
@@ -248,11 +250,14 @@ describe('marketplace commission reversal on refund after completion (R1)', () =
     await complete(s, id);
     const [line] = await withTenant(s.tenantId, (trx) => trx.selectFrom('marketplace_commissions').selectAll().execute());
     expect(line).toMatchObject({ base_minor: 10000, fee_minor: 1500 });
+    expect(await loomFee(s, id)).toBe(1500);
 
     const first = await refund(s, c, paymentId, 3333, { deliverTwice: true });
     // remaining fee on 66.67 at 15 % = floor((6667×1500 + 5000)/10000) = 1000 → reversed 500.
     expect(await reversals(s)).toEqual([{ refund_minor: 3333, cumulative_refund_minor: 3333, fee_reversed_minor: 1500 - feeFor(6667, 1500) }]);
     expect(feeFor(6667, 1500)).toBe(1000);
+    // The Loom export reports the fee kept after the reversal, not the original charge.
+    expect(await loomFee(s, id)).toBe(1000);
     // Calling the hook again for the same refund (e.g. a replayed event) is a no-op.
     expect(await withTenant(s.tenantId, (trx) => reverseMarketplaceCommission(trx, s.tenantId, first))).toEqual({ reversed: false });
 
@@ -260,6 +265,7 @@ describe('marketplace commission reversal on refund after completion (R1)', () =
     const rows = await reversals(s);
     expect(rows.map((r) => r.fee_reversed_minor)).toEqual([500, 1000]);
     expect(rows.reduce((a, r) => a + r.fee_reversed_minor, 0)).toBe(line!.fee_minor); // full refund → full reversal, never more
+    expect(await loomFee(s, id)).toBe(0);
 
     const today = new Date().toISOString().slice(0, 10);
     const fees = await marketplaceFeesFor(s.tenantId, { from: today, to: futureDate(10) });

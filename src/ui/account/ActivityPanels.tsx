@@ -15,7 +15,7 @@ import { Card, Tabs } from '../components/layout';
 import { useToast } from '../components/toast';
 import { cx } from '../components/cx';
 
-type Item = { service_name_ar: string | null; service_name_en: string | null; staff_name: string };
+type Item = { service_name_ar: string | null; service_name_en: string | null; staff_name: string; staff_name_en?: string | null };
 type Booking = { id: string; tenant_name: string; tenant_slug: string; number: string; status: string; payment_status?: string; starts_at: string; timezone: string; total_minor: number; currency: string; items: Item[]; detail_path: string };
 
 const statusTone = (s: string) => (s === 'confirmed' || s === 'completed' ? 'ok' : s === 'cancelled' || s === 'expired' || s === 'no_show' ? 'neutral' : 'warn');
@@ -48,7 +48,7 @@ export function BookingsPanel() {
               </div>
               {b.items.length ? (
                 <ul className="mt-2 text-sm text-ink-muted">
-                  {b.items.map((i, k) => <li key={k}>{pick(i.service_name_ar, i.service_name_en)} · {t('account.bookings.with', { name: i.staff_name })}</li>)}
+                  {b.items.map((i, k) => <li key={k}>{pick(i.service_name_ar, i.service_name_en)} · {t('account.bookings.with', { name: pick(i.staff_name, i.staff_name_en) })}</li>)}
                 </ul>
               ) : null}
               <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-sm">

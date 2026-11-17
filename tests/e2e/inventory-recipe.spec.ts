@@ -49,6 +49,11 @@ test('seeded stock comes from opening movements that reconcile with the ledger (
   expect(Number(ledger!.equity)).toBe(154000);
 });
 
+let savedSettings: { tenant_id: string; min_notice_min: number; deposit_mode: string } | undefined;
+test.afterAll(async () => {
+  if (savedSettings) await q('update tenant_settings set min_notice_min = $2, deposit_mode = $3 where tenant_id = $1', [savedSettings.tenant_id, savedSettings.min_notice_min, savedSettings.deposit_mode]);
+});
+
 test('owner completes a manicure on the station-linked chair: the recipe is deducted once from the station', async ({ browser, baseURL }) => {
   const now = DateTime.now().setZone(TZ);
   test.skip(now.hour >= 23, 'Needs a free slot later today (Asia/Riyadh); re-run earlier in the day.');
@@ -64,6 +69,8 @@ test('owner completes a manicure on the station-linked chair: the recipe is dedu
   await q('delete from working_hours where tenant_id = $1 and staff_id = $2 and weekday = $3', [t, huda!.id, weekday]);
   await q(`insert into working_hours (tenant_id, staff_id, branch_id, weekday, start_time, end_time) values ($1, $2, $3, $4, '00:00', '23:59')`, [t, huda!.id, huda!.branch_id, weekday]);
   // No deposit for this walk-in visit: confirmed on site, so it can be checked in and completed now.
+  // Restored in afterAll: later files (shop-remediation's payment-restriction journey) rely on the seeded 20 % deposit.
+  [savedSettings] = await q<{ tenant_id: string; min_notice_min: number; deposit_mode: string }>('select tenant_id, min_notice_min, deposit_mode from tenant_settings where tenant_id = $1', [t]);
   await q(`update tenant_settings set min_notice_min = 0, deposit_mode = 'none' where tenant_id = $1`, [t]);
 
   const stationQty = async () => Number((await q<{ on_hand: string }>(`select b.on_hand::text from stock_balances b join stock_locations l on l.id = b.location_id

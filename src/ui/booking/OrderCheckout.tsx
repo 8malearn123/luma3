@@ -7,11 +7,12 @@ import { useI18n } from '@/i18n/client';
 import { api, ApiError, newIdempotencyKey } from '../api';
 import { useErrorMessage } from '../hooks';
 import { formatDateTime, formatMoney } from '@/shared/format';
+import { localizedTaxLabel } from '@/shared/tax-label';
 
 type Order = {
   id: string; number: string; status: string; fulfillment_method: string; subtotal_minor: number; discount_minor: number; tax_minor: number;
   total_minor: number; paid_minor: number; currency: string; expires_at: string | null;
-  payment_choice: 'online' | 'on_site';
+  payment_choice: 'online' | 'on_site'; tax_label: string | null;
   /** Payment paths open right now (null once the order is no longer pending). */
   payment: { online: boolean; pay_at_pickup: boolean; accepting_orders: boolean; simulation: boolean } | null;
   items: Array<{ id: string; name_ar: string | null; name_en: string | null; variant_name_ar: string | null; variant_name_en: string | null; unit_price_minor: number; quantity: number; line_total_minor: number }>;
@@ -113,7 +114,7 @@ export function OrderCheckout({ slug, orderId, returningPaymentId }: { slug: str
         <dl className="mt-3 grid grid-cols-2 gap-1 border-t border-sf-border pt-3 text-sm">
           <dt>{t('order_checkout.subtotal')}</dt><dd className="text-end">{formatMoney(o.subtotal_minor, o.currency, locale)}</dd>
           {o.discount_minor ? <><dt>{t('finance.discounts')}</dt><dd className="text-end">−{formatMoney(o.discount_minor, o.currency, locale)}</dd></> : null}
-          {o.tax_minor ? <><dt>{t('booking.checkout.tax')}</dt><dd className="text-end">{formatMoney(o.tax_minor, o.currency, locale)}</dd></> : null}
+          {o.tax_minor ? <><dt>{localizedTaxLabel(o.tax_label, locale, t('booking.checkout.tax'))}</dt><dd className="text-end">{formatMoney(o.tax_minor, o.currency, locale)}</dd></> : null}
           <dt className="font-semibold">{t('booking.flow.total')}</dt><dd className="text-end font-semibold">{formatMoney(o.total_minor, o.currency, locale)}</dd>
           {o.paid_minor ? <><dt>{t('booking.checkout.paid')}</dt><dd className="text-end">{formatMoney(o.paid_minor, o.currency, locale)}</dd></> : null}
         </dl>
