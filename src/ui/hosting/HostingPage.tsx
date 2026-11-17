@@ -250,7 +250,6 @@ const EMPTY_FORM: Form = {
   access_instructions_ar: '', own_materials_policy_ar: '', specialties: '', windows: [{ weekday: 0, start_time: '10:00', end_time: '18:00' }], addons: [],
 };
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 function fromListing(d: any): Form {
   return {
     resource_id: d.resource_id, code: d.code, title_ar: d.title_ar ?? '', space_type: d.space_type, price_model: d.price_model, price_minor: d.price_minor, period_min: d.period_min,
@@ -264,7 +263,6 @@ function fromListing(d: any): Form {
       : { kind: 'equipment', resource_id: a.resource_id, name_ar: a.name_ar ?? '', rental_price_minor: a.rental_price_minor, rental_unit: a.rental_unit })),
   };
 }
-/* eslint-enable @typescript-eslint/no-explicit-any */
 
 function ListingDrawer({ id, options, onClose, onSaved }: { id: string | null; options: Options; onClose: () => void; onSaved: () => void }) {
   const { t } = useI18n();
