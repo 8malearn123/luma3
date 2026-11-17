@@ -73,7 +73,7 @@ const ar = {
     title: 'الفريق', staff: 'الأخصائيات', members: 'حسابات الدخول', invitations: 'الدعوات', leave: 'الإجازات', new_staff: 'إضافة أخصائية', schedule: 'جدول العمل', weekly: 'الأسبوع', breaks: 'الاستراحات',
     add_range: 'إضافة فترة', overrides: 'استثناءات بتاريخ', day_off: 'إجازة يوم', replace_hours: 'ساعات بديلة', extra_hours: 'ساعات إضافية', invite: 'دعوة', role: 'الدور', link_staff: 'ربط بملف أخصائية',
     deactivate: 'إيقاف', activate: 'تفعيل', future_bookings_alert: 'لدى هذه الأخصائية {n} مواعيد قادمة تحتاج إعادة إسناد.', public_profile: 'ظاهرة في المتجر', title_field: 'المسمى', bio: 'النبذة',
-    approve: 'موافقة', reject: 'رفض', affected: 'مواعيد متأثرة: {n}', invite_link_dev: 'رابط الدعوة (وضع التطوير):', has_login: 'لديها حساب دخول', no_login: 'بدون حساب دخول',
+    approve: 'موافقة', reject: 'رفض', affected: 'مواعيد متأثرة: {n}', invite_link_dev: 'رابط الدعوة (وضع التطوير):', invite_link_share: 'رابط الدعوة', invite_link_note: 'شاركيه مع المدعوّة بنفسك. لا يعمل إلا بعد دخولها بالبريد أو الجوال المؤكَّد الذي أرسلتِ إليه الدعوة.', has_login: 'لديها حساب دخول', no_login: 'بدون حساب دخول',
     capabilities: 'صلاحيات إضافية مفوّضة',
   },
 };
@@ -154,7 +154,7 @@ const en: Shape<typeof ar> = {
     title: 'Team', staff: 'Specialists', members: 'Logins', invitations: 'Invitations', leave: 'Leave', new_staff: 'Add specialist', schedule: 'Working schedule', weekly: 'Weekly', breaks: 'Breaks',
     add_range: 'Add range', overrides: 'Date exceptions', day_off: 'Day off', replace_hours: 'Replacement hours', extra_hours: 'Extra hours', invite: 'Invite', role: 'Role', link_staff: 'Link to specialist profile',
     deactivate: 'Deactivate', activate: 'Activate', future_bookings_alert: 'This specialist has {n} upcoming appointments that need reassignment.', public_profile: 'Shown in store', title_field: 'Title', bio: 'Bio',
-    approve: 'Approve', reject: 'Reject', affected: 'Affected appointments: {n}', invite_link_dev: 'Invitation link (development mode):', has_login: 'Has a login', no_login: 'No login',
+    approve: 'Approve', reject: 'Reject', affected: 'Affected appointments: {n}', invite_link_dev: 'Invitation link (development mode):', invite_link_share: 'Invitation link', invite_link_note: 'Share it with the invitee yourself. It only works after she signs in with the verified email or phone you invited.', has_login: 'Has a login', no_login: 'No login',
     capabilities: 'Delegated capabilities',
   },
 };

@@ -13,6 +13,7 @@ import { provider } from './providers/registry';
 import { WebhookVerificationError, type VerifiedEvent } from './providers/types';
 import { paymentTargets } from './targets';
 import type { PaymentOption, PaymentTerms } from '@/shared/payments';
+import { recordRejectedWebhook } from '../../infra/webhook-rejections';
 
 // ── Accounts ────────────────────────────────────────────────────────────────
 export async function activeAccount(trx: Tx, tenantId: string) {
@@ -360,10 +361,8 @@ export async function handleWebhook(providerName: string, rawBody: string, heade
     ev = p.verifyWebhook(rawBody, headers);
   } catch (e) {
     if (e instanceof WebhookVerificationError) {
-      await withSystem('record rejected webhook', (trx) => trx.insertInto('provider_events').values({
-        provider: providerName, provider_event_id: `rejected:${Date.now()}:${Math.random().toString(36).slice(2)}`, event_type: 'rejected', signature_valid: false,
-        payload: JSON.stringify({ reason: e.message, length: rawBody.length }), status: 'ignored', error: e.message,
-      }).execute());
+      // Aggregated per provider/reason/10 min, so forged traffic cannot grow the table without bound (LUMA-AUDIT-026).
+      await recordRejectedWebhook(providerName, e.message, rawBody.length);
       throw new AppError(400, 'invalid_webhook', 'Webhook verification failed');
     }
     throw e;

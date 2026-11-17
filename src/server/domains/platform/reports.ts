@@ -30,7 +30,7 @@ export async function integrationsStatus() {
       from outbox_events where processed_at is null`.execute(trx);
     const providerEvents = await sql<{ needs_review: number; failed: number; invalid_signature_7d: number }>`
       select count(*) filter (where status = 'needs_review')::int as needs_review, count(*) filter (where status = 'failed')::int as failed,
-             count(*) filter (where not signature_valid and received_at > now() - interval '7 days')::int as invalid_signature_7d
+             coalesce(sum(coalesce((payload->>'count')::int, 1)) filter (where not signature_valid and received_at > now() - interval '7 days'), 0)::int as invalid_signature_7d
       from provider_events`.execute(trx);
     const deliveries = await sql<{ channel: string; status: string; n: number }>`
       select channel, status, count(*)::int as n from notification_deliveries where created_at > now() - interval '7 days' group by channel, status`.execute(trx);

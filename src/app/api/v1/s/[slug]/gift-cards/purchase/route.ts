@@ -1,6 +1,6 @@
 import { route } from '@/server/http/route';
 import { withTenant } from '@/server/db/client';
-import { publicTenant, requirePublicFeature } from '@/server/domains/storefront-public';
+import { publicTenantForSale, requirePublicFeature } from '@/server/domains/storefront-public';
 import { purchaseGiftCard } from '@/server/domains/giftcards/online';
 import { recordAcquisition } from '@/server/domains/customers/acquisition';
 import { sessionFromRequest } from '@/server/domains/analytics/events';
@@ -11,7 +11,7 @@ export const POST = route({
   auth: 'user', requireVerified: true, idempotency: 'required', input: giftCardPurchaseInput,
   rateLimit: { scope: 'user', name: 'giftcard_purchase', limit: 20, windowSec: 3600 },
   handler: async ({ req, params, user, input, actor, idempotencyKey }) => {
-    const t = await publicTenant(params.slug!);
+    const t = await publicTenantForSale(params.slug!);
     await requirePublicFeature(t.id, 'feature.gift_cards');
     const r = await purchaseGiftCard(t.id, params.slug!, user, input, { idempotencyKey: idempotencyKey!, actor: { ...actor, kind: 'customer' } });
     const tc = await withTenant(t.id, (trx) => trx.selectFrom('tenant_customers').select('id').where('user_id', '=', user.userId).executeTakeFirst());

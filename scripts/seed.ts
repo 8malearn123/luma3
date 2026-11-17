@@ -48,8 +48,16 @@ const credentials: string[] = ['# LUMA demo credentials (development only — fi
 const credentialMap: Record<string, string> = {};
 const actorSystem = { userId: null, kind: 'system' as const };
 
+// Deployed review builds (R3): demo accounts sign in with a password only. The operator supplies it as the
+// DEMO_ACCOUNT_PASSWORD build secret; otherwise every demo account gets its own random password.
+const sharedDemoPassword = process.env.DEMO_ACCOUNT_PASSWORD || '';
+if (sharedDemoPassword && sharedDemoPassword.length < 12) {
+  console.error('DEMO_ACCOUNT_PASSWORD must be at least 12 characters.');
+  process.exit(1);
+}
+
 async function demoUser(email: string, name: string, opts: { phone?: string } = {}) {
-  const password = randomBytes(9).toString('base64url');
+  const password = sharedDemoPassword || randomBytes(9).toString('base64url');
   const hash = await hashPassword(password);
   const existing = await db().selectFrom('users').select('id').where('email', '=', email).executeTakeFirst();
   if (existing) return existing.id;

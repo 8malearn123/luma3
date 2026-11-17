@@ -24,7 +24,7 @@ type Member = {
   user: { id: string; display_name: string | null; email: string | null; phone: string | null } | null;
 };
 type Invitation = { id: string; email: string | null; phone: string | null; role: TenantRole; expires_at: string; created_at: string };
-type InviteResult = { id: string; expires_at: string; delivery: 'sent' | 'simulated' | 'failed' | 'unavailable'; dev_invite_link?: string };
+type InviteResult = { id: string; expires_at: string; delivery: 'sent' | 'simulated' | 'failed' | 'unavailable'; invite_link?: string; dev_invite_link?: string };
 
 const ASSIGNABLE = TENANT_ROLES.filter((r) => r !== 'owner');
 
@@ -187,13 +187,22 @@ function InviteDialog({ staff, staffId, onClose }: { staff: StaffRow[]; staffId:
           <Alert tone={result.delivery === 'sent' ? 'ok' : result.delivery === 'simulated' ? 'info' : 'warn'} title={t(`catalog_team.members.delivery.${result.delivery}`)}>
             {t('catalog_team.members.invite_expires', { when: when(result.expires_at) })}
           </Alert>
-          {result.dev_invite_link ? (
-            <div className="flex flex-col gap-2 rounded-lg border border-dashed border-info/40 bg-info-bg/50 p-3">
-              <p className="inline-flex items-center gap-1.5 text-xs font-semibold text-info"><FlaskConical className="size-4" aria-hidden />{t('team_ui.invite_link_dev')}</p>
-              <p className="text-xs text-ink-muted">{t('catalog_team.members.dev_only')}</p>
-              <code className="break-all rounded bg-white p-2 text-xs" dir="ltr">{result.dev_invite_link}</code>
+          {result.invite_link ? (
+            <div className={`flex flex-col gap-2 rounded-lg border border-dashed p-3 ${result.dev_invite_link ? 'border-info/40 bg-info-bg/50' : 'border-line bg-luma-50'}`}>
+              {result.dev_invite_link ? (
+                <>
+                  <p className="inline-flex items-center gap-1.5 text-xs font-semibold text-info"><FlaskConical className="size-4" aria-hidden />{t('team_ui.invite_link_dev')}</p>
+                  <p className="text-xs text-ink-muted">{t('catalog_team.members.dev_only')}</p>
+                </>
+              ) : (
+                <>
+                  <p className="text-xs font-semibold text-ink">{t('team_ui.invite_link_share')}</p>
+                  <p className="text-xs text-ink-muted">{t('team_ui.invite_link_note')}</p>
+                </>
+              )}
+              <code className="break-all rounded bg-white p-2 text-xs" dir="ltr" data-testid="invite-link">{result.invite_link}</code>
               <Button size="sm" variant="outline" className="self-start" icon={<Copy className="size-4" />}
-                onClick={async () => { try { await navigator.clipboard.writeText(result.dev_invite_link!); setCopied(true); } catch { /* clipboard blocked */ } }}>{copied ? t('actions.copied') : t('actions.copy')}</Button>
+                onClick={async () => { try { await navigator.clipboard.writeText(result.invite_link!); setCopied(true); } catch { /* clipboard blocked */ } }}>{copied ? t('actions.copied') : t('actions.copy')}</Button>
             </div>
           ) : null}
         </div>

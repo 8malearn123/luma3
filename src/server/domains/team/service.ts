@@ -7,7 +7,7 @@ import { audit, type AuditActor } from '../../infra/audit';
 import { sendTransactional } from '../../infra/messaging';
 import { notifyCapability } from '../../infra/notify';
 import { canAssignRole, capabilitiesBeyondActor, invalidGrants, type TenantRole } from '../../auth/capabilities';
-import { hashToken, newToken } from '../../auth/crypto';
+import { hashToken, maskDestination, newToken } from '../../auth/crypto';
 import type { SessionUser } from '../../auth/service';
 import { requireWithinLimit, type TenantAccess } from '../../tenancy/access';
 import { assertTenantAssets } from '../assets/service';
@@ -184,9 +184,48 @@ export async function invite(access: TenantAccess, actor: AuditActor, input: z.i
   });
   return {
     id: inv.id, expires_at: inv.expires_at, delivery: delivery.status,
-    // Development only (labelled): lets testers open the invite without a mail provider.
+    // The link is returned to the signed-in inviter (team.manage) so she can share it herself, e.g. while
+    // no messaging provider is connected. It is not a one-time code: accepting still requires signing in
+    // with the verified email/phone the invitation is addressed to. Never shown to anyone else.
+    invite_link: link,
+    // Local development only (labelled in the UI); kept for existing callers.
     ...(delivery.status === 'simulated' && env().devOtpEcho ? { dev_invite_link: link } : {}),
   };
+}
+
+type InvitationRow = { id: string; tenant_id: string; email: string | null; phone: string | null; role: TenantRole; granted_capabilities: string[];
+  staff_profile_id: string | null; expires_at: Date; accepted_at: Date | null; revoked_at: Date | null };
+
+async function invitationByToken(token: string): Promise<InvitationRow | undefined> {
+  if (!/^[A-Za-z0-9_-]{20,200}$/.test(token)) return undefined;
+  const rows = await sql<InvitationRow>`select * from app.invitation_by_token(${hashToken(token, 'invite')})`.execute(db());
+  return rows.rows[0];
+}
+
+export type InvitationState = 'valid' | 'expired' | 'revoked' | 'accepted' | 'invalid';
+const stateOf = (inv: InvitationRow | undefined): InvitationState =>
+  !inv ? 'invalid' : inv.revoked_at ? 'revoked' : inv.accepted_at ? 'accepted' : inv.expires_at < new Date() ? 'expired' : 'valid';
+
+/**
+ * What the invitation page shows to whoever holds the link: the business, the
+ * role, the state, and the destination it was sent to (masked). Unknown tokens
+ * reveal nothing. When a user is given, whether her verified contact matches.
+ */
+export async function previewInvitation(token: string, user?: SessionUser | null) {
+  const inv = await invitationByToken(token);
+  const state = stateOf(inv);
+  if (!inv) return { state, business_name: null, role: null, destination: null, expires_at: null, matches_user: false };
+  const t = await withTenant(inv.tenant_id, (trx) => trx.selectFrom('tenants').select(['name', 'slug']).where('id', '=', inv.tenant_id).executeTakeFirstOrThrow());
+  return {
+    state, business_name: t.name, role: inv.role, expires_at: inv.expires_at,
+    destination: maskDestination((inv.email ?? inv.phone)!),
+    matches_user: !!user && identityMatches(inv, user),
+  };
+}
+
+function identityMatches(inv: Pick<InvitationRow, 'email' | 'phone'>, user: SessionUser) {
+  return !!((inv.email && user.emailVerified && user.email?.toLowerCase() === inv.email.toLowerCase())
+    || (inv.phone && user.phoneVerified && user.phone === inv.phone));
 }
 
 export async function revokeInvitation(access: TenantAccess, actor: AuditActor, invitationId: string) {
@@ -198,20 +237,20 @@ export async function revokeInvitation(access: TenantAccess, actor: AuditActor, 
   });
 }
 
-/** Accepts an invitation for the signed-in user, whose verified contact must match it. */
+/**
+ * Accepts an invitation for the signed-in user, whose verified contact must
+ * match it. Tenant, role, capabilities and staff profile come ONLY from the
+ * invitation record (the request carries nothing but the token).
+ */
 export async function acceptInvitation(user: SessionUser, token: string, actor: AuditActor) {
-  const rows = await sql<{ id: string; tenant_id: string; email: string | null; phone: string | null; role: TenantRole; granted_capabilities: string[];
-    staff_profile_id: string | null; expires_at: Date; accepted_at: Date | null; revoked_at: Date | null }>`
-    select * from app.invitation_by_token(${hashToken(token, 'invite')})`.execute(db());
-  const inv = rows.rows[0];
-  if (!inv || inv.revoked_at || inv.accepted_at || inv.expires_at < new Date()) throw Errors.invalid('invitation_invalid', 'This invitation is invalid or has expired');
-  const matches = (inv.email && user.emailVerified && user.email?.toLowerCase() === inv.email.toLowerCase())
-    || (inv.phone && user.phoneVerified && user.phone === inv.phone);
-  if (!matches) throw Errors.forbidden('Sign in with the verified email or phone this invitation was sent to', { reason: 'identity_mismatch' });
+  const inv = await invitationByToken(token);
+  const state = stateOf(inv);
+  if (!inv || state !== 'valid') throw Errors.invalid('invitation_invalid', 'This invitation is invalid or has expired', { reason: state });
+  if (!identityMatches(inv, user)) throw Errors.forbidden('Sign in with the verified email or phone this invitation was sent to', { reason: 'identity_mismatch' });
 
   return withTenant(inv.tenant_id, async (trx) => {
     const locked = await trx.selectFrom('invitations').select(['accepted_at']).where('id', '=', inv.id).forUpdate().executeTakeFirstOrThrow();
-    if (locked.accepted_at) throw Errors.invalid('invitation_invalid');
+    if (locked.accepted_at) throw Errors.invalid('invitation_invalid', 'This invitation has already been used', { reason: 'accepted' });
     const existing = await trx.selectFrom('tenant_memberships').select(['id', 'status']).where('user_id', '=', user.userId).executeTakeFirst();
     if (existing && existing.status === 'active') throw Errors.conflict('already_member', 'You are already a member of this business');
     if (existing) {

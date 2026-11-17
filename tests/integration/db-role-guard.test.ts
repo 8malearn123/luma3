@@ -13,6 +13,10 @@ async function connectAs(url: string, appEnv: string) {
   await closeDb();
   process.env.DATABASE_URL = url;
   process.env.APP_ENV = appEnv;
+  // A deployed build refuses the local development aids (LUMA-AUDIT-001) and short secrets.
+  const deployed = appEnv === 'review' || appEnv === 'production';
+  process.env.DEV_OTP_ECHO = deployed ? 'false' : 'true';
+  process.env.PAYMENT_SANDBOX_WEBHOOK_SECRET = deployed ? 'review-sandbox-secret-0123456789' : 'test-webhook-secret';
   resetEnvCache(); resetRoleCheck();
 }
 

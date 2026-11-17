@@ -14,8 +14,8 @@ Parsed and frozen by `src/server/env.ts`. Empty strings are treated as unset. An
 | `DATABASE_OWNER_URL` | scripts | — | Owner connection (`luma_owner`) for migrate, seed, reset and grant-platform-role |
 | `DB_APP_ROLE` | no | `luma_app` | Runtime role that migrations grant to (pattern `^[a-z_][a-z0-9_]*$`) |
 | `AUTH_SECRET` | yes | — | At least 32 characters. HMAC key for session, preview, invite and gift-card hashes, and the HKDF source for the MFA secret encryption key. Generate with `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"`. **Rotating it invalidates sessions, tokens, gift-card codes and enrolled MFA secrets.** |
-| `DEMO_MODE` | no | false | Demo role switcher on the login page (seeded demo users only). Forced off in production. |
-| `DEV_OTP_ECHO` | no | false | Shows one-time codes on screen and in `dev_message_outbox`; campaigns on email/SMS/WhatsApp become `dev_simulation`. Forced off in production. |
+| `DEMO_MODE` | no | false | One-click demo sign-in on the login page (seeded demo users only). **Local development only**: any deployed build (review/production/Vercel) refuses to start when it is true. |
+| `DEV_OTP_ECHO` | no | false | Shows one-time codes on screen and in `dev_message_outbox`; campaigns on email/SMS/WhatsApp become `dev_simulation`. **Local development only**: any deployed build refuses to start when it is true. |
 | `STORAGE_DRIVER` | no | `local` | Only `local` exists |
 | `STORAGE_LOCAL_DIR` | no | `./storage` | Local file storage root (gitignored) |
 | `EMAIL_PROVIDER`, `SMS_PROVIDER`, `WHATSAPP_PROVIDER` | no | `none` | Only `none` is accepted; no provider is integrated |
@@ -182,7 +182,7 @@ There is **no automatic reclamation** of jobs left `running` by a crashed worker
 
 ## Production security checklist
 
-- [ ] `APP_ENV=production`. This forces `DEMO_MODE` and `DEV_OTP_ECHO` off, makes cookies `Secure`, and disables the sandbox simulation routes, the dev outbox, seed and reset. Do not run `pnpm db:seed` against production; it refuses anyway.
+- [ ] `APP_ENV=production` and an independent `AUTH_SECRET`. `DEMO_MODE`/`DEV_OTP_ECHO` must be unset (the server refuses to start otherwise); production makes cookies `Secure`, and disables the sandbox simulation routes, the dev outbox, seed and reset. Do not run `pnpm db:seed` against production; it refuses anyway.
 - [ ] Secrets (`AUTH_SECRET`, database passwords, `PAYMENT_SANDBOX_WEBHOOK_SECRET`, `OPENAI_API_KEY`) live in a secret manager, never in the repository, images or logs. `AUTH_SECRET` has at least 32 random bytes and differs per environment.
 - [ ] TLS terminates in front of the app; `APP_URL` is the `https://` origin. HSTS is set at the proxy (the app does not set it). The app sets CSP, `X-Content-Type-Options`, `Referrer-Policy` and `Permissions-Policy` in `next.config.ts`.
 - [ ] The database connection uses TLS. `DATABASE_URL` uses the non-owner `luma_app` role, and the owner credentials are available only to the migration job.

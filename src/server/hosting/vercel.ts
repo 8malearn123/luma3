@@ -3,11 +3,16 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 
 /**
- * Zero-configuration defaults for a Vercel project with the Neon integration.
- * The integration injects the database OWNER's connection strings; from the
- * owner's password we deterministically derive (never print) the secrets the
- * app needs, and point the app at the non-owner `luma_app` role so row-level
- * security applies. Anything set explicitly in the environment wins.
+ * Defaults for a Vercel project with the Neon integration. The integration
+ * injects the database OWNER's connection strings; the app is pointed at the
+ * non-owner `luma_app` role (whose password is derived from the owner's, so
+ * build and runtime agree without another setting) so row-level security
+ * applies. Application secrets are NEVER derived from database credentials:
+ * AUTH_SECRET (and PAYMENT_SANDBOX_WEBHOOK_SECRET, to use the sandbox) must be
+ * set explicitly, otherwise env() refuses to start with an actionable error.
+ * No default here enables development auth behaviour (on-screen codes, demo
+ * sign-in); env() refuses those on any deployed build.
+ * Anything set explicitly in the environment wins.
  * Used by env() at runtime and by scripts/vercel-setup.ts at build time.
  */
 export const VERCEL_APP_ROLE = process.env.DB_APP_ROLE || 'luma_app';
@@ -46,12 +51,11 @@ export function applyVercelDefaults(raw: Env): Env {
   // The injected DATABASE_URL is the table owner; the app connects as luma_app instead.
   out.DATABASE_URL = appRoleUrl(pooled);
   out.DB_APP_ROLE ??= VERCEL_APP_ROLE;
-  out.APP_ENV ??= 'review';
-  out.AUTH_SECRET ??= derive(pooled, 'auth-secret');
-  out.PAYMENT_SANDBOX_WEBHOOK_SECRET ??= derive(pooled, 'sandbox-webhook');
+  // Preview deployments default to a private review build. The Production environment has no
+  // default: it must say APP_ENV=review or APP_ENV=production explicitly (env() refuses otherwise).
+  if (out.VERCEL_ENV !== 'production') out.APP_ENV ??= 'review';
   out.STORAGE_DRIVER ??= 'db';
   out.DB_POOL_MAX ??= '3';
-  if (out.APP_ENV !== 'production') out.DEV_OTP_ECHO ??= 'true';
   const host = out.VERCEL_PROJECT_PRODUCTION_URL || out.VERCEL_URL;
   if (host) out.APP_URL ??= `https://${host}`;
   return out;
@@ -59,7 +63,10 @@ export function applyVercelDefaults(raw: Env): Env {
 
 /**
  * No database attached: run the embedded demo database (PGlite) built at deploy
- * time by scripts/build-demo-db.ts, with the secret generated in that build.
+ * time by scripts/build-demo-db.ts, with the random secret generated in that
+ * build (independent of any credential). Data is fictional and temporary.
+ * Demo accounts sign in with the password given to that build
+ * (DEMO_ACCOUNT_PASSWORD); there is no one-click sign-in and no on-screen code.
  */
 function embeddedDefaults(raw: Env): Env {
   const out: Env = { ...raw };
@@ -71,11 +78,6 @@ function embeddedDefaults(raw: Env): Env {
   if (out.AUTH_SECRET) out.PAYMENT_SANDBOX_WEBHOOK_SECRET ??= createHmac('sha256', out.AUTH_SECRET).update('luma:sandbox-webhook').digest('base64url');
   out.APP_ENV ??= 'review';
   out.STORAGE_DRIVER ??= 'db';
-  if (out.APP_ENV !== 'production') {
-    out.DEV_OTP_ECHO ??= 'true';
-    // Fake, temporary data only: one-click sign-in as the seeded demo accounts on the login page.
-    out.DEMO_MODE ??= 'true';
-  }
   const host = out.VERCEL_PROJECT_PRODUCTION_URL || out.VERCEL_URL;
   if (host) out.APP_URL ??= `https://${host}`;
   return out;

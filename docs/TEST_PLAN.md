@@ -71,7 +71,7 @@ Test names are quoted from the `describe` / `it` / `test` titles.
 | No account enumeration | auth › "does not reveal whether an account exists on duplicate registration", "recovery responds identically for unknown accounts" |
 | Lockout and rate limits | auth › "locks the account after repeated failures and rate limits" |
 | Recovery revokes sessions | auth › "recovers a password and revokes old sessions" |
-| Demo switcher off in production | demo › "is absent when DEMO_MODE is off", "is absent in production even if DEMO_MODE is on", "never signs into a non-demo account" |
+| Demo switcher off in production | demo › "is absent when DEMO_MODE is off", "is absent on every deployed build; DEMO_MODE there refuses to start" · env-safety (unit) · deployed-auth · platform-mfa-routes (every platform route, real requests) · invitations · storefront-lapsed · webhook-abuse, "never signs into a non-demo account" |
 
 ### Availability, booking, lifecycle
 

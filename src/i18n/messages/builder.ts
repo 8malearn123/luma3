@@ -15,7 +15,7 @@ const ar = {
     dismiss: 'إخفاء', powered_by: 'بدعم من لوما · Powered by LUMA', page_empty: 'لا يوجد محتوى في هذه الصفحة بعد.',
     unavailable: 'هذا العنصر غير متاح حالياً.', service_unavailable: 'هذه الخدمة غير متاحة حالياً.', product_unavailable: 'هذا المنتج غير متاح حالياً.',
     not_bookable_online: 'الحجز الإلكتروني لهذه الخدمة غير متاح حالياً، تواصلي معنا للحجز.',
-    price_note: 'الأسعار المعروضة هي أسعار الخدمة الحالية. اطّلعي على', not_found: 'الصفحة غير موجودة', not_found_hint: 'ربما تم نقل هذا العنصر أو إخفاؤه.',
+    price_note: 'الأسعار المعروضة هي أسعار الخدمة الحالية. اطّلعي على', not_found: 'الصفحة غير موجودة', not_found_hint: 'ربما تم نقل هذا العنصر أو إخفاؤه.', selling_paused: 'الحجز والطلب عبر الإنترنت غير متاحين حالياً لدى هذا النشاط. الحجوزات القائمة لم تتأثر؛ للاستفسار تواصلي مع النشاط مباشرة.',
     preview_banner: 'معاينة مسودة — هذه النسخة غير منشورة ولا يراها العملاء. الحجز والسلة معطّلان في المعاينة.',
     preview_booking_disabled: 'الحجز معطّل في المعاينة', preview_cart_disabled: 'السلة معطّلة في المعاينة',
     policy: {
@@ -165,7 +165,7 @@ const en: Shape<typeof ar> = {
     dismiss: 'Dismiss', powered_by: 'Powered by LUMA', page_empty: 'There is no content on this page yet.',
     unavailable: 'This item is currently unavailable.', service_unavailable: 'This service is currently unavailable.', product_unavailable: 'This product is currently unavailable.',
     not_bookable_online: 'Online booking is not available for this service right now — contact us to book.',
-    price_note: 'Prices shown are the current service prices. See the', not_found: 'Page not found', not_found_hint: 'This item may have moved or been hidden.',
+    price_note: 'Prices shown are the current service prices. See the', not_found: 'Page not found', not_found_hint: 'This item may have moved or been hidden.', selling_paused: 'Online booking and ordering are currently unavailable at this business. Existing bookings are not affected; contact the business directly with any questions.',
     preview_banner: 'Draft preview — this version is not published and customers cannot see it. Booking and cart are disabled in previews.',
     preview_booking_disabled: 'Booking is disabled in previews', preview_cart_disabled: 'Cart is disabled in previews',
     policy: {

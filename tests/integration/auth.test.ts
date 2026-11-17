@@ -55,19 +55,39 @@ describe('authentication', () => {
     expect(Object.keys(b.body.data)).toEqual(Object.keys(a.body.data));
   });
 
-  it('locks the account after repeated failures and rate limits', async () => {
-    const c = new TestClient();
+  it('throttles repeated failures per address + identifier without letting a stranger lock the owner out (LUMA-AUDIT-027)', async () => {
+    const owner = new TestClient();
     const phone = `+9665${Math.floor(10000000 + Math.random() * 89999999)}`;
-    await c.call(register.POST, { body: { identifier: phone, password: 'correct horse battery', display_name: 'P' } });
+    await owner.call(register.POST, { body: { identifier: phone, password: 'correct horse battery', display_name: 'P' } });
+    const attacker = new TestClient();
     const statuses: number[] = [];
-    for (let i = 0; i < 9; i++) {
-      const r = await c.call(login.POST, { body: { identifier: phone, password: 'wrong password!!' } });
-      statuses.push(r.status);
+    for (let i = 0; i < 7; i++) statuses.push((await attacker.call(login.POST, { body: { identifier: phone, password: 'wrong password!!' } })).status);
+    expect(statuses.slice(0, 5)).toEqual([422, 422, 422, 422, 422]);
+    expect(statuses.slice(5)).toEqual([429, 429]); // that address + identifier pair waits
+    // Even the right password from the attacker's address waits…
+    expect((await attacker.call(login.POST, { body: { identifier: phone, password: 'correct horse battery' } })).status).toBe(429);
+    // …but the owner signing in from her own address is NOT locked out (before: 429 account_locked).
+    expect((await owner.call(login.POST, { body: { identifier: phone, password: 'correct horse battery' } })).status).toBe(200);
+  });
+
+  it('slows distributed guessing on one account with an exponential delay, except from an address the owner signed in from', async () => {
+    const email = `dist-${uniq()}@example.test`;
+    const owner = new TestClient();
+    const r = await owner.call(register.POST, { body: { identifier: email, password: 'correct horse battery', display_name: 'D' } });
+    await owner.call(verify.POST, { body: { identifier: email, code: r.body.data.delivery.dev_code } }); // a session from the owner's address
+    // 20 failures from 20 different addresses (each pair stays under its own limit).
+    for (let i = 0; i < 20; i++) {
+      const bot = new TestClient();
+      expect((await bot.call(login.POST, { body: { identifier: email, password: `guess number ${i}!` } })).status).toBe(422);
     }
-    expect(statuses.slice(0, 8).every((s) => s === 422)).toBe(true);
-    expect(statuses[8]).toBe(429);
-    const ok = await c.call(login.POST, { body: { identifier: phone, password: 'correct horse battery' } });
-    expect(ok.status).toBe(429); // locked even with the right password
+    const fresh = new TestClient();
+    const blocked = await fresh.call(login.POST, { body: { identifier: email, password: 'another guess!!' } });
+    expect(blocked.status).toBe(429);
+    expect(blocked.body.error.code).toBe('account_locked');
+    expect(blocked.body.error.details.retry_after_sec).toBeGreaterThan(0);
+    // The owner's known address still signs in, and that clears the account counter.
+    expect((await owner.call(login.POST, { body: { identifier: email, password: 'correct horse battery' } })).status).toBe(200);
+    expect((await fresh.call(login.POST, { body: { identifier: email, password: 'correct horse battery' } })).status).toBe(200);
   });
 
   it('recovers a password and revokes old sessions', async () => {
