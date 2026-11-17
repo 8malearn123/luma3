@@ -88,7 +88,7 @@ export function NewBookingDrawer({ onClose, onCreated }: { onClose: () => void; 
           <section className="flex flex-col gap-2">
             <h3 className="text-sm font-semibold">1. {t('booking.dashboard.customer')}</h3>
             {customer ? (
-              <div className="flex items-center justify-between gap-2 rounded-lg border border-luma-300 bg-luma-50 p-3">
+              <div className="flex items-center justify-between gap-2 rounded-lg border border-line-strong bg-surface-muted p-3">
                 <div className="min-w-0"><p className="font-medium">{customer.display_name}</p><p className="truncate text-xs text-ink-muted" dir="ltr">{[customer.phone, customer.email].filter(Boolean).join(' · ')}</p></div>
                 <Button size="sm" variant="ghost" onClick={() => setCustomer(null)}>{t('bookings_ui.new.change')}</Button>
               </div>
@@ -171,8 +171,8 @@ export function NewBookingDrawer({ onClose, onCreated }: { onClose: () => void; 
             <fieldset className="flex flex-col gap-2">
               <legend className="mb-1 text-sm font-medium">{t('bookings_ui.new.payment_mode')}</legend>
               {(['confirm_on_site', 'hold_only'] as const).map((m) => (
-                <label key={m} className={cx('flex cursor-pointer items-start gap-2 rounded-lg border p-3 text-sm', mode === m ? 'border-luma-700 bg-luma-50' : 'border-line')}>
-                  <input type="radio" name="mode" className="mt-0.5 accent-luma-700" checked={mode === m} onChange={() => setMode(m)} />
+                <label key={m} className={cx('flex cursor-pointer items-start gap-2 rounded-lg border p-3 text-sm', mode === m ? 'border-primary bg-surface-muted' : 'border-line')}>
+                  <input type="radio" name="mode" className="mt-0.5 accent-primary" checked={mode === m} onChange={() => setMode(m)} />
                   <span><span className="font-medium">{t(`booking.dashboard.${m}`)}</span><span className="block text-xs text-ink-muted">{t(`bookings_ui.new.${m}_hint`)}</span></span>
                 </label>
               ))}
@@ -213,7 +213,7 @@ function CustomerPicker({ onPick }: { onPick: (c: Customer) => void }) {
           ) : (
             <ul className="divide-y divide-line rounded-lg border border-line">
               {list.data.items.map((c) => (
-                <li key={c.id}><button type="button" className="flex w-full flex-col items-start px-3 py-2 text-start text-sm hover:bg-luma-50" onClick={() => onPick(c)}>
+                <li key={c.id}><button type="button" className="flex w-full flex-col items-start px-3 py-2 text-start text-sm hover:bg-surface-muted" onClick={() => onPick(c)}>
                   <span className="font-medium">{c.display_name}</span>
                   <span className="text-xs text-ink-muted" dir="ltr">{[c.phone, c.email].filter(Boolean).join(' · ')}</span>
                 </button></li>

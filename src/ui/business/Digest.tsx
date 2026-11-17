@@ -49,7 +49,7 @@ export function DigestList() {
   return (
     <div className="flex flex-col gap-4">
       <PageHeader title={t('business.digest.title')} subtitle={t('business.digest.subtitle')} actions={<>
-        {access.can('business.manage') ? <Link href={`/app/${access.slug}/settings?tab=digest`} className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-line px-3 text-sm hover:bg-luma-50"><Settings className="size-4" aria-hidden />{t('business.digest.schedule')}</Link> : null}
+        {access.can('business.manage') ? <Link href={`/app/${access.slug}/settings?tab=digest`} className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-line px-3 text-sm hover:bg-surface-muted"><Settings className="size-4" aria-hidden />{t('business.digest.schedule')}</Link> : null}
         {canManage ? <Button icon={<RefreshCw className="size-4" />} loading={busy} onClick={async () => {
           setBusy(true); setErr(null);
           try { const r = await api<{ id: string }>(access.api('/digests'), { method: 'POST' }); router.push(`/app/${access.slug}/digest/${r.id}`); }
@@ -63,7 +63,7 @@ export function DigestList() {
         <ul className="flex flex-col gap-2">
           {q.data.map((d) => (
             <li key={d.id}>
-              <Link href={`/app/${access.slug}/digest/${d.id}`} className="flex items-center justify-between rounded-xl border border-line bg-white p-4 hover:border-luma-300">
+              <Link href={`/app/${access.slug}/digest/${d.id}`} className="flex items-center justify-between rounded-xl border border-line bg-surface p-4 hover:border-line-strong">
                 <span className="font-medium">{range(d.period_start, d.period_end)}</span>
                 <span className="text-xs text-ink-muted">{d.delivered_channels.length ? t('business.digest.sent_via', { channels: d.delivered_channels.join('، ') }) : t('business.digest.in_app')}</span>
               </Link>
@@ -96,7 +96,7 @@ export function DigestView({ id }: { id: string }) {
   return (
     <div className="flex flex-col gap-5">
       <PageHeader title={t('business.digest.title')} subtitle={range(q.data.period_start, q.data.period_end)}
-        back={<Link href={`/app/${access.slug}/digest`} className="mb-1 inline-flex items-center gap-1 text-sm text-luma-700"><Back className="size-4" />{t('business.digest.all')}</Link>} />
+        back={<Link href={`/app/${access.slug}/digest`} className="mb-1 inline-flex items-center gap-1 text-sm text-link"><Back className="size-4" />{t('business.digest.all')}</Link>} />
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Stat label={t('business.digest.bookings')} value={n(d.bookings.bookings)} hint={<Delta now={d.bookings.bookings} before={d.bookings.previous.bookings} />} />
         <Stat label={t('business.digest.completed')} value={n(d.bookings.completed)} hint={t('business.digest.cancel_noshow', { c: d.bookings.cancelled, n: d.bookings.no_show })} />
@@ -133,7 +133,7 @@ export function DigestView({ id }: { id: string }) {
               {d.low_stock.map((i) => <li key={i.id} className="flex justify-between gap-2"><span>{i.name}</span><span className="tabular-nums text-warn">{qty(i.available)} / {qty(i.threshold)} {i.unit}</span></li>)}
             </ul>
           ) : <p className="text-sm text-ink-muted">{t('business.digest.stock_ok')}</p>}
-          {d.low_stock.length && access.can('inventory.view', 'inventory.manage') ? <Link href={`/app/${access.slug}/inventory`} className="mt-2 inline-block text-xs text-luma-700 underline">{t('business.digest.open_inventory')}</Link> : null}
+          {d.low_stock.length && access.can('inventory.view', 'inventory.manage') ? <Link href={`/app/${access.slug}/inventory`} className="mt-2 inline-block text-xs text-link underline">{t('business.digest.open_inventory')}</Link> : null}
         </Card>
       </div>
     </div>
@@ -185,7 +185,7 @@ export function DigestSettingsSection() {
             try { const r = await api<DigestSettingsData>(access.api('/settings/digest'), { method: 'PUT', body: v }); qc.setQueryData(key, r); setDraft(null); toast({ tone: 'ok', text: t('business.digest.saved') }); }
             catch (e) { setErr(e); } finally { setBusy(false); }
           }}>{t('actions.save')}</Button>
-          <Link href={`/app/${access.slug}/digest`} className="text-sm text-luma-700 underline">{t('business.digest.view_all')}</Link>
+          <Link href={`/app/${access.slug}/digest`} className="text-sm text-link underline">{t('business.digest.view_all')}</Link>
         </div>
       </div>
     </Card>

@@ -26,8 +26,8 @@ export function UnsubscribeForm({ token }: { token: string | null }) {
   }
   return (
     <div className="flex flex-col items-center gap-4 text-center">
-      <MailX className="size-10 text-luma-500" aria-hidden />
-      <h1 className="font-display text-2xl text-luma-900">{t('unsubscribe.title')}</h1>
+      <MailX className="size-10 text-brand" aria-hidden />
+      <h1 className="font-display text-2xl text-heading">{t('unsubscribe.title')}</h1>
       {!token ? <Alert tone="danger">{t('unsubscribe.invalid')}</Alert> : done ? (
         <Alert tone="ok">{t('unsubscribe.done', { business: done })}</Alert>
       ) : (
@@ -37,7 +37,7 @@ export function UnsubscribeForm({ token }: { token: string | null }) {
           <Button loading={busy} onClick={confirm}>{t('unsubscribe.confirm')}</Button>
         </>
       )}
-      <Link href="/account/privacy" className="text-sm text-luma-700 underline">{t('unsubscribe.manage')}</Link>
+      <Link href="/account/privacy" className="text-sm text-link underline">{t('unsubscribe.manage')}</Link>
     </div>
   );
 }

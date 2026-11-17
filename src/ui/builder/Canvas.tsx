@@ -40,7 +40,7 @@ function CanvasBlock({ block, index, count, ctx, pageBlocks, p }: { block: PageB
   const offDevice = deviceHidden(ctx, block);
   return (
     <div ref={setNodeRef} style={style} data-block-id={block.id}
-      className={cx('group relative outline-offset-[-2px]', selected ? 'outline-2 outline-luma-500 outline' : 'hover:outline hover:outline-1 hover:outline-luma-300', isDragging && 'z-10 opacity-60')}
+      className={cx('group relative outline-offset-[-2px]', selected ? 'outline-2 outline-brand outline' : 'hover:outline hover:outline-1 hover:outline-line-strong', isDragging && 'z-10 opacity-60')}
       onClick={(e) => { e.stopPropagation(); p.onSelect(block.id); }}>
       <div className={cx('absolute start-2 top-2 z-20 flex items-center gap-0.5 rounded-lg border border-line bg-surface/95 p-0.5 text-ink shadow-sm',
         selected ? 'flex' : 'hidden group-hover:flex group-focus-within:flex')} onClick={(e) => e.stopPropagation()}>
@@ -71,7 +71,7 @@ function CanvasBlock({ block, index, count, ctx, pageBlocks, p }: { block: PageB
 function DropZone({ id, label, onClick }: { id: string; label: string; onClick: () => void }) {
   const { isOver, setNodeRef } = useDroppable({ id });
   return (
-    <div ref={setNodeRef} className={cx('mx-4 my-3 rounded-xl border-2 border-dashed p-4 text-center text-sm transition-colors', isOver ? 'border-luma-500 bg-surface-muted text-heading' : 'border-luma-200 text-ink-muted')}>
+    <div ref={setNodeRef} className={cx('mx-4 my-3 rounded-xl border-2 border-dashed p-4 text-center text-sm transition-colors', isOver ? 'border-brand bg-surface-muted text-heading' : 'border-highlight text-ink-muted')}>
       <button type="button" onClick={onClick} className="inline-flex items-center gap-1 font-medium hover:underline"><Plus className="size-4" aria-hidden />{label}</button>
     </div>
   );

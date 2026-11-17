@@ -74,10 +74,10 @@ function PlansTab({ canManage }: { canManage: boolean }) {
       ) : (
         <ul className="grid gap-3 md:grid-cols-2">
           {plans.data.map((p) => (
-            <li key={p.id} className="flex flex-col rounded-2xl border border-line bg-white p-4">
+            <li key={p.id} className="flex flex-col rounded-2xl border border-line bg-surface p-4">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <p className="font-semibold text-luma-900">{pick(p.name_ar, p.name_en)}</p>
+                  <p className="font-semibold text-heading">{pick(p.name_ar, p.name_en)}</p>
                   <p className="text-sm"><span dir="ltr" className="font-medium">{money(p.price_minor)}</span> · {t('fe.memberships.valid_for', { n: p.validity_days })}</p>
                 </div>
                 <span className="flex flex-wrap justify-end gap-1">
@@ -247,10 +247,10 @@ function CustomerMembershipsTab() {
       ) : (
         <ul className="grid gap-3 md:grid-cols-2">
           {q.data.map((m) => (
-            <li key={m.id} className="rounded-2xl border border-line bg-white p-4">
+            <li key={m.id} className="rounded-2xl border border-line bg-surface p-4">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <p className="font-semibold text-luma-900">{m.customer_name}</p>
+                  <p className="font-semibold text-heading">{m.customer_name}</p>
                   <p className="text-sm">{pick(m.plan_snapshot.name_ar, m.plan_snapshot.name_en)} · <span dir="ltr">{money(m.price_paid_minor)}</span></p>
                   <p className="text-xs text-ink-muted">{m.ends_at ? t('fe.memberships.valid_until', { date: when(m.ends_at) }) : '—'}</p>
                 </div>

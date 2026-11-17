@@ -34,7 +34,7 @@ export function MyHrCard() {
         <div className="flex flex-col gap-3 text-sm">
           {b ? (
             b.balance == null ? <p className="text-ink-muted">{t('hr.balance.unknown')}</p> : (
-              <div className="rounded-xl bg-luma-50 p-3">
+              <div className="rounded-xl bg-surface-muted p-3">
                 <p className="text-xs text-ink-muted">{t('hr.portal.annual_balance')}</p>
                 <p className="text-2xl font-semibold">{t('hr.balance.days', { n: days(b.balance) })}</p>
                 <p className="text-xs text-ink-muted">{t('hr.portal.balance_detail', { accrued: days(b.accrued), taken: days(b.taken), adj: days(b.adjustments), entitlement: b.yearly_entitlement })}</p>
@@ -74,7 +74,7 @@ export function MyRequestsCard() {
         <ul className="flex flex-col gap-2">
           {q.data.slice(0, 10).map((r) => (
             <li key={r.id}>
-              <button type="button" onClick={() => setOpen(r.id)} className="w-full rounded-lg border border-line p-2 text-start text-sm hover:bg-luma-50">
+              <button type="button" onClick={() => setOpen(r.id)} className="w-full rounded-lg border border-line p-2 text-start text-sm hover:bg-surface-muted">
                 <span className="flex flex-wrap items-center justify-between gap-2"><span className="font-medium">{pick(r.type_name_ar, r.type_name_en)}</span><RequestStatusBadge status={r.status} /></span>
                 <span className="block text-xs text-ink-muted">{r.starts_on ? `${day(r.starts_on)}${r.ends_on && r.ends_on !== r.starts_on ? ` – ${day(r.ends_on)}` : ''}` : day(r.created_at.slice(0, 10))}</span>
                 {r.status === 'pending' ? <span className="mt-1 block"><ChainSteps chain={r.approval_chain} current={r.current_step} status={r.status} /></span> : null}

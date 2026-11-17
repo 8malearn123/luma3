@@ -113,7 +113,7 @@ function MyBookings({ staffId, onOpen }: { staffId: string; onOpen: (id: string)
           <ul className="divide-y divide-line">
             {upcoming.map((r) => (
               <li key={r.id}>
-                <button type="button" onClick={() => onOpen(r.id)} className="flex w-full flex-wrap items-center justify-between gap-2 py-2 text-start hover:bg-luma-50">
+                <button type="button" onClick={() => onOpen(r.id)} className="flex w-full flex-wrap items-center justify-between gap-2 py-2 text-start hover:bg-surface-muted">
                   <span className="min-w-0">
                     <span className="block font-medium">{day(r.starts_at, r.timezone)} · <bdi>{time(mine(r)[0]?.starts_at ?? r.starts_at, r.timezone)}</bdi></span>
                     <span className="block truncate text-xs text-ink-muted">{r.customer_name} · {r.services}</span>

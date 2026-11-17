@@ -167,7 +167,7 @@ export function Properties({ slug, block, parent, pageBlocks, refs, pages, warni
       case 'number':
         return (
           <Field key={f.key} label={`${fl(f.key)}: ${props[f.key] ?? ''}`}>{(p) => (
-            <input {...p} type="range" min={f.min} max={f.max} step={f.step ?? 1} value={Number(props[f.key] ?? f.min)} onChange={(e) => set(f.key, Number(e.target.value), true)} className="accent-luma-700" />
+            <input {...p} type="range" min={f.min} max={f.max} step={f.step ?? 1} value={Number(props[f.key] ?? f.min)} onChange={(e) => set(f.key, Number(e.target.value), true)} className="accent-primary" />
           )}</Field>
         );
       case 'boolean':

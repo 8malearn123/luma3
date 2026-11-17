@@ -40,7 +40,7 @@
 | الطبقة | المحتوى | الاستخدام |
 |---|---|---|
 | **هوية لوما** (لا تُعدَّل قيمها) | `luma-50…900`، و`font-sans` (IBM Plex Sans Arabic)، و`font-display` | الأسطح والعناصر الأساسية في لوحات لوما فقط |
-| **دلالية** | `ink`، `ink-muted`، `line`، `ok/ok-bg`، `warn/warn-bg`، `danger/danger-bg`، `info/info-bg`، و(2026-11-17) `canvas`، `surface`، `surface-muted`، `accent-soft`، `primary`، `primary-hover`، `on-primary`، `heading`، `link`، `scrim` | النصوص والحدود والحالات والأسطح والأزرار؛ لكل منها قيمة داكنة |
+| **دلالية** | `ink`، `ink-muted`، `line`، `ok/ok-bg`، `warn/warn-bg`، `danger/danger-bg`، `info/info-bg`، و(2026-11-17) `canvas`، `surface`، `surface-muted`، `accent-soft`، `primary`، `primary-hover`، `on-primary`، `heading`، `link`، `scrim`، `brand`، `highlight`، `line-strong`، `rating`، `whatsapp` | النصوص والحدود والحالات والأسطح والأزرار؛ لكل منها قيمة داكنة. **في الشاشات تُستخدم هذه فقط**؛ قيم `luma-*` تبقى مصدر الهوية الذي اشتُقت منه |
 | **المتجر** `sf-*` | ثيم كل نشاط | المتجر العام فقط؛ لا تستخدمه في اللوحات |
 
 ### قواعد إلزامية
@@ -71,6 +71,25 @@
 | ألوان الحالات `ok / warn / danger / info` | مستقلة عن الهوية. التباين AA مطلوب. لا تُستبدل بألوان لوما |
 
 - الخلفية `bg-canvas`، والأسطح `bg-surface` (لا `bg-white`)، والمساحات الهادئة داخل الأسطح `bg-surface-muted`، والحدود `border-line`.
+- **مقابل كل درجة هوية** (لا تكتب `luma-*` في كلاسات الشاشات):
+
+  | بدل | استخدم |
+  |---|---|
+  | `bg-white` | `bg-surface` |
+  | `bg-luma-50` | `bg-surface-muted` |
+  | `bg-luma-100` | `bg-accent-soft` |
+  | `luma-200` (ضربة التظليل، حلقة ناعمة، نجمة فارغة) | `highlight` |
+  | `luma-300` (حد أقوى، أيقونة فارغة) | `line-strong` |
+  | `luma-500` (أيقونات ومؤشرات فقط؛ تباينه 4.3 فلا يُستخدم لنص) | `brand` |
+  | `bg-luma-700` + `text-white` | `bg-primary text-on-primary`، والحد `border-primary` |
+  | `text-luma-700` | `text-link` |
+  | `text-luma-800/900` | `text-heading` |
+  | `hover:bg-luma-800` | `hover:bg-primary-hover` |
+  | `accent-luma-700` (مربعات الاختيار) | `accent-primary` |
+  | نجوم التقييم | `text-rating` (أيقونة فقط) |
+  | زر مشاركة واتساب | `bg-whatsapp text-white` (5.3:1، ثابت في الوضعين) |
+
+- **`text-white` مسموح فقط** فوق خلفية ثابتة داكنة في الوضعين: `bg-whatsapp`، و`bg-scrim/70+` فوق الصور. شارة بلون حالة (`bg-ok`) تستخدم `text-surface`.
 - الزر الأساسي والعنصر النشط: `bg-primary text-on-primary hover:bg-primary-hover`. الروابط: `text-link`. العناوين: `text-heading`. خلفية النوافذ: `bg-scrim/30`.
 - **بطاقة مؤشر بلون حالة**: أيقونة على `*-bg` بلون الحالة، والرقم بلون الحالة. استخدم `Stat` ووسّعه بدل بطاقة جديدة.
 
@@ -166,8 +185,29 @@
 - **النطاق في الكود**: القيم الداكنة تُعرَّف على العنصر `.luma-app` فقط (غلاف `DashboardShell` و`PlatformShell` وحساب العميلة واختيار النشاط). المتجر العام (`.storefront`) والموقع التسويقي لا يتأثران، حتى داخل معاينة المحرر.
 - **الاختيار**: قائمة المستخدم ← «المظهر»: حسب الجهاز / فاتح / داكن. يُحفظ في الكوكي `luma_theme`، ويكتبه الخادم على `<html data-theme>` فلا يحدث وميض. بلا اختيار صريح يتبع `prefers-color-scheme`.
 - **المصدر**: `src/app/globals.css` — كتلتان متطابقتان (`:root[data-theme='dark'] .luma-app` و`@media (prefers-color-scheme: dark)`). عدّلهما معًا.
-- **طبقة توافق مؤقتة**: في الوضع الداكن تُعاد قيم `white` و`luma-50/100/200/500/700/800/900` لتعمل الشاشات التي لم تُحوَّل بعد، مع إبقاء `text-white` أبيض و`bg-luma-700` على `primary`. هذه الطبقة تُحذف بعد مرور التحويل على كل الشاشات؛ الكود الجديد يستخدم الـ Tokens الدلالية فقط.
-- **التباين المعتمد (AA)**: ink/surface 15.3 (فاتح) و13.6 (داكن)، ink-muted/surface 6.0 و7.8، on-primary/primary 9.7 و6.4، link/surface 9.7 و9.5، ألوان الحالات على خلفياتها ≥ 4.6 في الوضعين.
+- **اكتمل التحويل (2026-11-17)**: كل الشاشات الداخلية (والموقع التسويقي أيضًا) تستخدم الـ Tokens الدلالية، و**حُذفت طبقة التوافق المؤقتة** (لم تعد قيم `white` و`luma-*` تُعاد في الوضع الداكن). أي `bg-white` أو `luma-*` جديد داخل `.luma-app` سيظهر فاتحًا في الوضع الداكن، واختبار `tests/e2e/dark-mode.spec.ts` سيكشفه.
+- **أغلفة `.luma-app`**: `DashboardShell`، و`PlatformShell`، وحساب العميلة، واختيار النشاط (`/app`)، وإنشاء نشاط (`/app/new`)، وشاشة الصيانة، و`AuthCard` (الدخول والتسجيل والاستعادة والتحقق والدعوات). خارجها (المتجر العام، والموقع التسويقي، والسوق، وإلغاء الاشتراك، وصفحة الدفع التجريبية) يبقى فاتحًا.
+- **الشعار**: `LumaLogo`/`LumaMark` يعرضان النسخة البيضاء تلقائيًا داخل `.luma-app` الداكن (`.luma-on-light`/`.luma-on-dark` في globals.css).
+- **بلا وميض أبيض**: `body:has(.luma-app)` يأخذ خلفية الوضع الداكن أيضًا.
+- **استثناءات مشروعة للألوان المكتوبة**: رمز QR (أسود على أبيض للمسح)، وقيم ثيم المتجر في `src/shared/builder/theme.ts`، وملفات PDF في الخادم، و`themeColor` في `layout.tsx`.
+- **التباين المعتمد (AA)**:
+
+  | الزوج | فاتح | داكن |
+  |---|---|---|
+  | ink / surface | 15.3 | 13.6 |
+  | ink / canvas | 13.9 | 14.9 |
+  | ink-muted / surface | 6.0 | 7.8 |
+  | ink-muted / surface-muted | 5.4 | 7.1 |
+  | heading / accent-soft | 12.3 | 11.5 |
+  | heading / highlight | 8.6 | 9.1 |
+  | link / surface | 9.7 | 9.5 |
+  | on-primary / primary | 9.7 | 6.4 |
+  | ok / ok-bg | 4.6 | 7.8 |
+  | warn / warn-bg | 5.4 | 8.5 |
+  | danger / danger-bg | 5.6 | 7.8 |
+  | info / info-bg | 6.2 | 8.4 |
+  | white / whatsapp | 5.3 | 5.3 |
+  | brand / surface (أيقونات، ≥3) | 4.3 | 6.5 |
 
 ## 12. قائمة تحقق قبل التسليم
 

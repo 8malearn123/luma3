@@ -41,7 +41,7 @@ export function ExpensesTab() {
     { key: 'amount', header: t('fe.common.amount'), cell: (e) => <span dir="ltr" className={e.voided_at ? 'line-through text-ink-muted' : 'font-medium'}>{money(e.amount_minor)}</span> },
     {
       key: 'receipt', header: t('fe.expenses.receipt'), className: 'hidden sm:table-cell', cell: (e) => e.receipt_asset_id
-        ? <a href={`/api/v1/media/${e.receipt_asset_id}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-luma-700 hover:underline"><ImageIcon className="size-4" aria-hidden />{t('actions.view')}</a>
+        ? <a href={`/api/v1/media/${e.receipt_asset_id}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-link hover:underline"><ImageIcon className="size-4" aria-hidden />{t('actions.view')}</a>
         : <span className="text-xs text-ink-muted">{t('fe.expenses.no_receipt')}</span>,
     },
     {

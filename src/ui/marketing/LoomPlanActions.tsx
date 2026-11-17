@@ -54,7 +54,7 @@ export function LoomPlanActionList({ actions, compact }: { actions: any[]; compa
           <p className="mt-1 text-xs text-ink-muted" dir="auto">{a.operational.capacity.note}{a.operational.inventory.note ? ` · ${a.operational.inventory.note}` : ''}</p>
           {a.operational.requirements.length ? <ul className="mt-1 list-disc ps-5 text-xs" dir="auto">{a.operational.requirements.map((x: string, i: number) => <li key={i}>{x}</li>)}</ul> : null}
           {a.highlighted.map((h: any) => (
-            <div key={h.offering_id} className="mt-2 rounded-lg bg-luma-50 p-2 text-xs">
+            <div key={h.offering_id} className="mt-2 rounded-lg bg-surface-muted p-2 text-xs">
               <p><span className="font-medium" dir="auto">{h.name}</span> · {h.free_slots == null ? t('loomp.plan.no_schedule') : t('loomp.plan.free_slots', { n: h.free_slots })}</p>
               {h.sample_slots.length ? <p className="text-ink-muted" dir="ltr">{h.sample_slots.join(' · ')}</p> : null}
               {h.materials.length ? <p className="text-ink-muted" dir="auto">{t('loomp.plan.materials')}: {h.materials.map((m: any) => `${m.name} ${m.per_service} ${m.unit} (${t('loomp.plan.available', { n: m.available })})`).join('، ')}</p>

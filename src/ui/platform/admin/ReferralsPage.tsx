@@ -128,7 +128,7 @@ function ReferrerDrawer({ r, minMinor, onClose }: { r: Referrer; minMinor: numbe
       footer={<><Button variant="ghost" onClick={onClose}>{t('actions.cancel')}</Button><Button loading={busy} onClick={save}>{t('actions.save')}</Button></>}>
       <div className="flex flex-col gap-4">
         <FormErrorSummary message={err ? msg(err) : null} issues={(err as any)?.details?.issues} />
-        <div className="flex items-center gap-2 rounded-lg bg-luma-50 p-2 text-sm">
+        <div className="flex items-center gap-2 rounded-lg bg-surface-muted p-2 text-sm">
           <span className="truncate font-mono" dir="ltr">{r.link}</span>
           <button className="ms-auto" aria-label={t('admin.referrals.copy')} onClick={() => { void navigator.clipboard?.writeText(r.link); toast({ tone: 'ok', text: t('admin.referrals.copied') }); }}><Copy className="size-4" /></button>
         </div>

@@ -91,7 +91,7 @@ export function ResourcesTab() {
               </ul>
             ) : <p className="text-sm text-ink-muted">{t('catalog_team.resources.no_units')}</p>}
             {canEdit ? (newRes?.typeId === rt.id ? (
-              <div className="mt-3 grid gap-2 rounded-xl bg-luma-50/60 p-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+              <div className="mt-3 grid gap-2 rounded-xl bg-surface-muted/60 p-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
                 <Field label={t('catalog_team.resources.unit_name')} required>{(fp) => <Input {...fp} maxLength={80} placeholder={t('catalog_team.resources.unit_placeholder')} value={newRes.name} onChange={(e) => setNewRes({ ...newRes, name: e.target.value })} />}</Field>
                 <Field label={t('fields.branch')} required>{(fp) => (
                   <Select {...fp} value={newRes.branch} onChange={(e) => setNewRes({ ...newRes, branch: e.target.value })}>

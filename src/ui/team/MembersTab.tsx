@@ -188,7 +188,7 @@ function InviteDialog({ staff, staffId, onClose }: { staff: StaffRow[]; staffId:
             {t('catalog_team.members.invite_expires', { when: when(result.expires_at) })}
           </Alert>
           {result.invite_link ? (
-            <div className={`flex flex-col gap-2 rounded-lg border border-dashed p-3 ${result.dev_invite_link ? 'border-info/40 bg-info-bg/50' : 'border-line bg-luma-50'}`}>
+            <div className={`flex flex-col gap-2 rounded-lg border border-dashed p-3 ${result.dev_invite_link ? 'border-info/40 bg-info-bg/50' : 'border-line bg-surface-muted'}`}>
               {result.dev_invite_link ? (
                 <>
                   <p className="inline-flex items-center gap-1.5 text-xs font-semibold text-info"><FlaskConical className="size-4" aria-hidden />{t('team_ui.invite_link_dev')}</p>
@@ -200,7 +200,7 @@ function InviteDialog({ staff, staffId, onClose }: { staff: StaffRow[]; staffId:
                   <p className="text-xs text-ink-muted">{t('team_ui.invite_link_note')}</p>
                 </>
               )}
-              <code className="break-all rounded bg-white p-2 text-xs" dir="ltr" data-testid="invite-link">{result.invite_link}</code>
+              <code className="break-all rounded bg-surface p-2 text-xs" dir="ltr" data-testid="invite-link">{result.invite_link}</code>
               <Button size="sm" variant="outline" className="self-start" icon={<Copy className="size-4" />}
                 onClick={async () => { try { await navigator.clipboard.writeText(result.invite_link!); setCopied(true); } catch { /* clipboard blocked */ } }}>{copied ? t('actions.copied') : t('actions.copy')}</Button>
             </div>

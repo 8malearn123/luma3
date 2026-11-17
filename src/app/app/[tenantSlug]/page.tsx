@@ -28,7 +28,7 @@ export default async function Overview({ params }: { params: Promise<{ tenantSlu
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <h1 className="text-2xl font-semibold text-luma-900">{access.name}</h1>
+        <h1 className="text-2xl font-semibold text-heading">{access.name}</h1>
         {sub?.status === 'trialing' && sub.trial_ends_at ? <p className="text-sm text-ink-muted">{t('trial_banner', { date: formatDate(sub.trial_ends_at, { locale, tz: access.timezone }) })}</p> : null}
       </div>
       {booking?.warn ? (
@@ -44,7 +44,7 @@ export default async function Overview({ params }: { params: Promise<{ tenantSlu
           <ul className="mt-2 flex flex-col gap-1 text-sm">
             {ready.items.filter((i) => !i.ok).map((i) => <li key={i.key}><Link className="underline" href={i.action_path}>{t(`onboarding.readiness_items.${i.key}`)}</Link></li>)}
           </ul>
-          {access.status === 'onboarding' ? <Link href={`/app/${tenantSlug}/onboarding`} className="mt-3 inline-block rounded-lg bg-luma-700 px-4 py-2 text-sm text-white">{t('nav.onboarding')}</Link> : null}
+          {access.status === 'onboarding' ? <Link href={`/app/${tenantSlug}/onboarding`} className="mt-3 inline-block rounded-lg bg-primary px-4 py-2 text-sm text-on-primary">{t('nav.onboarding')}</Link> : null}
         </section>
       ) : null}
       <BusinessOverview />

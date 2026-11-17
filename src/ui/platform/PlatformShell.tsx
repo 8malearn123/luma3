@@ -63,7 +63,7 @@ export function PlatformShell({ platform, user, gate, children }: { platform: Pl
     <nav aria-label={t('platform.nav.label')} className="flex flex-col gap-0.5 p-3">
       {items.map((i) => (
         <Link key={i.key} href={i.href} onClick={() => setOpen(false)} aria-current={isActive(i.href) ? 'page' : undefined}
-          className={cx('flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm', isActive(i.href) ? 'bg-luma-700 text-white' : 'text-ink hover:bg-luma-100')}>
+          className={cx('flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm', isActive(i.href) ? 'bg-primary text-on-primary' : 'text-ink hover:bg-accent-soft')}>
           <i.icon className="size-4" aria-hidden />{t(`platform.nav.${i.key}`)}
         </Link>
       ))}
@@ -73,14 +73,14 @@ export function PlatformShell({ platform, user, gate, children }: { platform: Pl
   return (
     <Ctx.Provider value={platform}>
       <StepUpProvider>
-        <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:bg-white focus:p-2">{t('a11y.skip_to_content')}</a>
+        <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:bg-surface focus:p-2">{t('a11y.skip_to_content')}</a>
         <div className="luma-app flex min-h-dvh">
           {!gate ? (
-            <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 overflow-y-auto border-e border-line bg-white lg:block">
+            <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 overflow-y-auto border-e border-line bg-surface lg:block">
               <div className="flex items-center gap-2 border-b border-line px-4 py-3">
                 <LumaMark className="h-8 w-auto" />
                 <div className="min-w-0">
-                  <p className="truncate font-display text-sm font-semibold tracking-wide text-luma-800">LUMA</p>
+                  <p className="truncate font-display text-sm font-semibold tracking-wide text-heading">LUMA</p>
                   <p className="text-xs text-ink-muted">{t('platform.title')}</p>
                 </div>
               </div>
@@ -89,8 +89,8 @@ export function PlatformShell({ platform, user, gate, children }: { platform: Pl
           ) : null}
           {open && !gate ? (
             <div className="fixed inset-0 z-40 lg:hidden">
-              <div className="absolute inset-0 bg-ink/30" onClick={() => setOpen(false)} aria-hidden />
-              <aside className="absolute inset-y-0 start-0 w-72 overflow-y-auto bg-white shadow-xl">
+              <div className="absolute inset-0 bg-scrim/30" onClick={() => setOpen(false)} aria-hidden />
+              <aside className="absolute inset-y-0 start-0 w-72 overflow-y-auto bg-surface shadow-xl">
                 <div className="flex items-center justify-between border-b border-line px-4 py-3">
                   <LumaLogo className="h-7 w-auto" />
                   <button onClick={() => setOpen(false)} aria-label={t('a11y.close_menu')}><X className="size-5" /></button>
@@ -100,9 +100,9 @@ export function PlatformShell({ platform, user, gate, children }: { platform: Pl
             </div>
           ) : null}
           <div className="flex min-w-0 flex-1 flex-col">
-            <header className="sticky top-0 z-30 flex items-center gap-2 border-b border-line bg-white/90 px-3 py-2 backdrop-blur sm:px-5">
+            <header className="sticky top-0 z-30 flex items-center gap-2 border-b border-line bg-surface/90 px-3 py-2 backdrop-blur sm:px-5">
               {!gate ? <button className="lg:hidden" onClick={() => setOpen(true)} aria-label={t('a11y.open_menu')}><Menu className="size-5" /></button> : null}
-              <span className="text-sm font-medium text-luma-800">{t('platform.title')}</span>
+              <span className="text-sm font-medium text-heading">{t('platform.title')}</span>
               <span className="hidden text-xs text-ink-muted sm:inline">· {platform.roles.map((r) => t(`platform.roles.${r}`)).join('، ')}</span>
               <div className="flex-1" />
               <Link href="/app" className="hidden text-sm text-ink-muted hover:text-ink sm:inline">{t('platform.to_businesses')}</Link>
@@ -110,7 +110,7 @@ export function PlatformShell({ platform, user, gate, children }: { platform: Pl
               <NotificationsBell />
               <UserMenu name={user.displayName} />
             </header>
-            {user.isDemo ? <div className="bg-luma-700 px-4 py-1 text-center text-xs text-white">{t('demo.banner')}</div> : null}
+            {user.isDemo ? <div className="bg-primary px-4 py-1 text-center text-xs text-on-primary">{t('demo.banner')}</div> : null}
             {!gate && !platform.mfa.verified ? (
               <Alert tone="warn" className="m-3" title={t('platform.mfa_banner.title')}>
                 <Link href="/platform/security" className="underline">{t('platform.mfa_banner.action')}</Link>

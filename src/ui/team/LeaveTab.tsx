@@ -89,7 +89,7 @@ export function LeaveTab({ staff }: { staff: StaffRow[] }) {
             const r = parseRange(l.during);
             const s = staff.find((x) => x.id === l.staff_id);
             return (
-              <li key={l.id} className="flex flex-col gap-3 rounded-xl border border-line bg-white p-4 sm:flex-row sm:items-center">
+              <li key={l.id} className="flex flex-col gap-3 rounded-xl border border-line bg-surface p-4 sm:flex-row sm:items-center">
                 <div className="min-w-0 flex-1">
                   <p className="flex flex-wrap items-center gap-2">
                     <span className="font-medium">{s ? pick(s.display_name, s.display_name_en) : l.display_name}</span>

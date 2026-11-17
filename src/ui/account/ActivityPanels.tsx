@@ -33,10 +33,10 @@ export function BookingsPanel() {
       ) : (
         <ul className="flex flex-col gap-3">
           {q.data.map((b) => (
-            <li key={b.id} className="rounded-2xl border border-line bg-white p-4">
+            <li key={b.id} className="rounded-2xl border border-line bg-surface p-4">
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div>
-                  <p className="font-semibold text-luma-900">{b.tenant_name}</p>
+                  <p className="font-semibold text-heading">{b.tenant_name}</p>
                   <p className="text-sm">{formatDateTime(b.starts_at, { locale, tz: b.timezone, timeFormat, weekday: true })}</p>
                   <p className="text-xs text-ink-muted">{tzLabel(b.timezone, locale)}</p>
                 </div>
@@ -54,8 +54,8 @@ export function BookingsPanel() {
               <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-sm">
                 <span className="text-ink-muted">{t('account.bookings.number')}: <span dir="ltr" className="font-mono">{b.number}</span> · {formatMoney(b.total_minor, b.currency, locale)}</span>
                 <span className="flex items-center gap-3">
-                  {!['held', 'pending_payment'].includes(b.status) ? <a href={`/s/${b.tenant_slug}/booking?rebook=${b.id}`} className="text-luma-700 hover:underline">{t('customer.rebook.cta')}</a> : null}
-                  <Link href={b.detail_path} className="inline-flex items-center gap-1 text-luma-700 hover:underline">{t('account.bookings.details')}<Chevron className="size-4" aria-hidden /></Link>
+                  {!['held', 'pending_payment'].includes(b.status) ? <a href={`/s/${b.tenant_slug}/booking?rebook=${b.id}`} className="text-link hover:underline">{t('customer.rebook.cta')}</a> : null}
+                  <Link href={b.detail_path} className="inline-flex items-center gap-1 text-link hover:underline">{t('account.bookings.details')}<Chevron className="size-4" aria-hidden /></Link>
                 </span>
               </div>
             </li>
@@ -77,10 +77,10 @@ export function OrdersPanel() {
   return (
     <ul className="flex flex-col gap-3">
       {q.data.map((o) => (
-        <li key={o.id} className="rounded-2xl border border-line bg-white p-4">
+        <li key={o.id} className="rounded-2xl border border-line bg-surface p-4">
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div>
-              <p className="font-semibold text-luma-900">{o.tenant_name}</p>
+              <p className="font-semibold text-heading">{o.tenant_name}</p>
               <p className="text-xs text-ink-muted">{formatDateTime(o.created_at, { locale, timeFormat })}</p>
             </div>
             <Badge tone={o.status === 'cancelled' ? 'neutral' : o.status === 'pending_payment' ? 'warn' : 'ok'}>{t(`account.order_status.${o.status}`)}</Badge>
@@ -118,7 +118,7 @@ export function MyReviewsPanel() {
                   {!r.is_public ? <Badge tone="warn">{t('account.reviews.not_public')}</Badge> : null}
                 </div>
                 {r.comment ? <p className="mt-1 text-sm">{r.comment}</p> : null}
-                {r.business_reply ? <p className="mt-1 rounded-lg bg-luma-50 p-2 text-sm"><span className="text-xs text-luma-800">{t('reviews.reply')}: </span>{r.business_reply}</p> : null}
+                {r.business_reply ? <p className="mt-1 rounded-lg bg-surface-muted p-2 text-sm"><span className="text-xs text-heading">{t('reviews.reply')}: </span>{r.business_reply}</p> : null}
               </li>
             ))}
           </ul>
@@ -131,8 +131,8 @@ export function MyReviewsPanel() {
 function Stars({ n }: { n: number }) {
   const { t } = useI18n();
   return (
-    <span className="inline-flex text-luma-700" aria-label={t('account.reviews.stars', { n })}>
-      {Array.from({ length: 5 }).map((_, i) => <Star key={i} className={cx('size-4', i < n ? 'fill-current' : 'text-luma-200')} aria-hidden />)}
+    <span className="inline-flex text-link" aria-label={t('account.reviews.stars', { n })}>
+      {Array.from({ length: 5 }).map((_, i) => <Star key={i} className={cx('size-4', i < n ? 'fill-current' : 'text-highlight')} aria-hidden />)}
     </span>
   );
 }
@@ -171,8 +171,8 @@ function ReviewForm({ b }: { b: Reviewable }) {
             <legend className="text-sm font-medium">{t('account.reviews.rating')}</legend>
             <div className="mt-1 flex gap-1" role="radiogroup" aria-label={t('account.reviews.rating')}>
               {[1, 2, 3, 4, 5].map((n) => (
-                <button key={n} type="button" role="radio" aria-checked={rating === n} aria-label={t('account.reviews.stars', { n })} onClick={() => setRating(n)} className="rounded p-1 text-luma-700 hover:bg-luma-100">
-                  <Star className={cx('size-6', n <= rating ? 'fill-current' : 'text-luma-200')} aria-hidden />
+                <button key={n} type="button" role="radio" aria-checked={rating === n} aria-label={t('account.reviews.stars', { n })} onClick={() => setRating(n)} className="rounded p-1 text-link hover:bg-accent-soft">
+                  <Star className={cx('size-6', n <= rating ? 'fill-current' : 'text-highlight')} aria-hidden />
                 </button>
               ))}
             </div>

@@ -46,10 +46,10 @@ function Referral() {
       <PageHeader title={t('referral.title')} subtitle={t('referral.subtitle', { pct: (d.rate_bp / 100).toString() })} />
       <Card title={t('referral.your_link')}>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <code className="min-w-0 flex-1 truncate rounded-lg bg-luma-50 px-3 py-2 text-sm" dir="ltr">{d.link}</code>
+          <code className="min-w-0 flex-1 truncate rounded-lg bg-surface-muted px-3 py-2 text-sm" dir="ltr">{d.link}</code>
           <div className="flex gap-2">
             <Button variant="outline" icon={<Copy className="size-4" />} onClick={() => { void navigator.clipboard?.writeText(d.link); toast({ tone: 'ok', text: t('referral.copied') }); }}>{t('referral.copy')}</Button>
-            <a href={wa} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 rounded-xl bg-[#25D366] px-3 py-2 text-sm font-medium text-white"><MessageCircle className="size-4" aria-hidden />{t('referral.share_whatsapp')}</a>
+            <a href={wa} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 rounded-xl bg-whatsapp px-3 py-2 text-sm font-medium text-white"><MessageCircle className="size-4" aria-hidden />{t('referral.share_whatsapp')}</a>
           </div>
         </div>
         <p className="mt-2 text-sm text-ink-muted">{t('referral.your_code')}: <span className="font-mono" dir="ltr">{d.code}</span></p>

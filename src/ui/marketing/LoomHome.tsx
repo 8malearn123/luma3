@@ -104,7 +104,7 @@ export function LoomHome({ onNavigate }: { onNavigate: (tab: 'opportunities' | '
               <p className="text-xs font-medium text-ink-muted">{t('loomp.home.revisions')}</p>
               <ul className="mt-1 flex flex-col gap-2 text-sm">
                 {d.pending.plan_revisions.map((p: any) => (
-                  <li key={p.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-luma-50 p-2">
+                  <li key={p.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-surface-muted p-2">
                     <span dir="auto"><span className="font-medium">{p.title}</span>{p.reason ? <span className="block text-xs text-ink-muted">{t('loomp.home.revision_reason', { reason: p.reason })}</span> : null}</span>
                     <Button size="sm" variant="outline" onClick={() => onNavigate('plans')}>{t('loomp.home.review_revision')}</Button>
                   </li>

@@ -70,7 +70,7 @@ export function MarketplaceSection({ slug, canManage }: { slug: string; canManag
   return (
     <div className="flex flex-col gap-5">
       <FormErrorSummary message={err ? msg(err) : null} />
-      <Card title={<span className="inline-flex items-center gap-2"><Store className="size-4 text-luma-700" aria-hidden />{t('market.settings.listing_title')}</span>}
+      <Card title={<span className="inline-flex items-center gap-2"><Store className="size-4 text-link" aria-hidden />{t('market.settings.listing_title')}</span>}
         actions={<Badge tone={tone(l.status)}>{t(`market.listing_status.${l.status}`)}</Badge>}>
         <div className="flex flex-col gap-4">
           <p className="text-sm text-ink-muted">{t('market.settings.listing_intro')}</p>
@@ -109,7 +109,7 @@ export function MarketplaceSection({ slug, canManage }: { slug: string; canManag
               {l.cover_url
                 // eslint-disable-next-line @next/next/no-img-element
                 ? <img src={l.cover_url} alt="" className="h-14 w-24 rounded-lg object-cover" />
-                : <span className="luma-pattern grid h-14 w-24 place-items-center rounded-lg bg-luma-100 text-[11px] text-ink-muted">{t('market.settings.no_cover')}</span>}
+                : <span className="luma-pattern grid h-14 w-24 place-items-center rounded-lg bg-accent-soft text-[11px] text-ink-muted">{t('market.settings.no_cover')}</span>}
               <input ref={coverRef} type="file" accept="image/*" className="sr-only" onChange={(e) => { const f = e.target.files?.[0]; if (f) void uploadCover(f); e.target.value = ''; }} />
               <Button variant="secondary" icon={<Upload className="size-4" />} loading={busy === 'cover'} disabled={!canManage} onClick={() => coverRef.current?.click()}>{t('market.settings.cover')}</Button>
             </div>
@@ -118,7 +118,7 @@ export function MarketplaceSection({ slug, canManage }: { slug: string; canManag
         </div>
       </Card>
 
-      <Card title={<span className="inline-flex items-center gap-2"><BadgeCheck className="size-4 text-luma-700" aria-hidden />{t('market.settings.verify_title')}</span>}
+      <Card title={<span className="inline-flex items-center gap-2"><BadgeCheck className="size-4 text-link" aria-hidden />{t('market.settings.verify_title')}</span>}
         actions={<Badge tone={tone(v.status)}>{t(`market.verification_status.${v.status}`)}</Badge>}>
         <div className="flex flex-col gap-4">
           <p className="text-sm text-ink-muted">{t('market.settings.verify_intro')}</p>
@@ -131,14 +131,14 @@ export function MarketplaceSection({ slug, canManage }: { slug: string; canManag
               return (
                 <li key={kind} className="flex flex-col gap-2 rounded-xl border border-line p-3">
                   <div className="flex flex-wrap items-center gap-2">
-                    <FileText className="size-4 text-luma-700" aria-hidden />
+                    <FileText className="size-4 text-link" aria-hidden />
                     <span className="flex-1 font-medium">{t(`market.docs.${kind}`)}</span>
                     {doc ? <Badge tone="ok">{t('market.settings.uploaded_badge')}</Badge> : <Badge tone="warn">{t('market.settings.missing')}</Badge>}
                   </div>
                   <p className="text-xs text-ink-muted">{t(`market.docs_hint.${kind}`)}</p>
                   {doc ? (
                     <p className="text-xs">
-                      <a className="text-luma-700 underline" href={`/api/v1/t/${slug}/marketplace/verification/documents/${doc.id}`} target="_blank" rel="noopener">{doc.file_name || t('market.settings.view_doc')}</a>
+                      <a className="text-link underline" href={`/api/v1/t/${slug}/marketplace/verification/documents/${doc.id}`} target="_blank" rel="noopener">{doc.file_name || t('market.settings.view_doc')}</a>
                       {doc.iban_masked ? <span className="ms-2" dir="ltr">{doc.iban_masked}</span> : null}
                       <span className="ms-2 text-ink-muted">{date(doc.created_at)}</span>
                     </p>
@@ -146,7 +146,7 @@ export function MarketplaceSection({ slug, canManage }: { slug: string; canManag
                   {!docLocked && canManage ? (
                     <div className="flex flex-wrap items-end gap-2">
                       {kind === 'iban' ? <Field label={t('market.settings.iban')} className="min-w-56 flex-1">{(p) => <Input {...p} dir="ltr" value={iban} placeholder="SA00 0000 0000 0000 0000 0000" maxLength={40} onChange={(e) => setIban(e.target.value)} />}</Field> : null}
-                      <label className={`inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-luma-300 px-3 py-2 text-sm text-luma-800 hover:bg-luma-50 ${kind === 'iban' && !iban.trim() ? 'pointer-events-none opacity-50' : ''}`}>
+                      <label className={`inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-line-strong px-3 py-2 text-sm text-heading hover:bg-surface-muted ${kind === 'iban' && !iban.trim() ? 'pointer-events-none opacity-50' : ''}`}>
                         <Upload className="size-4" aria-hidden />{busy === `doc:${kind}` ? t('states.loading') : doc ? t('market.settings.replace') : t('market.settings.upload')}
                         <input type="file" accept="application/pdf,image/*" className="sr-only" disabled={kind === 'iban' && !iban.trim()} onChange={(e) => { const f = e.target.files?.[0]; if (f) void upload(kind, f); e.target.value = ''; }} />
                       </label>

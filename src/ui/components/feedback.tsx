@@ -9,7 +9,7 @@ import { ApiError } from '../api';
 import { useErrorMessage } from '../hooks';
 
 export function Spinner({ className }: { className?: string }) {
-  return <Loader2 className={cx('size-5 animate-spin text-luma-500', className)} aria-hidden />;
+  return <Loader2 className={cx('size-5 animate-spin text-brand', className)} aria-hidden />;
 }
 
 export function LoadingState({ label, rows = 3 }: { label?: string; rows?: number }) {
@@ -26,7 +26,7 @@ export function EmptyState({ title, hint, action, icon }: { title?: ReactNode; h
   const { t } = useI18n();
   return (
     <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-line bg-surface/60 p-8 text-center">
-      <div className="text-luma-300">{icon ?? <SearchX className="size-8" aria-hidden />}</div>
+      <div className="text-line-strong">{icon ?? <SearchX className="size-8" aria-hidden />}</div>
       <p className="font-medium">{title ?? t('states.empty')}</p>
       {hint ? <p className="max-w-md text-sm text-ink-muted">{hint}</p> : null}
       {action}
@@ -38,7 +38,7 @@ export function DeniedState() {
   const { t } = useI18n();
   return (
     <div className="flex flex-col items-center gap-2 rounded-xl border border-line bg-surface p-8 text-center">
-      <Lock className="size-8 text-luma-300" aria-hidden />
+      <Lock className="size-8 text-line-strong" aria-hidden />
       <p className="font-medium">{t('states.denied')}</p>
       <p className="text-sm text-ink-muted">{t('states.denied_hint')}</p>
     </div>
@@ -50,7 +50,7 @@ export function NotAvailableState() {
   const { t } = useI18n();
   return (
     <div role="status" className="flex flex-col items-center gap-2 rounded-xl border border-line bg-surface p-8 text-center">
-      <SearchX className="size-8 text-luma-300" aria-hidden />
+      <SearchX className="size-8 text-line-strong" aria-hidden />
       <p className="font-medium">{t('states.not_available')}</p>
       <p className="text-sm text-ink-muted">{t('states.not_available_hint')}</p>
     </div>

@@ -99,7 +99,7 @@ export function OwnBalanceNote({ staffId }: { staffId?: string | null }) {
   if (!b) return null;
   if (b.balance == null) return <p className="text-xs text-ink-muted">{t('hr.balance.unknown')}</p>;
   return (
-    <p className="rounded-lg bg-luma-50 px-3 py-2 text-xs">
+    <p className="rounded-lg bg-surface-muted px-3 py-2 text-xs">
       {t('hr.balance.line', { balance: days(b.balance), entitlement: b.yearly_entitlement })}
       {b.pending ? ` · ${t('hr.balance.pending_n', { n: days(b.pending) })}` : ''}
     </p>
@@ -188,8 +188,8 @@ function ReassignRow({ leaveId, bookingId, candidate, primary, onDone }: { leave
   });
   const priceChange = m.error?.code === 'price_changed' ? (m.error.details?.new_total_minor as number | undefined) : undefined;
   return (
-    <div className="flex flex-wrap items-center gap-2 rounded-lg bg-luma-50 px-3 py-2 text-sm">
-      <ArrowLeftRight className="size-4 text-luma-700" aria-hidden />
+    <div className="flex flex-wrap items-center gap-2 rounded-lg bg-surface-muted px-3 py-2 text-sm">
+      <ArrowLeftRight className="size-4 text-link" aria-hidden />
       <span>{primary ? t('hr.reroute.suggested', { name: candidate.staff_name }) : candidate.staff_name}</span>
       {!candidate.same_price ? <Badge tone="warn">{t('hr.reroute.price_differs')}</Badge> : null}
       <Button size="sm" className="ms-auto" variant={primary ? 'primary' : 'outline'} loading={m.isPending} onClick={() => m.mutate(accept)}>{t('hr.reroute.approve')}</Button>

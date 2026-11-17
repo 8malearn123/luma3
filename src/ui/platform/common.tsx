@@ -59,8 +59,8 @@ export function PageNav({ page, total, limit, onPage }: { page: number; total: n
     <nav aria-label="pagination" className="mt-3 flex items-center justify-between text-sm">
       <span className="text-ink-muted">{t('platform.page_of', { page, pages, total })}</span>
       <div className="flex gap-1">
-        <button disabled={page <= 1} onClick={() => onPage(page - 1)} className="rounded-lg px-3 py-1.5 hover:bg-luma-100 disabled:opacity-40">{t('pagination.prev')}</button>
-        <button disabled={page >= pages} onClick={() => onPage(page + 1)} className="rounded-lg px-3 py-1.5 hover:bg-luma-100 disabled:opacity-40">{t('pagination.next')}</button>
+        <button disabled={page <= 1} onClick={() => onPage(page - 1)} className="rounded-lg px-3 py-1.5 hover:bg-accent-soft disabled:opacity-40">{t('pagination.prev')}</button>
+        <button disabled={page >= pages} onClick={() => onPage(page + 1)} className="rounded-lg px-3 py-1.5 hover:bg-accent-soft disabled:opacity-40">{t('pagination.next')}</button>
       </div>
     </nav>
   );

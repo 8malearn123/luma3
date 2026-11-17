@@ -344,7 +344,7 @@ function CapacityTab() {
   return (
     <div className="flex flex-col gap-3">
       <p className="text-sm text-ink-muted">{t('commerce.inventory.capacity_hint')}</p>
-      <details className="rounded-xl border border-line bg-white p-3 text-sm"><summary className="cursor-pointer font-medium">{t('commerce.inventory.method')}</summary><p className="mt-2 text-ink-muted">{t('commerce.inventory.method_text')}</p></details>
+      <details className="rounded-xl border border-line bg-surface p-3 text-sm"><summary className="cursor-pointer font-medium">{t('commerce.inventory.method')}</summary><p className="mt-2 text-ink-muted">{t('commerce.inventory.method_text')}</p></details>
       <div className="grid gap-3 md:grid-cols-2">
         {list.data.map((s) => {
           const e = s.estimate;
@@ -352,7 +352,7 @@ function CapacityTab() {
             <Card key={s.id} title={pick(s.name_ar, s.name_en)}>
               {e.status === 'ok' ? (
                 <div className="flex flex-col gap-2 text-sm">
-                  <p className="text-lg font-semibold text-luma-900">{t('commerce.inventory.enough_for', { n: e.bookings })}</p>
+                  <p className="text-lg font-semibold text-heading">{t('commerce.inventory.enough_for', { n: e.bookings })}</p>
                   <p className="text-ink-muted">{t('commerce.inventory.limiting', { name: e.lines.find((l) => l.inventoryItemId === e.limitingItemId)?.name ?? '' })}</p>
                   <ul className="flex flex-col gap-0.5 text-xs">
                     {e.lines.map((l) => <li key={l.inventoryItemId} className="flex justify-between gap-2"><span>{l.name} ({t(`commerce.inventory.unit.${l.unit}`)})</span><span dir="ltr">{qty(l.available)} ÷ {qty(l.perBooking)} = {l.bookings}</span></li>)}

@@ -28,7 +28,7 @@ export function AccountNav() {
         {ITEMS.map(({ key, href, Icon }) => (
           <li key={key}>
             <Link href={href} aria-current={active(href) ? 'page' : undefined}
-              className={cx('flex items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-sm', active(href) ? 'bg-luma-700 text-white' : 'text-ink hover:bg-luma-100')}>
+              className={cx('flex items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-sm', active(href) ? 'bg-primary text-on-primary' : 'text-ink hover:bg-accent-soft')}>
               <Icon className="size-4" aria-hidden />{t(key === 'loyalty' ? 'customer.loyalty.nav' : `account.nav.${key}`)}
             </Link>
           </li>

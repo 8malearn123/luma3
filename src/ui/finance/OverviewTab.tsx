@@ -37,9 +37,9 @@ export type Report = {
 
 function Tile({ label, value, hint, tone, badge }: { label: ReactNode; value: ReactNode; hint?: ReactNode; tone?: 'warn' | 'muted'; badge?: ReactNode }) {
   return (
-    <div className="flex flex-col rounded-xl border border-line bg-white p-3 sm:p-4">
+    <div className="flex flex-col rounded-xl border border-line bg-surface p-3 sm:p-4">
       <p className="flex flex-wrap items-center gap-1.5 text-xs text-ink-muted">{label}{badge}</p>
-      <p className={cx('mt-1 text-xl font-semibold tabular-nums sm:text-2xl', tone === 'warn' ? 'text-warn' : tone === 'muted' ? 'text-ink-muted' : 'text-luma-900')}><bdi>{value}</bdi></p>
+      <p className={cx('mt-1 text-xl font-semibold tabular-nums sm:text-2xl', tone === 'warn' ? 'text-warn' : tone === 'muted' ? 'text-ink-muted' : 'text-heading')}><bdi>{value}</bdi></p>
       {hint ? <p className="mt-1 text-[11px] leading-snug text-ink-muted">{hint}</p> : null}
     </div>
   );

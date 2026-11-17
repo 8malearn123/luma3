@@ -21,7 +21,7 @@ export const storefrontHref = (slug: string) => `/s/${slug}?via=luma_market`;
 export function VerifiedBadge({ className }: { className?: string }) {
   const { t } = useI18n();
   return (
-    <span className={cx('inline-flex items-center gap-1 rounded-full bg-luma-700 px-2 py-0.5 text-[11px] font-medium text-white', className)} title={t('market.verified_hint')}>
+    <span className={cx('inline-flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-[11px] font-medium text-on-primary', className)} title={t('market.verified_hint')}>
       <BadgeCheck className="size-3.5" aria-hidden />{t('market.verified')}
     </span>
   );
@@ -32,7 +32,7 @@ export function FavoriteButton({ slug, initial, signedIn, onChange }: { slug: st
   const [on, setOn] = useState(initial);
   const [busy, setBusy] = useState(false);
   const label = on ? t('market.unfavorite') : t('market.favorite');
-  const cls = 'grid size-9 place-items-center rounded-full bg-white/90 text-luma-700 shadow-sm backdrop-blur transition hover:scale-105';
+  const cls = 'grid size-9 place-items-center rounded-full bg-surface/90 text-link shadow-sm backdrop-blur transition hover:scale-105';
   if (!signedIn) {
     return <Link href={`/auth/login?next=${encodeURIComponent('/discover')}`} aria-label={t('market.login_to_favorite')} title={t('market.login_to_favorite')} className={cls}><Heart className="size-4" aria-hidden /></Link>;
   }
@@ -57,8 +57,8 @@ export function BusinessCard({ card, signedIn, onFavoriteChange }: { card: Marke
   const tagline = pick(card.tagline_ar, card.tagline_en);
   const initial = card.name.trim().charAt(0);
   return (
-    <article className="group relative flex flex-col overflow-hidden rounded-3xl border border-luma-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg hover:shadow-luma-700/10">
-      <div className="relative aspect-[16/9] overflow-hidden bg-gradient-to-br from-luma-200 via-luma-100 to-luma-300">
+    <article className="group relative flex flex-col overflow-hidden rounded-3xl border border-highlight bg-surface shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg hover:shadow-primary/10">
+      <div className="relative aspect-[16/9] overflow-hidden bg-gradient-to-br from-highlight via-accent-soft to-line-strong">
         <Link href={storefrontHref(card.slug)} tabIndex={-1} aria-hidden className="absolute inset-0">
           {card.cover_url
             // eslint-disable-next-line @next/next/no-img-element
@@ -71,19 +71,19 @@ export function BusinessCard({ card, signedIn, onFavoriteChange }: { card: Marke
         </div>
       </div>
       <div className="relative flex flex-1 flex-col gap-2 px-4 pb-4 pt-9">
-        <div className="pointer-events-none absolute -top-7 start-4 z-10 grid size-14 place-items-center overflow-hidden rounded-2xl border-4 border-white bg-luma-700 text-xl font-semibold text-white shadow">
+        <div className="pointer-events-none absolute -top-7 start-4 z-10 grid size-14 place-items-center overflow-hidden rounded-2xl border-4 border-surface bg-primary text-xl font-semibold text-on-primary shadow">
           {card.logo_url
             // eslint-disable-next-line @next/next/no-img-element
-            ? <img src={card.logo_url} alt="" loading="lazy" className="size-full bg-white object-contain" />
+            ? <img src={card.logo_url} alt="" loading="lazy" className="size-full bg-surface object-contain" />
             : <span aria-hidden>{initial}</span>}
         </div>
         <div className="flex items-start justify-between gap-2">
-          <h3 className="font-semibold leading-snug text-luma-900">
+          <h3 className="font-semibold leading-snug text-heading">
             <Link href={storefrontHref(card.slug)} className="after:absolute after:inset-0">{card.name}</Link>
           </h3>
           {card.rating_avg != null ? (
-            <span className="inline-flex shrink-0 items-center gap-1 text-sm font-medium text-luma-800" aria-label={t('market.rating_aria', { avg: card.rating_avg, n: card.rating_count })}>
-              <Star className="size-4 fill-amber-400 text-amber-400" aria-hidden />{formatNumber(card.rating_avg, locale, { maximumFractionDigits: 1 })}
+            <span className="inline-flex shrink-0 items-center gap-1 text-sm font-medium text-heading" aria-label={t('market.rating_aria', { avg: card.rating_avg, n: card.rating_count })}>
+              <Star className="size-4 fill-rating text-rating" aria-hidden />{formatNumber(card.rating_avg, locale, { maximumFractionDigits: 1 })}
               <span className="text-xs font-normal text-ink-muted">({formatNumber(card.rating_count, locale)})</span>
             </span>
           ) : <span className="shrink-0 text-xs text-ink-muted">{t('market.new')}</span>}
@@ -96,14 +96,14 @@ export function BusinessCard({ card, signedIn, onFavoriteChange }: { card: Marke
         {tagline ? <p className="line-clamp-2 text-sm text-ink-muted">{tagline}</p> : null}
         {card.specialties.length ? (
           <ul className="flex flex-wrap gap-1.5">
-            {card.specialties.slice(0, 3).map((s) => <li key={s.slug} className="rounded-full bg-luma-50 px-2 py-0.5 text-[11px] text-luma-800">{pick(s.name_ar, s.name_en)}</li>)}
+            {card.specialties.slice(0, 3).map((s) => <li key={s.slug} className="rounded-full bg-surface-muted px-2 py-0.5 text-[11px] text-heading">{pick(s.name_ar, s.name_en)}</li>)}
           </ul>
         ) : null}
         <div className="mt-auto flex items-center justify-between pt-2 text-sm">
           {card.starting_price_minor != null
-            ? <span><span className="text-xs text-ink-muted">{t('market.starting_from')} </span><span className="font-semibold text-luma-900">{formatMoney(card.starting_price_minor, card.currency, locale)}</span></span>
+            ? <span><span className="text-xs text-ink-muted">{t('market.starting_from')} </span><span className="font-semibold text-heading">{formatMoney(card.starting_price_minor, card.currency, locale)}</span></span>
             : <span />}
-          {card.reason ? <span className="text-[11px] text-ink-muted">{t(`market.reason.${card.reason}`)}</span> : <span className="text-xs font-medium text-luma-700">{t('market.book')}</span>}
+          {card.reason ? <span className="text-[11px] text-ink-muted">{t(`market.reason.${card.reason}`)}</span> : <span className="text-xs font-medium text-link">{t('market.book')}</span>}
         </div>
       </div>
     </article>

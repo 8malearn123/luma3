@@ -62,7 +62,7 @@ export function ProposalsTab() {
           {q.data.map((p) => {
             const up = p.proposed_price_minor > p.current_price_minor;
             return (
-              <li key={p.id} className="flex flex-col gap-3 rounded-xl border border-line bg-white p-4 sm:flex-row sm:items-center">
+              <li key={p.id} className="flex flex-col gap-3 rounded-xl border border-line bg-surface p-4 sm:flex-row sm:items-center">
                 <div className="min-w-0 flex-1">
                   <p className="font-medium">{pick(p.name_ar, p.name_en)}</p>
                   <p className="mt-1 flex flex-wrap items-center gap-2 text-sm">

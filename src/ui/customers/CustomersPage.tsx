@@ -74,7 +74,7 @@ function CustomerList() {
     { key: 'name', header: t('customers.cols.name'), cell: (r) => (
       <div className="flex items-center gap-2">
         <span className="font-medium">{r.display_name}</span>
-        {r.has_account ? <UserCheck className="size-4 text-luma-500" aria-label={t('customers.has_account')} /> : null}
+        {r.has_account ? <UserCheck className="size-4 text-brand" aria-label={t('customers.has_account')} /> : null}
         {r.status === 'archived' ? <Badge>{t('customers.status.archived')}</Badge> : null}
       </div>
     ) },
@@ -273,7 +273,7 @@ function CustomerDrawerLoaded({ d, onClose }: { d: Detail; onClose: () => void }
             </div>
           </Card>
 
-          <Card title={t('customers.detail.decisions')} actions={access.can('incidents.review') ? <Link className="text-sm text-luma-700 underline" href={`/app/${access.slug}/policies?customer=${id}`}>{t('customers.detail.open_policies')}</Link> : null}>
+          <Card title={t('customers.detail.decisions')} actions={access.can('incidents.review') ? <Link className="text-sm text-link underline" href={`/app/${access.slug}/policies?customer=${id}`}>{t('customers.detail.open_policies')}</Link> : null}>
             {d.decisions.length ? (
               <ul className="flex flex-col gap-2">
                 {d.decisions.map((x) => (
@@ -302,7 +302,7 @@ function CustomerDrawerLoaded({ d, onClose }: { d: Detail; onClose: () => void }
                           <td key={ch} className="py-2 pe-2">
                             <div className="flex flex-col items-start gap-1">
                               <Badge tone={c?.granted ? 'ok' : 'neutral'}>{c?.recorded_at ? (c.granted ? t('consents.granted') : t('consents.withdrawn')) : t('consents.not_set')}</Badge>
-                              {canManage ? <button className="text-xs text-luma-700 underline" onClick={() => consent(ch, purpose, !c?.granted)}>{c?.granted ? t('consents.withdraw') : t('consents.grant')}</button> : null}
+                              {canManage ? <button className="text-xs text-link underline" onClick={() => consent(ch, purpose, !c?.granted)}>{c?.granted ? t('consents.withdraw') : t('consents.grant')}</button> : null}
                             </div>
                           </td>
                         );
@@ -352,7 +352,7 @@ function CustomerDrawerLoaded({ d, onClose }: { d: Detail; onClose: () => void }
               <ul className="flex flex-col gap-2 text-sm">
                 {d.reviews.map((r) => (
                   <li key={r.id} className="flex items-start gap-2">
-                    <span className="inline-flex items-center gap-0.5 text-luma-700" aria-label={t('reviews.rating', { n: r.rating })}><Star className="size-4 fill-current" aria-hidden />{r.rating}</span>
+                    <span className="inline-flex items-center gap-0.5 text-link" aria-label={t('reviews.rating', { n: r.rating })}><Star className="size-4 fill-current" aria-hidden />{r.rating}</span>
                     <span className="flex-1">{r.comment ?? '—'}</span>
                     {r.status !== 'published' ? <Badge tone="warn">{t(`reviews.status.${r.status}`)}</Badge> : null}
                   </li>
@@ -366,7 +366,7 @@ function CustomerDrawerLoaded({ d, onClose }: { d: Detail; onClose: () => void }
               {d.incidents.length ? (
                 <ul className="flex flex-col gap-1 text-sm">
                   {d.incidents.map((i) => (
-                    <li key={i.id}><Link className="text-luma-700 underline" href={`/app/${access.slug}/policies?incident=${i.id}`}>{t(`policy.types.${i.type}`)}</Link> · {t(`policy.statuses.${i.status}`)} · {formatDate(i.occurred_at, { locale, tz: access.timezone })}</li>
+                    <li key={i.id}><Link className="text-link underline" href={`/app/${access.slug}/policies?incident=${i.id}`}>{t(`policy.types.${i.type}`)}</Link> · {t(`policy.statuses.${i.status}`)} · {formatDate(i.occurred_at, { locale, tz: access.timezone })}</li>
                   ))}
                 </ul>
               ) : <p className="text-sm text-ink-muted">{t('states.none')}</p>}

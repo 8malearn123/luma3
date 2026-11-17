@@ -37,13 +37,13 @@ function EnrolForm({ enroll, busy, onActivate, onCancel }: { enroll: { secret: s
         <li>{t('platform.security.step2')}</li>
         <li>{t('platform.security.step3')}</li>
       </ol>
-      <div className="rounded-lg border border-line bg-luma-50 p-3">
+      <div className="rounded-lg border border-line bg-surface-muted p-3">
         <p className="text-xs text-ink-muted">{t('platform.security.secret')}</p>
         <div className="flex items-center gap-2">
           <code dir="ltr" data-testid="mfa-secret" className="break-all font-mono text-sm tracking-wider">{enroll.secret.replace(/(.{4})/g, '$1 ').trim()}</code>
-          <button type="button" aria-label={t('actions.copy')} onClick={() => navigator.clipboard?.writeText(enroll.secret).then(() => toast({ tone: 'ok', text: t('actions.copied') }))} className="rounded p-1 hover:bg-luma-100"><Copy className="size-4" /></button>
+          <button type="button" aria-label={t('actions.copy')} onClick={() => navigator.clipboard?.writeText(enroll.secret).then(() => toast({ tone: 'ok', text: t('actions.copied') }))} className="rounded p-1 hover:bg-accent-soft"><Copy className="size-4" /></button>
         </div>
-        <details className="mt-2 text-xs"><summary className="cursor-pointer text-luma-700">{t('platform.security.uri')}</summary><code dir="ltr" className="mt-1 block break-all">{enroll.otpauth_uri}</code></details>
+        <details className="mt-2 text-xs"><summary className="cursor-pointer text-link">{t('platform.security.uri')}</summary><code dir="ltr" className="mt-1 block break-all">{enroll.otpauth_uri}</code></details>
       </div>
       <Alert tone="info">{t('platform.security.shown_once')}</Alert>
       <CodeInput label={t('platform.mfa.code')} value={code} onChange={setCode} />
@@ -98,13 +98,13 @@ export function MfaPrompt({ next, demo = false, totp = false, whatsapp = true }:
       <Card>
         {enroll ? (
           <div className="flex flex-col gap-4">
-            <div className="flex items-center gap-2"><KeyRound className="size-5 text-luma-700" aria-hidden /><h1 className="text-lg font-semibold">{t('platform.security.mfa')}</h1></div>
+            <div className="flex items-center gap-2"><KeyRound className="size-5 text-link" aria-hidden /><h1 className="text-lg font-semibold">{t('platform.security.mfa')}</h1></div>
             <FormErrorSummary message={err ? msg(err) : null} />
             <EnrolForm enroll={enroll} busy={busy} onActivate={activate} onCancel={() => setEnroll(null)} />
           </div>
         ) : (
           <form onSubmit={(e) => { e.preventDefault(); if (code.length >= 4) submit(); }} className="flex flex-col gap-4">
-            <div className="flex items-center gap-2"><KeyRound className="size-5 text-luma-700" aria-hidden /><h1 className="text-lg font-semibold">{t('platform.mfa.prompt_title')}</h1></div>
+            <div className="flex items-center gap-2"><KeyRound className="size-5 text-link" aria-hidden /><h1 className="text-lg font-semibold">{t('platform.mfa.prompt_title')}</h1></div>
             <p className="text-sm text-ink-muted">{body}</p>
             <FormErrorSummary message={err ? msg(err) : null} />
             {sent?.destination ? <p role="status" className="text-sm">{t('platform.mfa.sent_to', { destination: sent.destination })}</p> : null}

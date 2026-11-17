@@ -119,12 +119,12 @@ function Signals() {
         </Card>
       ))}
       {d.stale.length ? (
-        <details className="rounded-2xl border border-line bg-white p-4 text-sm"><summary className="cursor-pointer font-medium">{t('loom.radar.stale_title')} ({d.stale.length})</summary>
+        <details className="rounded-2xl border border-line bg-surface p-4 text-sm"><summary className="cursor-pointer font-medium">{t('loom.radar.stale_title')} ({d.stale.length})</summary>
           <ul className="mt-2 flex flex-col gap-1 text-xs text-ink-muted">{d.stale.map((c: any) => <li key={c.id} className="flex gap-2"><span dir="auto">{c.untrusted_label}</span><Badge tone="warn">{t('loom.radar.freshness.stale')}</Badge></li>)}</ul>
         </details>
       ) : null}
       {d.dismissed.length ? (
-        <details className="rounded-2xl border border-line bg-white p-4 text-sm"><summary className="cursor-pointer font-medium">{t('loom.radar.dismissed_title')} ({d.dismissed.length})</summary>
+        <details className="rounded-2xl border border-line bg-surface p-4 text-sm"><summary className="cursor-pointer font-medium">{t('loom.radar.dismissed_title')} ({d.dismissed.length})</summary>
           <ul className="mt-2 flex flex-col gap-1 text-xs">{d.dismissed.map((c: any) => (
             <li key={c.id} className="flex items-center gap-2"><span dir="auto">{c.untrusted_label}</span>{canManage ? <Button size="sm" variant="ghost" loading={busy === `reopen${c.id}`} onClick={() => decide(c.id, { action: 'reopen' })}>{t('loom.radar.actions.reopen')}</Button> : null}</li>
           ))}</ul>

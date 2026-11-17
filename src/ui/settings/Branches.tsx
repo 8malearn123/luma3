@@ -41,7 +41,7 @@ export function BranchesSection({ slug, canManage }: { slug: string; canManage: 
             <li key={b.id} className="rounded-xl border border-line p-3">
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div>
-                  <p className="flex items-center gap-1.5 font-medium"><MapPin className="size-4 text-luma-500" aria-hidden />{b.name}
+                  <p className="flex items-center gap-1.5 font-medium"><MapPin className="size-4 text-brand" aria-hidden />{b.name}
                     {b.is_primary ? <Badge tone="brand"><Star className="size-3" />{t('biz_settings.branches.primary')}</Badge> : null}
                     {b.status === 'archived' ? <Badge>{t('biz_settings.branches.archived')}</Badge> : null}</p>
                   <p className="text-xs text-ink-muted">{[b.city, b.address].filter(Boolean).map((x) => `${x} · `).join('')}<span dir="ltr">{b.timezone}</span></p>
@@ -129,7 +129,7 @@ function BranchEditor({ slug, branch, onClose }: { slug: string; branch: Branch 
               {f.hours.map((h, i) => (
                 <li key={i} className="flex flex-wrap items-end gap-2">
                   <Field label={t('biz_settings.branches.day')} className="w-36">{(p) => (
-                    <select {...p} value={h.weekday} onChange={(e) => setHour(i, { weekday: Number(e.target.value) })} className="h-10 w-full rounded-lg border border-line bg-white px-2 text-sm">
+                    <select {...p} value={h.weekday} onChange={(e) => setHour(i, { weekday: Number(e.target.value) })} className="h-10 w-full rounded-lg border border-line bg-surface px-2 text-sm">
                       {WEEKDAYS[locale].map((d, w) => <option key={w} value={w}>{d}</option>)}
                     </select>
                   )}</Field>

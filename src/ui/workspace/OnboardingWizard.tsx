@@ -101,7 +101,7 @@ export function OnboardingWizard({ slug }: { slug: string }) {
         {steps.map((s) => (
           <li key={s} className="flex-1">
             <button onClick={() => !dirty && setStep(s)} aria-current={step === s ? 'step' : undefined}
-              className={cx('flex w-full min-w-10 flex-col items-center gap-1 rounded-lg p-1.5 text-xs', step === s ? 'bg-primary text-on-primary' : ob.completed_steps.includes(s) ? 'bg-luma-200 text-heading' : 'bg-surface text-ink-muted')}>
+              className={cx('flex w-full min-w-10 flex-col items-center gap-1 rounded-lg p-1.5 text-xs', step === s ? 'bg-primary text-on-primary' : ob.completed_steps.includes(s) ? 'bg-highlight text-heading' : 'bg-surface text-ink-muted')}>
               <span className="font-semibold">{ob.completed_steps.includes(s) && step !== s ? <Check className="size-3.5" aria-hidden /> : s}</span>
               <span className="sr-only">{t(`onboarding.steps.${s}.title`)} {step === s ? t('onboarding.step_current') : ob.completed_steps.includes(s) ? t('onboarding.step_done') : ''}</span>
               <span className="hidden truncate sm:block" aria-hidden>{t(`onboarding.steps.${s}.title`)}</span>
@@ -144,7 +144,7 @@ export function OnboardingWizard({ slug }: { slug: string }) {
                 <fieldset><legend className="mb-2 text-sm font-medium">{t('onboarding.fields.reference_style')}</legend>
                   <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">{(['soft_minimal', 'classic_luxury', 'modern_bold', 'natural_warm'] as const).map((s) => (
                     <button key={s} type="button" aria-pressed={draft.reference_style === s} onClick={() => set({ reference_style: s })}
-                      className={cx('rounded-xl border p-3 text-sm', draft.reference_style === s ? 'border-link ring-2 ring-luma-200' : 'border-line')}>{t(`onboarding.styles.${s}`)}</button>
+                      className={cx('rounded-xl border p-3 text-sm', draft.reference_style === s ? 'border-link ring-2 ring-highlight' : 'border-line')}>{t(`onboarding.styles.${s}`)}</button>
                   ))}</div>
                 </fieldset>
                 <Field label={t('onboarding.fields.description')}>{(p) => <Textarea {...p} maxLength={600} value={draft.description ?? ''} onChange={(e) => set({ description: e.target.value })} />}</Field>

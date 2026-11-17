@@ -27,8 +27,8 @@ export function ReviewRequestSection({ slug, data }: { slug: string; data: Setti
         <fieldset className="flex flex-col gap-2">
           <legend className="sr-only">{t('customer.review_request.timing')}</legend>
           {(['off', 'immediately', 'after_hours'] as const).map((m) => (
-            <label key={m} className={cx('flex cursor-pointer items-center gap-2 rounded-lg border p-3 text-sm', v.mode === m ? 'border-luma-500 bg-luma-50' : 'border-line')}>
-              <input type="radio" name="review_request_mode" className="accent-luma-700" checked={v.mode === m} onChange={() => s.set({ mode: m })} />
+            <label key={m} className={cx('flex cursor-pointer items-center gap-2 rounded-lg border p-3 text-sm', v.mode === m ? 'border-brand bg-surface-muted' : 'border-line')}>
+              <input type="radio" name="review_request_mode" className="accent-primary" checked={v.mode === m} onChange={() => s.set({ mode: m })} />
               {t(`customer.review_request.mode.${m}`)}
             </label>
           ))}

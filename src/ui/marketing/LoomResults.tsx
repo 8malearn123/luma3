@@ -55,7 +55,7 @@ export function LoomResultsSummary({ onViewAll }: { onViewAll?: () => void }) {
   const d = r.data;
   return (
     <div className="grid gap-4 lg:grid-cols-2">
-      <Card title={<span className="inline-flex items-center gap-2"><LineChart className="size-5 text-luma-500" aria-hidden />{t('loom_memory.home.title')}</span>}
+      <Card title={<span className="inline-flex items-center gap-2"><LineChart className="size-5 text-brand" aria-hidden />{t('loom_memory.home.title')}</span>}
         actions={onViewAll ? <Button size="sm" variant="ghost" onClick={onViewAll}>{t('loom_memory.home.view_all')}</Button> : null}>
         <div className="mb-2 flex flex-wrap gap-1.5">
           {Object.entries(d.counts as Record<string, number>).map(([k, n]) => <Badge key={k} tone={STATUS_TONE[k] ?? 'neutral'}>{t(`loom_memory.counts.${k}`)}: {n}</Badge>)}
@@ -98,7 +98,7 @@ function InitiativeCard({ i }: { i: any }) {
   const canManage = access.can('marketing.manage');
   const fmt = (m: any, v: number | null) => loomFmt(m.unit, v);
   return (
-    <li className="rounded-2xl border border-line bg-white p-4">
+    <li className="rounded-2xl border border-line bg-surface p-4">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="font-semibold" dir="auto">{i.title}</p>
@@ -169,7 +169,7 @@ function ExecutionForm({ id }: { id: string }) {
   const [note, setNote] = useState('');
   if (!show) return <Button size="sm" variant="outline" className="mt-3" onClick={() => setShow(true)}>{t('loom_memory.record_execution')}</Button>;
   return (
-    <form className="mt-3 flex flex-wrap items-end gap-2 rounded-lg bg-luma-50 p-3" onSubmit={(e) => {
+    <form className="mt-3 flex flex-wrap items-end gap-2 rounded-lg bg-surface-muted p-3" onSubmit={(e) => {
       e.preventDefault();
       void act(`ex${id}`, `/loom/initiatives/${id}/executions`, {
         body: { executed_from: from, executed_to: to, channel: channel || null, audience_size: audience ? Number(audience) : null, actual_cost_minor: cost, note: note || null }, ok: t('loom_memory.saved'),

@@ -25,8 +25,8 @@ function FeedRow({ i }: { i: Item }) {
   const { t } = useI18n();
   const I = ICON[i.kind];
   return (
-    <Link href={i.link} className="flex items-start gap-3 rounded-lg px-3 py-2 text-sm hover:bg-luma-50">
-      <I className="mt-0.5 size-4 shrink-0 text-luma-700" aria-hidden />
+    <Link href={i.link} className="flex items-start gap-3 rounded-lg px-3 py-2 text-sm hover:bg-surface-muted">
+      <I className="mt-0.5 size-4 shrink-0 text-link" aria-hidden />
       <span className="min-w-0 flex-1">
         <span className="font-medium">{t(`admin.feed.kinds.${i.kind}`)}</span> · {i.tenant_name}
         {i.amount_minor != null ? <> · <Money minor={i.amount_minor} currency={i.currency ?? 'SAR'} /></> : null}
@@ -55,14 +55,14 @@ export function PlatformFeedBell() {
   }
   return (
     <div className="relative">
-      <button onClick={toggle} aria-label={`${t('admin.feed.bell')}${fresh ? ` (${t('admin.feed.new', { n: fresh })})` : ''}`} className="relative rounded-lg p-2 hover:bg-luma-100">
+      <button onClick={toggle} aria-label={`${t('admin.feed.bell')}${fresh ? ` (${t('admin.feed.new', { n: fresh })})` : ''}`} className="relative rounded-lg p-2 hover:bg-accent-soft">
         <Activity className="size-5" />
-        {fresh ? <span className="absolute -top-0.5 -end-0.5 min-w-4 rounded-full bg-ok px-1 text-center text-[10px] text-white">{fresh > 9 ? '9+' : fresh}</span> : null}
+        {fresh ? <span className="absolute -top-0.5 -end-0.5 min-w-4 rounded-full bg-ok px-1 text-center text-[10px] text-surface">{fresh > 9 ? '9+' : fresh}</span> : null}
       </button>
       {open ? (
-        <div className="absolute end-0 z-40 mt-1 max-h-[70vh] w-96 max-w-[90vw] overflow-y-auto rounded-xl border border-line bg-white p-1 shadow-lg">
+        <div className="absolute end-0 z-40 mt-1 max-h-[70vh] w-96 max-w-[90vw] overflow-y-auto rounded-xl border border-line bg-surface p-1 shadow-lg">
           {items.length ? items.map((i) => <FeedRow key={i.id} i={i} />) : <p className="p-4 text-center text-sm text-ink-muted">{t('admin.feed.empty')}</p>}
-          <Link href="/platform/feed" onClick={() => setOpen(false)} className="block border-t border-line px-3 py-2 text-center text-sm text-luma-700">{t('admin.feed.see_all')}</Link>
+          <Link href="/platform/feed" onClick={() => setOpen(false)} className="block border-t border-line px-3 py-2 text-center text-sm text-link">{t('admin.feed.see_all')}</Link>
         </div>
       ) : null}
     </div>

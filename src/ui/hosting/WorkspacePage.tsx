@@ -68,7 +68,7 @@ function SearchPanel({ onBooked }: { onBooked: (id: string) => void }) {
   };
   return (
     <div className="flex flex-col gap-3">
-      <form className="grid gap-3 rounded-2xl border border-line bg-white p-4 sm:grid-cols-4" onSubmit={(e) => { e.preventDefault(); if (f.date) submit(); }}>
+      <form className="grid gap-3 rounded-2xl border border-line bg-surface p-4 sm:grid-cols-4" onSubmit={(e) => { e.preventDefault(); if (f.date) submit(); }}>
         <Field label={t('workspace.city')}>{(p) => <Input {...p} value={f.city} onChange={(e) => setF({ ...f, city: e.target.value })} />}</Field>
         <Field label={t('workspace.date')} required>{(p) => <Input {...p} type="date" value={f.date} onChange={(e) => setF({ ...f, date: e.target.value })} required />}</Field>
         <Field label={t('workspace.start')}>{(p) => <Input {...p} type="time" value={f.start_time} onChange={(e) => setF({ ...f, start_time: e.target.value })} />}</Field>
@@ -85,7 +85,7 @@ function SearchPanel({ onBooked }: { onBooked: (id: string) => void }) {
       {res.isLoading ? <LoadingState /> : res.error ? <ErrorState error={res.error} /> : res.data ? (!res.data.results.length ? <EmptyState title={t('workspace.no_results')} /> : (
         <ul className="grid gap-3 md:grid-cols-2">{res.data.results.map((r) => (
           <li key={r.id}>
-            <button type="button" onClick={() => setDetail(r.id)} className="flex w-full flex-col gap-1 rounded-2xl border border-line bg-white p-4 text-start hover:border-luma-300 focus-visible:outline-2">
+            <button type="button" onClick={() => setDetail(r.id)} className="flex w-full flex-col gap-1 rounded-2xl border border-line bg-surface p-4 text-start hover:border-line-strong focus-visible:outline-2">
               <p className="font-semibold">{r.host.name} · {pick(r.title_ar, r.title_en) || r.code}</p>
               <p className="flex items-center gap-1 text-sm text-ink-muted"><MapPin className="size-4" aria-hidden />{r.branch.name}{r.branch.city ? ` — ${r.branch.city}` : ''}{r.distance_km != null ? ` · ${t('workspace.km', { n: r.distance_km })}` : ''}</p>
               <p className="text-sm">{t('workspace.base_price')}: <span dir="ltr">{money(r.price_minor)}</span> {t(`workspace.per.${r.price_model}`)}</p>
@@ -198,7 +198,7 @@ function MyBookings({ rows, onOpen }: { rows: Row[]; onOpen: (id: string) => voi
   if (!rows.length) return <EmptyState title={t('hosting.empty.bookings')} />;
   return (
     <ul className="grid gap-3 md:grid-cols-2">{rows.map((r) => (
-      <li key={r.id}><button type="button" onClick={() => onOpen(r.id)} className="flex w-full flex-col gap-1 rounded-2xl border border-line bg-white p-4 text-start hover:border-luma-300 focus-visible:outline-2">
+      <li key={r.id}><button type="button" onClick={() => onOpen(r.id)} className="flex w-full flex-col gap-1 rounded-2xl border border-line bg-surface p-4 text-start hover:border-line-strong focus-visible:outline-2">
         <div className="flex justify-between gap-2"><p className="font-semibold">{r.host.name} · {r.space_code}</p><Badge tone={TONE[r.status] ?? 'neutral'}>{t(`hosting.status.${r.status}`)}</Badge></div>
         <p className="text-sm">{when(r.starts_at)} → {when(r.ends_at)}</p>
         <p className="text-sm"><span dir="ltr">{money(r.total_minor)}</span> <span dir="ltr" className="ms-2 text-xs text-ink-muted">{r.number}</span></p>
