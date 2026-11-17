@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { requireTenantPage } from '@/server/pages';
 import { getT } from '@/i18n/server';
-import { readiness } from '@/server/domains/onboarding/service';
+import { readiness, storefrontBookingStatus } from '@/server/domains/onboarding/service';
 import { hasCapability } from '@/server/tenancy/access';
 import { formatDate } from '@/shared/format';
 import { withTenant } from '@/server/db/client';
@@ -22,6 +22,8 @@ export default async function Overview({ params }: { params: Promise<{ tenantSlu
   const { t, locale } = await getT();
   const canSetup = hasCapability(access, 'business.manage');
   const ready = canSetup ? await readiness(access) : null;
+  // A LIVE store with nothing bookable needs a louder note than the checklist (LUMA-AUDIT-017).
+  const booking = canSetup ? await storefrontBookingStatus(access) : null;
   const sub = await withTenant(access.tenantId, (trx) => trx.selectFrom('subscriptions').select(['status', 'trial_ends_at']).orderBy('created_at', 'desc').executeTakeFirst());
   return (
     <div className="flex flex-col gap-5">
@@ -29,6 +31,13 @@ export default async function Overview({ params }: { params: Promise<{ tenantSlu
         <h1 className="text-2xl font-semibold text-luma-900">{access.name}</h1>
         {sub?.status === 'trialing' && sub.trial_ends_at ? <p className="text-sm text-ink-muted">{t('trial_banner', { date: formatDate(sub.trial_ends_at, { locale, tz: access.timezone }) })}</p> : null}
       </div>
+      {booking?.warn ? (
+        <section role="status" className="rounded-2xl border border-warn/30 bg-warn-bg p-4 text-warn">
+          <h2 className="font-semibold">{t('builder.booking_status.title')}</h2>
+          <p className="mt-1 text-sm">{t('builder.booking_status.body')}</p>
+          <Link className="mt-2 inline-block text-sm font-medium underline" href={booking.services_path}>{t('builder.booking_status.action')}</Link>
+        </section>
+      ) : null}
       {ready && !ready.ready ? (
         <section className="rounded-2xl border border-warn/30 bg-warn-bg/50 p-4">
           <h2 className="font-semibold">{t('onboarding.not_ready')}</h2>

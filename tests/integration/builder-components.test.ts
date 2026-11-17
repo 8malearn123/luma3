@@ -13,6 +13,7 @@ import * as builder from '@/app/api/v1/t/[tenantSlug]/builder/route';
 import * as pageBlocks from '@/app/api/v1/t/[tenantSlug]/builder/pages/[pageId]/blocks/route';
 import * as publishRoute from '@/app/api/v1/t/[tenantSlug]/builder/publish/route';
 import * as rollbackRoute from '@/app/api/v1/t/[tenantSlug]/builder/versions/[versionId]/rollback/route';
+import * as bookingStatus from '@/app/api/v1/t/[tenantSlug]/builder/booking-status/route';
 import * as restoreRoute from '@/app/api/v1/t/[tenantSlug]/builder/versions/[versionId]/restore-draft/route';
 
 /**
@@ -171,5 +172,25 @@ describe('version rollback / restore validation (LUMA-AUDIT-031)', () => {
     const r = await owner.call(rollbackRoute.POST, { params: { ...p, versionId: bad.id }, body: {}, idempotencyKey: true });
     expect(r.status).toBe(422);
     expect(r.body.error.details.issues.some((i: any) => i.code === 'invalid_reference')).toBe(true);
+  });
+});
+
+describe('live store with nothing bookable (LUMA-AUDIT-017)', () => {
+  it('reports booking status for the live store and the impact of archiving its last bookable service', async () => {
+    const { owner, biz, p } = await newBiz();
+    const serviceId = await makeReady(owner, biz);
+    const s = await state(owner, biz.slug);
+    expect((await putBlocks(owner, biz.slug, home(s), [makeBlock('hero')])).status).toBe(200);
+    expect((await doPublish(owner, biz.slug)).status).toBe(201);
+
+    const now = await owner.call(bookingStatus.GET, { params: p });
+    expect(now.status).toBe(200);
+    expect(now.body.data).toMatchObject({ live: true, bookable_services: 1, booking_available: true, warn: false });
+    const whatIf = await owner.call(bookingStatus.GET, { params: p, query: { exclude_service: serviceId } });
+    expect(whatIf.body.data).toMatchObject({ live: true, bookable_services: 0, warn: true });
+
+    expect((await owner.call(serviceArchive.POST, { params: { ...p, id: serviceId }, body: { archived: true } })).status).toBe(200);
+    const after = await owner.call(bookingStatus.GET, { params: p });
+    expect(after.body.data).toMatchObject({ live: true, booking_available: false, warn: true });
   });
 });

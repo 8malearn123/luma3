@@ -6,6 +6,8 @@ import { AppError } from '@/server/http/errors';
 import { badgeOf } from '@/shared/badges';
 import { BookingFlow, type FlowService } from '@/ui/booking/BookingFlow';
 import { rebookPrefill } from '@/server/domains/booking/rebook';
+import { BookingUnavailable } from '@/ui/storefront/BookingUnavailable';
+import { storefrontCtx } from '../_data';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { robots: { index: false } };
@@ -39,6 +41,8 @@ export default async function BookingPage({ params, searchParams }: { params: Pr
       branch_ids: data.assignments.filter((a) => a.staff_id === l.id).map((a) => a.branch_id),
     })),
   }));
+  // Nothing bookable on a live store: a clear unavailable state with contact options, not an empty picker (LUMA-AUDIT-017).
+  if (!services.some((s) => s.staff.length)) return <BookingUnavailable ctx={await storefrontCtx(slug)} />;
   const user = await getSessionUser().catch(() => null);
   // «إعادة الحجز»: same services and specialists from one of her bookings; she picks the new time.
   const rebook = sp.rebook && user ? await rebookPrefill(user.userId, sp.rebook).catch(() => null) : null;

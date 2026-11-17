@@ -15,6 +15,7 @@ const ar = {
     dismiss: 'إخفاء', powered_by: 'بدعم من لوما · Powered by LUMA', page_empty: 'لا يوجد محتوى في هذه الصفحة بعد.',
     unavailable: 'هذا العنصر غير متاح حالياً.', service_unavailable: 'هذه الخدمة غير متاحة حالياً.', product_unavailable: 'هذا المنتج غير متاح حالياً.',
     not_bookable_online: 'الحجز الإلكتروني لهذه الخدمة غير متاح حالياً، تواصلي معنا للحجز.',
+    booking_unavailable_title: 'الحجز الإلكتروني غير متاح حالياً', booking_unavailable_hint: 'لا توجد مواعيد يمكن حجزها عبر المتجر الآن. تواصلي معنا وسنرتب موعدك.', back_to_store: 'العودة للمتجر',
     price_note: 'الأسعار المعروضة هي أسعار الخدمة الحالية. اطّلعي على', not_found: 'الصفحة غير موجودة', not_found_hint: 'ربما تم نقل هذا العنصر أو إخفاؤه.',
     preview_banner: 'معاينة مسودة — هذه النسخة غير منشورة ولا يراها العملاء. الحجز والسلة معطّلان في المعاينة.',
     preview_booking_disabled: 'الحجز معطّل في المعاينة', preview_cart_disabled: 'السلة معطّلة في المعاينة',
@@ -115,6 +116,13 @@ const ar = {
       note: 'ملاحظة على الإصدار (اختياري)', explain: 'النشر ينشئ نسخة ثابتة يمكن الرجوع إليها. الأسعار والمواعيد تُقرأ دائماً من بياناتك الحالية.',
       no_permission: 'النشر يحتاج صلاحية «نشر المتجر». يمكنكِ الحفظ والمعاينة.', done: 'تم نشر الإصدار {n}', first_done: 'تم نشر متجرك لأول مرة! أصبح متاحاً للعميلات.',
     },
+    booking_status: {
+      title: 'متجرك منشور لكن لا يمكن الحجز فيه الآن',
+      body: 'لا توجد خدمة متاحة للحجز الإلكتروني (خدمة نشطة وظاهرة مع أخصائية). ستظهر للعميلات رسالة «الحجز غير متاح حالياً» مع طريقة التواصل.',
+      action: 'مراجعة الخدمات',
+      archive_title: 'هذه آخر خدمة يمكن حجزها في متجرك المنشور',
+      archive_body: 'بعد الأرشفة لن تتمكن العميلات من الحجز إلكترونياً، وسيظهر لهن أن الحجز غير متاح حالياً حتى تضيفي أو تفعّلي خدمة أخرى.',
+    },
     versions: {
       title: 'الإصدارات', empty: 'لا توجد إصدارات منشورة بعد', empty_hint: 'كل نشر ينشئ إصداراً يمكنكِ الرجوع إليه.', v: 'الإصدار {n}', live: 'منشور', from: 'استرجاع للإصدار {n}',
       rollback: 'إعادة نشر هذا الإصدار', restore: 'نسخ إلى المسودة', rollback_confirm: 'إعادة نشر الإصدار {n}؟', restore_confirm: 'نسخ الإصدار {n} إلى المسودة؟',
@@ -168,6 +176,7 @@ const en: Shape<typeof ar> = {
     dismiss: 'Dismiss', powered_by: 'Powered by LUMA', page_empty: 'There is no content on this page yet.',
     unavailable: 'This item is currently unavailable.', service_unavailable: 'This service is currently unavailable.', product_unavailable: 'This product is currently unavailable.',
     not_bookable_online: 'Online booking is not available for this service right now — contact us to book.',
+    booking_unavailable_title: 'Online booking is not available right now', booking_unavailable_hint: 'There are no appointments you can book through the store at the moment. Contact us and we will arrange your visit.', back_to_store: 'Back to the store',
     price_note: 'Prices shown are the current service prices. See the', not_found: 'Page not found', not_found_hint: 'This item may have moved or been hidden.',
     preview_banner: 'Draft preview — this version is not published and customers cannot see it. Booking and cart are disabled in previews.',
     preview_booking_disabled: 'Booking is disabled in previews', preview_cart_disabled: 'Cart is disabled in previews',
@@ -267,6 +276,13 @@ const en: Shape<typeof ar> = {
       fix: 'Complete', ok: 'complete', missing: 'incomplete', site: 'Site', warnings_note: 'Warnings do not block publishing; customers see clear fallbacks.', contrast: 'Some colours have low contrast — review the Brand panel.',
       note: 'Version note (optional)', explain: 'Publishing creates a fixed version you can return to. Prices and appointments are always read from your current data.',
       no_permission: 'Publishing requires the “publish storefront” permission. You can save and preview.', done: 'Version {n} published', first_done: 'Your storefront is live for the first time!',
+    },
+    booking_status: {
+      title: 'Your store is live, but nothing can be booked right now',
+      body: 'No service is bookable online (an active, visible service with a specialist). Customers will see “Online booking is not available right now” with your contact details.',
+      action: 'Review services',
+      archive_title: 'This is the last bookable service on your live store',
+      archive_body: 'After archiving, customers cannot book online and will be told booking is unavailable until you add or activate another service.',
     },
     versions: {
       title: 'Versions', empty: 'No published versions yet', empty_hint: 'Every publish creates a version you can return to.', v: 'Version {n}', live: 'Live', from: 'Rollback to v{n}',

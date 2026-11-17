@@ -33,6 +33,7 @@ import { StoreQrButton } from '../business/StoreQr';
 import { VersionsDrawer } from './VersionsDrawer';
 import { TemplatesDrawer } from './TemplatesDrawer';
 import { AssistantPanel } from './AssistantPanel';
+import { BookingStatusBanner } from './BookingStatusBanner';
 import { canAdd, duplicateBlock, findBlock, insertAt, moveBlock, newBlock, removeBlock, updateBlock } from './ops';
 import type { BuilderPage, BuilderState, CatalogRefs } from './types';
 
@@ -260,6 +261,7 @@ export function BuilderApp({ slug, initial }: { slug: string; initial: BuilderSt
         <Button size="sm" icon={<Rocket className="size-4" />} onClick={() => setDrawer('publish')}>{t('builder.publish.button')}</Button>
       </div>
       {!canEdit ? <Alert tone="info">{t('builder.read_only')}</Alert> : null}
+      <BookingStatusBanner slug={slug} />
       {server.published.version_number ? (
         <p className="text-xs text-ink-muted">{t('builder.live_version', { n: server.published.version_number })} · <a className="text-luma-700 underline" href={`/s/${slug}`} target="_blank" rel="noreferrer">{t('builder.open_live')}</a></p>
       ) : <p className="text-xs text-ink-muted">{t('builder.not_published')}</p>}

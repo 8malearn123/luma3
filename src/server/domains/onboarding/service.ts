@@ -180,3 +180,25 @@ export async function readiness(access: TenantAccess): Promise<{ ready: boolean;
     return { ready: items.every((i) => i.ok), items };
   });
 }
+
+/**
+ * Can customers book on the LIVE storefront? (LUMA-AUDIT-017) Counts services
+ * a customer can actually book online (active, visible, not archived, with an
+ * active public specialist). With `excludeServiceId`, answers "what if this
+ * service were archived" so the owner is warned before archiving the last one.
+ */
+export async function storefrontBookingStatus(access: TenantAccess, opts: { excludeServiceId?: string } = {}) {
+  return withTenant(access.tenantId, async (trx) => {
+    const t = await trx.selectFrom('tenants').select('published_version_id').where('id', '=', access.tenantId).executeTakeFirstOrThrow();
+    const exclude = opts.excludeServiceId ?? null;
+    const r = await sql<{ n: number }>`
+      select count(*)::int as n from services s
+      where s.tenant_id = ${access.tenantId} and s.is_active and s.is_visible and s.archived_at is null
+        and (${exclude}::uuid is null or s.id <> ${exclude}::uuid)
+        and exists (select 1 from service_staff ss join staff_profiles sp on sp.id = ss.staff_id
+                    where ss.service_id = s.id and sp.is_active and sp.is_public and sp.archived_at is null)`.execute(trx);
+    const bookable = r.rows[0]?.n ?? 0;
+    const live = !!t.published_version_id;
+    return { live, bookable_services: bookable, booking_available: bookable > 0, warn: live && bookable === 0, services_path: `/app/${access.slug}/services` };
+  });
+}
