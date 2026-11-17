@@ -69,7 +69,7 @@ export function MfaPrompt({ next, demo = false, totp = false, whatsapp = true }:
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<unknown>(null);
   const [sent, setSent] = useState<{ destination?: string; delivery?: { status: string; dev_code?: string } } | null>(null);
-  const [enroll, setEnroll] = useState<{ secret: string; otpauth_uri: string } | null>(null);
+  const [enroll, setEnroll] = useState<{ secret: string; otpauth_uri: string; pending_token?: string } | null>(null);
   const done = () => { window.location.href = safeInternalPath(next, '/platform', '/platform'); };
   async function send() {
     setBusy(true); setErr(null);
@@ -84,11 +84,11 @@ export function MfaPrompt({ next, demo = false, totp = false, whatsapp = true }:
   }
   async function startEnroll() {
     setBusy(true); setErr(null);
-    try { setEnroll(await stepUp(() => api<{ secret: string; otpauth_uri: string }>('/api/v1/platform/mfa/enroll', { body: {} }))); } catch (e) { setErr(e); } finally { setBusy(false); }
+    try { setEnroll(await stepUp(() => api<{ secret: string; otpauth_uri: string; pending_token?: string }>('/api/v1/platform/mfa/enroll', { body: {} }))); } catch (e) { setErr(e); } finally { setBusy(false); }
   }
   async function activate(c: string) {
     setBusy(true); setErr(null);
-    try { await api('/api/v1/platform/mfa/activate', { body: { code: c } }); done(); } catch (e) { setErr(e); setBusy(false); }
+    try { await api('/api/v1/platform/mfa/activate', { body: { code: c, ...(enroll?.pending_token ? { pending_token: enroll.pending_token } : {}) } }); done(); } catch (e) { setErr(e); setBusy(false); }
   }
   const canEnter = demo || totp || sent;
   const body = demo ? t('platform.mfa.demo_body') : totp ? t('platform.mfa.totp_body') : whatsapp ? t('platform.mfa.prompt_body') : t('platform.mfa.enrol_body');
@@ -143,7 +143,7 @@ export function SecurityPage() {
   const qc = useQueryClient();
   const stepUp = useStepUp();
   const q = useApiQuery<MfaState>(['platform', 'mfa'], '/api/v1/platform/mfa');
-  const [enroll, setEnroll] = useState<{ secret: string; otpauth_uri: string } | null>(null);
+  const [enroll, setEnroll] = useState<{ secret: string; otpauth_uri: string; pending_token?: string } | null>(null);
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<unknown>(null);
@@ -167,14 +167,14 @@ export function SecurityPage() {
           <div className="flex flex-col gap-3">
             <p className="text-sm text-ink-muted">{t('platform.security.explain')}</p>
             <Button className="self-start" loading={busy} icon={<KeyRound className="size-4" />} onClick={() => act(async () => {
-              const r = await stepUp(() => api<{ secret: string; otpauth_uri: string }>('/api/v1/platform/mfa/enroll', { body: {} }));
+              const r = await stepUp(() => api<{ secret: string; otpauth_uri: string; pending_token?: string }>('/api/v1/platform/mfa/enroll', { body: {} }));
               setEnroll(r); setCode('');
             })}>{t('platform.security.start')}</Button>
           </div>
         ) : null}
         {!s.enabled && enroll ? (
           <EnrolForm enroll={enroll} busy={busy} onCancel={() => setEnroll(null)}
-            onActivate={(code) => act(async () => { await api('/api/v1/platform/mfa/activate', { body: { code } }); setEnroll(null); }, t('platform.security.now_enabled'))} />
+            onActivate={(code) => act(async () => { await api('/api/v1/platform/mfa/activate', { body: { code, ...(enroll?.pending_token ? { pending_token: enroll.pending_token } : {}) } }); setEnroll(null); }, t('platform.security.now_enabled'))} />
         ) : null}
         {s.enabled ? (
           <form className="flex flex-col gap-3" onSubmit={(e) => { e.preventDefault(); act(() => stepUp(() => api('/api/v1/platform/mfa/disable', { body: { code } })), t('platform.security.now_disabled')); }}>
