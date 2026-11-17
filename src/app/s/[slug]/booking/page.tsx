@@ -32,12 +32,20 @@ export default async function BookingPage({ params, searchParams }: { params: Pr
     // Branch picker: offered only when the business has more than one active branch.
     const branches = await trx.selectFrom('branches').select(['id', 'name', 'city', 'is_primary']).where('status', '=', 'active').orderBy('is_primary', 'desc').orderBy('created_at').execute();
     const assignments = links.length ? await trx.selectFrom('staff_branch_assignments').select(['staff_id', 'branch_id']).where('staff_id', 'in', [...new Set(links.map((l) => l.id))]).execute() : [];
+    // Customer-selectable options (allowlisted fields; prices and durations are re-read on the server for every quote).
+    const ids = services.map((s) => s.id);
+    const variants = ids.length ? await trx.selectFrom('service_variants').select(['id', 'service_id', 'name_ar', 'name_en', 'price_minor', 'duration_min'])
+      .where('service_id', 'in', ids).where('is_active', '=', true).orderBy('sort').orderBy('created_at').execute() : [];
+    const addons = ids.length ? await trx.selectFrom('service_addons').select(['id', 'service_id', 'name_ar', 'name_en', 'price_minor', 'duration_min'])
+      .where('service_id', 'in', ids).where('is_active', '=', true).orderBy('sort').orderBy('created_at').execute() : [];
     const settings = await trx.selectFrom('tenant_settings').select(['hold_ttl_sec', 'free_cancellation_hours', 'late_cancellation_fee_bp', 'time_format']).where('tenant_id', '=', tenant.id).executeTakeFirstOrThrow();
-    return { services, links, settings, branches, assignments };
+    return { services, links, settings, branches, assignments, variants, addons };
   });
   const services: FlowService[] = data.services.map((s) => ({
     id: s.id, name_ar: s.name_ar, name_en: s.name_en, description_ar: s.description_ar, description_en: s.description_en, price_minor: s.price_minor, price_display: s.price_display,
-    duration_min: s.duration_min, badge: badgeOf(s), category: s.category_id ? { id: s.category_id, name_ar: s.category_ar, name_en: s.category_en } : null, branch_id: s.branch_id,
+    duration_min: s.duration_min, badge: badgeOf(s),
+    variants: data.variants.filter((v) => v.service_id === s.id).map(({ service_id: _s, ...v }) => v),
+    addons: data.addons.filter((a) => a.service_id === s.id).map(({ service_id: _s, ...a }) => a), category: s.category_id ? { id: s.category_id, name_ar: s.category_ar, name_en: s.category_en } : null, branch_id: s.branch_id,
     staff: data.links.filter((l) => l.service_id === s.id).map((l) => ({
       id: l.id, name: l.display_name, name_en: l.display_name_en, title_ar: l.title_ar, title_en: l.title_en, photo: l.photo_asset_id,
       branch_ids: data.assignments.filter((a) => a.staff_id === l.id).map((a) => a.branch_id),

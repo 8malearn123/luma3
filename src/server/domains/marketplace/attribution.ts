@@ -21,6 +21,9 @@ import { ATTRIBUTION_WINDOW_HOURS, feeFor } from './rules';
  *    provider_net_minor (DB trigger app.payment_platform_fee).
  * 4. When the booking completes, one commission line is written to
  *    marketplace_commissions (exactly once per booking).
+ * 5. A refund that succeeds AFTER that line was written reverses the
+ *    commission proportionally (owner decision R1): one append-only row per
+ *    refund in marketplace_commission_reversals (see reverseMarketplaceCommission).
  */
 
 /** Listed right now (same rule as app.marketplace_directory()). */
@@ -90,6 +93,46 @@ export async function recordMarketplaceCommission(trx: Tx, tenantId: string, boo
   return { recorded: !!row };
 }
 
+/**
+ * Refund-succeeded hook (inside the refund's transaction). Proportional
+ * reversal of the LUMA commission when a refund succeeds after the booking's
+ * commission line was written (owner decision R1, 2026-11-17).
+ *
+ * Rule (deterministic, same half-up rounding as the original fee):
+ *   cumulative = Σ refunds already reversed for this line + this refund
+ *   remaining  = feeFor(max(0, base − cumulative), rate)
+ *   reversal   = (fee − remaining) − Σ fee already reversed   (never < 0)
+ * so a full refund reverses the whole fee, the total reversed never exceeds the
+ * original fee, and partial refunds in any order sum to the same total.
+ *
+ * Idempotent per refund (unique (tenant_id, refund_id)); concurrent refunds of
+ * one booking serialise on the booking row lock. A refund that succeeded BEFORE
+ * completion needs no reversal: it is already excluded from the line's base
+ * (base = total − refunded at completion), whatever order the events arrive in.
+ */
+export async function reverseMarketplaceCommission(trx: Tx, tenantId: string, refundId: string): Promise<{ reversed: boolean; fee_reversed_minor?: number }> {
+  const r = await trx.selectFrom('refunds as r').innerJoin('payments as p', 'p.id', 'r.payment_id')
+    .select(['r.amount_minor', 'p.booking_id']).where('r.id', '=', refundId).where('r.tenant_id', '=', tenantId).executeTakeFirst();
+  if (!r?.booking_id || !(r.amount_minor > 0)) return { reversed: false };
+  await trx.selectFrom('bookings').select('id').where('id', '=', r.booking_id).forUpdate().execute();
+  const line = await trx.selectFrom('marketplace_commissions').select(['id', 'base_minor', 'rate_bp', 'fee_minor', 'currency'])
+    .where('tenant_id', '=', tenantId).where('booking_id', '=', r.booking_id).executeTakeFirst();
+  if (!line) return { reversed: false };
+  const done = await trx.selectFrom('marketplace_commission_reversals').select('id').where('tenant_id', '=', tenantId).where('refund_id', '=', refundId).executeTakeFirst();
+  if (done) return { reversed: false };
+  const prior = await trx.selectFrom('marketplace_commission_reversals')
+    .select([sql<number>`coalesce(sum(refund_minor), 0)::bigint`.as('refunded'), sql<number>`coalesce(sum(fee_reversed_minor), 0)::bigint`.as('reversed')])
+    .where('commission_id', '=', line.id).executeTakeFirstOrThrow();
+  const cumulative = Number(prior.refunded) + r.amount_minor;
+  const remaining = feeFor(Math.max(0, line.base_minor - cumulative), line.rate_bp);
+  const reversal = Math.max(0, Math.min(line.fee_minor - Number(prior.reversed), line.fee_minor - remaining - Number(prior.reversed)));
+  const row = await trx.insertInto('marketplace_commission_reversals').values({
+    tenant_id: tenantId, commission_id: line.id, booking_id: r.booking_id, refund_id: refundId, refund_minor: r.amount_minor,
+    cumulative_refund_minor: cumulative, fee_reversed_minor: reversal, currency: line.currency,
+  }).onConflict((oc) => oc.columns(['tenant_id', 'refund_id']).doNothing()).returning('id').executeTakeFirst();
+  return { reversed: !!row, fee_reversed_minor: reversal };
+}
+
 export type FeePeriod = { from: string; to: string };
 
 function periodBounds(period: FeePeriod, tz: string) {
@@ -102,7 +145,12 @@ function periodBounds(period: FeePeriod, tz: string) {
 export type MarketplaceFees = {
   tenant_id: string; currency: string; from: string; to: string;
   bookings: number; base_minor: number; fee_minor: number; simulated_fee_minor: number; pending_fee_minor: number;
+  /** Commission reversed by refunds that succeeded in the period (append-only reversal rows). */
+  reversed_fee_minor: number;
+  /** fee_minor − reversed_fee_minor. */
+  net_fee_minor: number;
   lines: Array<{ id: string; booking_id: string; booking_number: string; base_minor: number; rate_bp: number; fee_minor: number; settlement: string; created_at: Date }>;
+  reversals: Array<{ id: string; commission_id: string; booking_id: string; refund_id: string; refund_minor: number; fee_reversed_minor: number; created_at: Date }>;
 };
 
 /**
@@ -120,11 +168,15 @@ export async function marketplaceFeesFor(tenantId: string, period: FeePeriod): P
     const lines = await trx.selectFrom('marketplace_commissions').select(['id', 'booking_id', 'booking_number', 'base_minor', 'rate_bp', 'fee_minor', 'settlement', 'created_at'])
       .where('tenant_id', '=', tenantId).where('created_at', '>=', b.from).where('created_at', '<', b.to).orderBy('created_at').orderBy('id').execute();
     const sum = (f: (l: (typeof lines)[number]) => number) => lines.reduce((a, l) => a + f(l), 0);
+    const reversals = await trx.selectFrom('marketplace_commission_reversals').select(['id', 'commission_id', 'booking_id', 'refund_id', 'refund_minor', 'fee_reversed_minor', 'created_at'])
+      .where('tenant_id', '=', tenantId).where('created_at', '>=', b.from).where('created_at', '<', b.to).orderBy('created_at').orderBy('id').execute();
+    const reversed = reversals.reduce((a, x) => a + x.fee_reversed_minor, 0);
     return {
       tenant_id: tenantId, currency: t.currency, from: period.from, to: period.to, bookings: lines.length,
       base_minor: sum((l) => l.base_minor), fee_minor: sum((l) => l.fee_minor),
       simulated_fee_minor: sum((l) => (l.settlement === 'simulated' ? l.fee_minor : 0)), pending_fee_minor: sum((l) => (l.settlement === 'pending' ? l.fee_minor : 0)),
-      lines,
+      reversed_fee_minor: reversed, net_fee_minor: sum((l) => l.fee_minor) - reversed,
+      lines, reversals,
     };
   });
 }
@@ -138,7 +190,11 @@ export async function platformMarketplaceFees(period: FeePeriod) {
         (eb) => eb.fn.countAll<number>().as('bookings'), (eb) => eb.fn.sum<number>('c.base_minor').as('base_minor'), (eb) => eb.fn.sum<number>('c.fee_minor').as('fee_minor')])
       .where('c.created_at', '>=', b.from).where('c.created_at', '<', b.to)
       .groupBy(['c.tenant_id', 't.slug', 't.name', 'c.currency']).orderBy('fee_minor', 'desc').execute();
-    const items = rows.map((r) => ({ ...r, slug: String(r.slug), bookings: Number(r.bookings), base_minor: Number(r.base_minor), fee_minor: Number(r.fee_minor) }));
-    return { from: period.from, to: period.to, items, total_fee_minor: items.reduce((a, r) => a + r.fee_minor, 0), total_bookings: items.reduce((a, r) => a + r.bookings, 0) };
+    const rev = await trx.selectFrom('marketplace_commission_reversals').select(['tenant_id', (eb) => eb.fn.sum<number>('fee_reversed_minor').as('reversed')])
+      .where('created_at', '>=', b.from).where('created_at', '<', b.to).groupBy('tenant_id').execute();
+    const revOf = (id: string) => Number(rev.find((x) => x.tenant_id === id)?.reversed ?? 0);
+    const items = rows.map((r) => ({ ...r, slug: String(r.slug), bookings: Number(r.bookings), base_minor: Number(r.base_minor), fee_minor: Number(r.fee_minor), reversed_fee_minor: revOf(r.tenant_id), net_fee_minor: Number(r.fee_minor) - revOf(r.tenant_id) }));
+    const total = items.reduce((a, r) => a + r.fee_minor, 0), reversed = rev.reduce((a, x) => a + Number(x.reversed), 0);
+    return { from: period.from, to: period.to, items, total_fee_minor: total, total_reversed_fee_minor: reversed, total_net_fee_minor: total - reversed, total_bookings: items.reduce((a, r) => a + r.bookings, 0) };
   });
 }

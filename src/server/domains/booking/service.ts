@@ -19,6 +19,8 @@ import { ACTIVE_STATUSES, TRANSITIONS, type BookingAction, type BookingStatus } 
 import { bookingHooks } from './hooks';
 import { redeemCoupon, validateCoupon } from '../commerce/coupons';
 import type { PaymentMethod } from '@/shared/payments';
+import { env } from '../../env';
+import { provider } from '../payments/providers/registry';
 
 const MIN = 60_000;
 
@@ -151,10 +153,18 @@ export async function policySnapshot(trx: Tx, tenantId: string) {
   };
 }
 
+/**
+ * Payment methods this business can actually take right now (PAYMENT_FLOW §1):
+ * the enabled methods of ACTIVE payment accounts whose provider has a working
+ * adapter (the simulated sandbox never counts in production), plus cash and
+ * terminal when the business allows paying on site. An account row alone is
+ * not enough: a disconnected or unintegrated provider offers nothing.
+ */
 export async function enabledMethods(trx: Tx, tenantId: string): Promise<PaymentMethod[]> {
-  const acct = await trx.selectFrom('payment_accounts').select(['enabled_methods']).where('tenant_id', '=', tenantId).where('status', '=', 'active').execute();
+  const acct = await trx.selectFrom('payment_accounts').select(['provider', 'enabled_methods']).where('tenant_id', '=', tenantId).where('status', '=', 'active').execute();
   const s = await trx.selectFrom('tenant_settings').select(['allow_pay_on_site']).where('tenant_id', '=', tenantId).executeTakeFirstOrThrow();
-  const methods = new Set<PaymentMethod>(acct.flatMap((a) => a.enabled_methods as PaymentMethod[]));
+  const usable = acct.filter((a) => !!provider(a.provider) && !(a.provider === 'sandbox' && env().isProduction));
+  const methods = new Set<PaymentMethod>(usable.flatMap((a) => a.enabled_methods as PaymentMethod[]));
   if (s.allow_pay_on_site) { methods.add('cash'); methods.add('pos_terminal'); }
   return [...methods];
 }

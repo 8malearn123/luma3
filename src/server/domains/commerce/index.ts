@@ -9,6 +9,8 @@
  *       → Promise<{ changed: boolean; reason?: 'order_cancelled' | 'already_paid' | 'partial' }>
  *   cancelOrder(trx, tenantId, orderId, reason, actorUserId) → Promise<{ released: boolean }>
  *   expireStaleOrders() → Promise<{ expired: number }>   (also registered as a periodic task)
+ *   ensureOrderPayableOnline(tenantId, userId, orderId) — throws 409 online_payment_unavailable (pay at pickup possible)
+ *       or 422 payment_unavailable (order cancelled, stock released) when online payment is gone
  *  Inventory
  *   consumeMaterialsForBookingItem(trx, tenantId, bookingItemId, actorUserId)
  *       → Promise<{ consumed: {inventoryItemId, quantity, unit}[]; skipped: 'no_recipe' | 'already_consumed' | null; shortages: [...] }>
@@ -24,7 +26,7 @@
  *  Storefront
  *   publicVariantAvailability(trx, tenantId, variantIds) — price/stock/purchasable/hidden per variant, never costs.
  */
-export { createOrderFromCart, markOrderPaid, cancelOrder, expireStaleOrders, getCustomerOrder, ORDER_PAYMENT_TTL_MIN, type OrderSummary } from './orders';
+export { createOrderFromCart, markOrderPaid, cancelOrder, expireStaleOrders, getCustomerOrder, ensureOrderPayableOnline, choosePayAtPickup, shopPaymentPaths, ORDER_PAYMENT_TTL_MIN, ORDER_PICKUP_HOLD_HOURS, type OrderSummary } from './orders';
 export { consumeMaterialsForBookingItem, capacityEstimate, type CapacityEstimate, type ConsumptionResult } from './inventory';
 export { cancelPlannedUsage } from './consumption';
 export { moveStock, type MoveInput, type MoveResult, type StockKind } from './stock';

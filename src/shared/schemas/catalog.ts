@@ -103,6 +103,17 @@ export const packageInput = z.object({
   price_minor: money, service_ids: z.array(z.string().uuid()).min(2).max(10), is_active: z.boolean().default(true), is_visible: z.boolean().default(true),
 }).refine((v) => !!(v.name_ar || v.name_en), { message: 'A name is required', path: ['name_ar'] });
 
+/**
+ * Package edit (owner decision R7): name, description, price, contents and
+ * flags for NEW sales. `updated_at` is the version the editor loaded
+ * (optimistic concurrency); a stale edit gets 409 version_conflict.
+ */
+export const packagePatch = z.object({
+  name_ar: name.optional().nullable(), name_en: name.optional().nullable(), description_ar: desc.optional().nullable(), description_en: desc.optional().nullable(),
+  price_minor: money, service_ids: z.array(z.string().uuid()).min(2).max(10), is_active: z.boolean(), is_visible: z.boolean(),
+  updated_at: z.string().datetime({ offset: true }),
+}).refine((v) => !!(v.name_ar || v.name_en), { message: 'A name is required', path: ['name_ar'] });
+
 export const priceProposalInput = z.object({ proposed_price_minor: money, reason: z.string().trim().max(500).optional() });
 
 export const reorderInput = z.object({ ids: z.array(z.string().uuid()).min(1).max(500) });

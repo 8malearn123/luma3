@@ -12,12 +12,15 @@ import { post, splitTax } from '../finance/journal';
 import { provider } from './providers/registry';
 import { WebhookVerificationError, type VerifiedEvent } from './providers/types';
 import { paymentTargets } from './targets';
+import { ensureOrderPayableOnline } from '../commerce';
 import type { PaymentOption, PaymentTerms } from '@/shared/payments';
 import { recordRejectedWebhook } from '../../infra/webhook-rejections';
 
 // ── Accounts ────────────────────────────────────────────────────────────────
+/** The business's active account with a working adapter (the sandbox never counts in production). */
 export async function activeAccount(trx: Tx, tenantId: string) {
-  return trx.selectFrom('payment_accounts').selectAll().where('tenant_id', '=', tenantId).where('status', '=', 'active').orderBy('created_at').executeTakeFirst();
+  const rows = await trx.selectFrom('payment_accounts').selectAll().where('tenant_id', '=', tenantId).where('status', '=', 'active').orderBy('created_at').execute();
+  return rows.find((a) => !!provider(a.provider) && !(a.provider === 'sandbox' && env().isProduction));
 }
 
 /** Connects the LUMA Sandbox (test mode). Real providers are not integrated; see providers/registry.ts. */
@@ -98,6 +101,8 @@ export async function checkoutBooking(tenantId: string, bookingId: string, input
 /** Customer checkout for a pending order (full online payment). */
 export async function checkoutOrder(tenantId: string, orderId: string, input: { userId: string; idempotencyKey: string; returnUrl: string; actor: AuditActor }) {
   const scope = `tenant:${tenantId}:user:${input.userId}`;
+  // Revalidated at payment time: the provider may have been disconnected since the cart (owner decision R2).
+  await ensureOrderPayableOnline(tenantId, input.userId, orderId);
   return withTenant(tenantId, (trx) => idempotent(trx, { scope, operation: 'checkout.order', key: input.idempotencyKey, hash: requestHash({ orderId }) }, async () => {
     const o = await trx.selectFrom('orders').selectAll().where('id', '=', orderId).forUpdate().executeTakeFirst();
     if (!o || o.customer_user_id !== input.userId) throw Errors.notFound('order');

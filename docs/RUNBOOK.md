@@ -30,7 +30,7 @@ Read directly from `process.env` (not in `.env.example`):
 | Variable | Used by |
 |---|---|
 | `DB_POOL_MAX` (default 10) | `src/server/db/client.ts` pool size. The statement timeout is fixed at 15 s. |
-| `CHROMIUM_EXECUTABLE` | `src/server/infra/pdf.ts` (PDF receipts) |
+| `CHROMIUM_EXECUTABLE` | `src/server/infra/pdf.ts` (PDF receipts). Optional: without a Chromium that starts, the PDF route returns 503 `pdf_renderer_unavailable` and `?format=html` still prints. `playwright-core` looks for its own pinned build (e.g. `chromium_headless_shell-1194` for 1.56.1) under `PLAYWRIGHT_BROWSERS_PATH`; if the machine has a different build, point this variable at it (e.g. `/opt/pw-browsers/chromium`). Not available on Vercel (see DEPLOY_VERCEL.md). |
 | `SEED_CREDENTIALS_JSON` | `scripts/seed.ts`: write credentials as JSON to this path instead of `.demo-credentials.txt` (used by E2E) |
 | `TEST_DATABASE_URL`, `TEST_DATABASE_OWNER_URL` | Vitest (default database `luma_test`) |
 | `E2E_DATABASE` (default `luma_e2e`), `E2E_PORT` (default 3110) | `playwright.config.ts` |
