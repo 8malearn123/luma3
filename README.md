@@ -8,7 +8,7 @@ LUMA is a multi-tenant SaaS platform for salons, beauty centres and independent 
 > - **No real messages or campaigns are sent.** No email, SMS or WhatsApp provider is connected. In development, messages go to a clearly labelled dev outbox; campaigns on those channels record *simulated* deliveries, or refuse to start when the channel is disconnected. In-app notifications are the only channel that reaches people.
 > - **AI is disconnected** unless both `OPENAI_API_KEY` and `OPENAI_MODEL` are set. Without them, AI features report "disconnected" and the manual and rules-based flows keep working.
 > - **Demo sign-in and the dev OTP echo exist only on a local development machine.** Any deployed build (`APP_ENV=review`/`production`, or any Vercel deployment) refuses to start if `DEMO_MODE` or `DEV_OTP_ECHO` is true (`src/server/env.ts`); review builds use password-only demo accounts (`DEMO_ACCOUNT_PASSWORD`).
-> - Plan prices are unset (`NULL`, "pricing not configured") and plan limits are test values.
+> - Plan prices are seeded (Sanaa 199 / Wahaj 399 / Fareed 799 SAR monthly, yearly 1,990 / 3,990 / 7,990; migration 0630). Plan limits and the inventory/hosting feature matrix are proposals awaiting approval. Subscription billing is manual test invoices; owners can't self-upgrade outside the trial until a billing provider exists (a platform admin can grant a plan).
 
 ## Stack
 

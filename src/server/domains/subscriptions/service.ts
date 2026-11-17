@@ -171,6 +171,12 @@ export async function changePlan(access: TenantAccess, actor: AuditActor, input:
       throw new AppError(409, 'downgrade_confirmation_required', 'This plan has lower limits than what you currently use. Confirm to continue; no data will be deleted.', { overages });
     }
     const direction = to.sort > from.sort ? 'upgrade' : 'downgrade';
+    // A paid upgrade is never activated without a verified payment or an explicit platform grant
+    // (platformSubscriptionAction 'change_plan'). No billing provider is connected yet, so outside the
+    // trial an owner's upgrade is refused; during the trial nothing is charged, so the change is allowed.
+    if (direction === 'upgrade' && sub.status !== 'trialing') {
+      throw new AppError(409, 'upgrade_requires_payment', 'Upgrading needs a payment, which is not available yet. Contact LUMA to upgrade your plan.', { from_plan: from.code, to_plan: to.code });
+    }
     const state = overageState(overages);
     await trx.updateTable('subscriptions').set({ plan_id: to.id, overage_state: state ? JSON.stringify(state) : null, version: sql`version + 1` }).where('id', '=', sub.id).execute();
     await recordEvent(trx, { tenantId: access.tenantId, subscriptionId: sub.id, kind: 'plan_changed', from: sub.status, to: sub.status, actorUserId: actor.userId, data: { from_plan: from.code, to_plan: to.code, direction, overages } });
