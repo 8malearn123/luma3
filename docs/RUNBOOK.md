@@ -110,7 +110,9 @@ Registered work (from `registerJob` / `registerOutbox` / `registerPeriodic`):
 | Kind | Name | Interval / trigger | What it does |
 |---|---|---|---|
 | job | `analytics.rollup` | on demand (`POST analytics/rollup`) | Recompute `daily_metrics` for given days |
-| job | `marketing.ai_job` | `requestAiJob` | Run a Loom AI job |
+| job | `marketing.ai_job` | `requestAiJob` | Run a legacy marketing AI job (rules/LLM plans and recommendations; deprecated, see LOOM_CORE §8) |
+| job | `loom.analysis` | «تحليل الآن», scheduler | Loom business analysis (metrics, quality gate, opportunities) |
+| job | `loom.plan` | `POST /loom/plans` | Loom planner run (monthly/weekly plan, rules without AI) |
 | job | `marketing.campaign_send` | scheduled campaign | Send (or defer) a campaign |
 | job | `marketing.trend_fetch` | on demand | Fetch the tenant's trend sources |
 | outbox | `booking.confirmed`, `booking.cancelled`, `booking.rescheduled`, `booking.reminder` | enqueued by booking code | Transactional messages through the messaging adapter (simulated or unavailable without a provider) |
@@ -132,13 +134,28 @@ Registered work (from `registerJob` / `registerOutbox` / `registerPeriodic`):
 
 Note the naming styles differ (`commerce-expire-orders` vs `booking.expire-holds`); use the names exactly as listed when searching logs.
 
+### Running the app and the worker together (demos, manual QA, E2E)
+
+Without the worker nothing in the background progresses: Loom analyses and plan preparations stay «في الانتظار» (Loom → متقدم → حالة التحليل shows a warning after 5 minutes), booking holds never expire and outbox messages are never sent (LUMA-AUDIT-043). Always run both processes against the **same** database:
+
+```bash
+# terminal 1 — the app (dev or production build)
+pnpm dev                      # or: pnpm build && pnpm start
+# terminal 2 — the job worker (reads the same .env / DATABASE_URL)
+pnpm worker
+```
+
+- The Loom job kinds are `loom.analysis` («تحليل الآن» and the scheduler) and `loom.plan` («إعداد خطة الشهر/الأسبوع» and plan re-analysis). Both appear with their state, timestamps and failure reason in Loom → «متقدم» → «حالة التحليل».
+- The worker loads code once at start: restart it after changing server code (a stale worker keeps producing the old output).
+- **E2E:** `pnpm test:e2e` starts both automatically. The Playwright web server runs `tests/e2e/serve.ts`, which runs `next start` and starts `scripts/worker.ts` as soon as global setup has migrated and seeded the database (marker `.e2e/seeded`); stopping the run stops both. `E2E_WORKER=0` disables the worker for a run. Use `E2E_DATABASE` / `E2E_PORT` to run beside another checkout.
+
 ## Health endpoint
 
-`GET /api/v1/health` returns `200 {"ok":true,"db":"up"}` after a `select 1` against `DATABASE_URL`, or `503 {"ok":false,"db":"down"}`. It sends `Cache-Control: no-store`, reveals no configuration, and needs no authentication. Playwright waits on it before running E2E tests. It does **not** check the worker.
+`GET /api/v1/health` returns `200 {"ok":true,"db":"up"}` after a `select 1` against `DATABASE_URL`, or `503 {"ok":false,"db":"down"}`. It sends `Cache-Control: no-store`, reveals no configuration, and needs no authentication. Playwright waits on it before running E2E tests. It does **not** check the worker (the E2E web server starts one itself; see «Running the app and the worker together»).
 
 ## E2E database
 
-`pnpm test:e2e` uses a dedicated database, by default `luma_e2e` (`E2E_DATABASE`). An operator must create it **once** (owner `luma_owner`, `grant connect` to `luma_app`). Each run's global setup refuses names not ending in `_e2e`, non-local hosts and `APP_ENV=production`. It then drops and recreates the `app` and `public` schemas, migrates and seeds. The dev server runs on port 3110 with `NEXT_DIST_DIR=.next-e2e`, `DEV_OTP_ECHO=true` and `DEMO_MODE=false`. The role passwords for this database are set in `playwright.config.ts` and must match the local roles.
+`pnpm test:e2e` uses a dedicated database, by default `luma_e2e` (`E2E_DATABASE`). An operator must create it **once** (owner `luma_owner`, `grant connect` to `luma_app`). Each run's global setup refuses names not ending in `_e2e`, non-local hosts and `APP_ENV=production`. It then drops and recreates the `app` and `public` schemas, migrates and seeds. The server (a production build plus the job worker, `tests/e2e/serve.ts`) runs on port 3110 (`E2E_PORT`) with `NEXT_DIST_DIR=.next-e2e`, `DEV_OTP_ECHO=true` and `DEMO_MODE=false`. A preinstalled Chromium at `/opt/pw-browsers/chromium` (or `PW_CHROMIUM_PATH`) is used when present. The role passwords for this database are set in `playwright.config.ts` and must match the local roles.
 
 ## Backups
 

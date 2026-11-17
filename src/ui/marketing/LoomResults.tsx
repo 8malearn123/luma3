@@ -10,7 +10,7 @@ import { Button } from '../components/button';
 import { Badge, EmptyState, ErrorState, LoadingState } from '../components/feedback';
 import { Field, Input, MoneyInput, Select, Textarea } from '../components/form';
 import { Card } from '../components/layout';
-import { loomKey, useAct } from './loom-shared';
+import { loomKey, useAct, useLoomFmt } from './loom-shared';
 
 type Tone = 'neutral' | 'ok' | 'warn' | 'danger' | 'info' | 'brand';
 const QUALITY_TONE: Record<string, Tone> = { experimental: 'ok', quasi: 'info', observational: 'warn', insufficient: 'neutral' };
@@ -91,11 +91,12 @@ function InitiativeCard({ i }: { i: any }) {
   const { t, locale } = useI18n();
   const access = useAccess();
   const [open, setOpen] = useState(false);
+  const loomFmt = useLoomFmt();
   const money = (v: number | null | undefined) => (v == null ? '—' : formatMoney(v, access.currency, locale));
   const ex = i.execution;
   const res = i.results;
   const canManage = access.can('marketing.manage');
-  const fmt = (m: any, v: number | null) => (v == null ? '—' : m.unit === 'minor' ? money(v) : m.unit === 'ratio' ? `${Math.round(v * 1000) / 10}%` : String(v));
+  const fmt = (m: any, v: number | null) => loomFmt(m.unit, v);
   return (
     <li className="rounded-2xl border border-line bg-white p-4">
       <div className="flex flex-wrap items-start justify-between gap-2">

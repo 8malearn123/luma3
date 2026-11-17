@@ -4,13 +4,13 @@ import { useState } from 'react';
 import { ArrowDown, ArrowUp, Minus, Play, Sparkles } from 'lucide-react';
 import { LoomResultsSummary } from './LoomResults';
 import { useI18n } from '@/i18n/client';
-import { formatDateTime, formatMoney } from '@/shared/format';
+import { formatDateTime } from '@/shared/format';
 import { useApiQuery } from '../hooks';
 import { useAccess } from '../shell/access-context';
 import { Button } from '../components/button';
 import { Alert, Badge, EmptyState, ErrorState, LoadingState } from '../components/feedback';
 import { Card } from '../components/layout';
-import { loomKey, PlanStatus, useAct } from './loom-shared';
+import { loomKey, PlanStatus, useAct, useLoomFmt } from './loom-shared';
 import { LoomPlanActionList } from './LoomPlanActions';
 
 type Tone = 'neutral' | 'ok' | 'warn' | 'danger' | 'info' | 'brand';
@@ -30,17 +30,13 @@ export function LoomHome({ onNavigate }: { onNavigate: (tab: 'opportunities' | '
   const access = useAccess();
   const { act, busy } = useAct();
   const [showImprove, setShowImprove] = useState(false);
+  const loomFmt = useLoomFmt();
   const r = useApiQuery<any>(loomKey(access.slug, 'home'), access.api('/loom/home'), { refetchInterval: 20000 });
   const canManage = access.can('marketing.manage');
   if (r.isLoading) return <LoadingState rows={5} />;
   if (r.error) return <ErrorState error={r.error} onRetry={() => r.refetch()} />;
   const d = r.data;
-  const fmt = (tile: any) => {
-    if (tile.value === null || tile.value === undefined) return '—';
-    if (tile.unit === 'minor') return formatMoney(tile.value, access.currency, locale);
-    if (tile.unit === 'ratio') return `${Math.round(tile.value * 1000) / 10}%`;
-    return String(Math.round(tile.value * 10) / 10);
-  };
+  const fmt = (tile: any) => loomFmt(tile.unit, tile.value);
   const plan = (kind: 'monthly' | 'weekly', mode?: 'rules') => act(`plan${kind}${mode ?? ''}`, '/loom/plans', { body: { kind, ...(mode ? { mode } : {}) }, ok: t('loomp.home.plan_queued') });
   const live = d.situation.analysis && ['queued', 'running'].includes(d.situation.analysis.status);
   return (

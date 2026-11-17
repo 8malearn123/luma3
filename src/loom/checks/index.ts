@@ -1,7 +1,7 @@
 import type { CapacityStatus, InventoryStatus, MarginStatus } from '../contracts/opportunity';
 import { breakEven } from '../economics/unit';
 import type { MetricContext } from '../metrics/context';
-import { L, pct, type Localized } from '../util/text';
+import { L, moneyText, pct, type Localized } from '../util/text';
 import { convertQty } from '../util/units';
 
 /**
@@ -109,7 +109,8 @@ export function checkMargin(ctx: MetricContext, offeringId: string | null, opts:
   const ratio = e.margin_ratio ?? 0;
   let status: MarginStatus = e.margin_minor <= 0 ? 'negative' : ratio < (opts.thin_below ?? 0.2) ? 'thin' : 'ok';
   let after: number | null = null, inc: number | null = null, rejected = false;
-  let note = L(`هامش الوحدة ${e.margin_minor} (${pct(ratio)}).`, `Unit margin ${e.margin_minor} (${pct(ratio)}).`);
+  const m = moneyText(e.margin_minor, ctx.ds.business.currency || 'SAR');
+  let note = L(`هامش الوحدة ${m.ar} (${pct(ratio)}).`, `Unit margin ${m.en} (${pct(ratio)}).`);
   if (opts.discount_bp) {
     const be = breakEven({ price_minor: e.price_minor, variable_minor: e.variable_minor, discount_bp: opts.discount_bp, campaign_cost_minor: opts.campaign_cost_minor, baseline_volume: opts.baseline_volume ?? undefined });
     after = Math.round(be.m1);

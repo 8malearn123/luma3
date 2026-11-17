@@ -14,7 +14,8 @@ import { rowToAction } from '../planner/revision';
 import { loadFacts, setupStatus } from '../profile/facts';
 import { render, type Localized, type LoomLocale } from '../util/text';
 import { addDays } from '../util/time';
-import { getDataQuality } from './service';
+import { getDataQuality, subjectNames } from './service';
+import { metricDisplay, type SubjectNames } from '../display';
 
 /**
  * Loom API v1 — phase 3 (planner, plans, home page, notes, knowledge).
@@ -50,7 +51,7 @@ export async function getPlannerRun(c: ViewCtx, id: string) {
   return { ...runView(r, c.locale), validation: r.validation };
 }
 
-function actionView(a: ReturnType<typeof rowToAction> & { id: string }, locale: LoomLocale) {
+function actionView(a: ReturnType<typeof rowToAction> & { id: string }, locale: LoomLocale, names: SubjectNames = new Map()) {
   const r = (t: Localized | null | undefined) => render(t ?? null, locale);
   return {
     id: a.id, ref: a.ref, seq: a.seq, opportunity_id: a.opportunity_id, role: a.role, action_kind: a.action_kind, intervention_id: a.intervention_id,
@@ -62,7 +63,7 @@ function actionView(a: ReturnType<typeof rowToAction> & { id: string }, locale: 
       requirements: a.operational.requirements.map(r),
     },
     highlighted: a.highlighted.map((h) => ({ ...h, name: r(h.name) })),
-    success_metrics: a.success_metrics.map((m) => ({ ...m, label: r(metricDefinition(m.metric_key)?.label ?? null) || m.metric_key })),
+    success_metrics: a.success_metrics.map((m) => ({ ...m, ...metricDisplay(m.metric_key, names, locale) })),
     evidence_refs: a.evidence_refs, knowledge: knowledgeTitles(a.knowledge_refs).map((k) => ({ ref: k.ref, title: r(k.title) })),
     revision_note: a.revision_note ? r(a.revision_note) : null,
   };
@@ -78,17 +79,32 @@ export async function getPlanActions(c: ViewCtx, planId: string, versionId?: str
   const plan = await loomHost().plans.get(c.businessId, planId);
   if (!plan) throw Errors.notFound('plan');
   const v = versionId ?? plan.current_version_id;
-  if (!v) return { plan: planView(plan), version_id: null, actions: [], run: null };
+  const titles = await draftTitles(c.businessId, [planId], c.locale);
+  if (!v) return { plan: planView(plan, titles), version_id: null, actions: [], run: null };
   const actions = await actionsOf(c.businessId, v);
+  const names = actions.length ? await subjectNames(c.businessId) : new Map();
   const run = await withTenant(c.businessId, (trx) => trx.selectFrom('loom.planner_runs').selectAll().where('business_id', '=', c.businessId).where('plan_version_id', '=', v).executeTakeFirst());
   const draft = (run?.result as { draft?: { notes?: Localized[]; budget?: unknown; limitations?: Localized[] } } | undefined)?.draft;
   return {
-    plan: planView(plan), version_id: v, actions: actions.map((a) => actionView(a, c.locale)),
+    plan: planView(plan, titles), version_id: v, actions: actions.map((a) => actionView(a, c.locale, names)),
     run: run ? { ...runView(run, c.locale), notes: (draft?.notes ?? []).map((n) => render(n, c.locale)), budget: draft?.budget ?? null } : null,
   };
 }
 
-const planView = (p: HostPlanRef) => ({ id: p.plan_id, kind: p.kind, title: p.title, status: p.status, period: p.period, current_version: p.current_version, has_unapproved_changes: p.has_unapproved_changes, change_note: p.current_change_note, source: p.current_source });
+/** Bilingual planner titles of Loom-generated plans (LUMA-AUDIT-039): the stored plan title is in the business locale only. */
+async function draftTitles(businessId: string, planIds: string[], locale: LoomLocale) {
+  const out = new Map<string, string>();
+  if (!planIds.length) return out;
+  const rows = await withTenant(businessId, (trx) => trx.selectFrom('loom.planner_runs').select(['plan_id', 'result']).where('business_id', '=', businessId)
+    .where('plan_id', 'in', planIds).where('kind', '!=', 'revision').where('status', '=', 'succeeded').orderBy('created_at').execute());
+  for (const r of rows) {
+    const t = (r.result as { draft?: { title?: Localized } } | null)?.draft?.title;
+    if (r.plan_id && t && !out.has(r.plan_id)) out.set(r.plan_id, render(t, locale));
+  }
+  return out;
+}
+
+const planView = (p: HostPlanRef, titles?: Map<string, string>) => ({ id: p.plan_id, kind: p.kind, title: titles?.get(p.plan_id) || p.title, status: p.status, period: p.period, current_version: p.current_version, has_unapproved_changes: p.has_unapproved_changes, change_note: p.current_change_note, source: p.current_source });
 
 // ── Notes on opportunities ──────────────────────────────────────────────────
 export async function listComments(c: ViewCtx, opportunityId: string) {
@@ -114,9 +130,11 @@ export async function addComment(c: Ctx, opportunityId: string, body: string) {
 export async function home(c: ViewCtx, today: string) {
   const host = loomHost();
   const dq = await getDataQuality(c);
+  const names = await subjectNames(c.businessId);
   const [monthly, weekly, revisions] = await Promise.all([
     host.plans.current(c.businessId, 'monthly', today), host.plans.current(c.businessId, 'weekly', today), host.plans.pendingRevisions(c.businessId),
   ]);
+  const titles = await draftTitles(c.businessId, [monthly, weekly, ...revisions].filter((p): p is HostPlanRef => !!p).map((p) => p.plan_id), c.locale);
   return withTenant(c.businessId, async (trx) => {
     const analyses = await trx.selectFrom('loom.analyses').select(['id', 'status', 'mode', 'finished_at', 'created_at', 'result']).where('business_id', '=', c.businessId).orderBy('created_at', 'desc').limit(10).execute();
     const done = analyses.filter((a) => a.status === 'succeeded');
@@ -151,7 +169,7 @@ export async function home(c: ViewCtx, today: string) {
 
     const revisionRuns = revisions.length ? await trx.selectFrom('loom.planner_runs').select(['plan_id', 'reason', 'created_at']).where('business_id', '=', c.businessId).where('kind', '=', 'revision')
       .where('plan_id', 'in', revisions.map((r) => r.plan_id)).orderBy('created_at', 'desc').execute() : [];
-    const planRevisions = revisions.map((p) => ({ ...planView(p), reason: (() => { const r = revisionRuns.find((x) => x.plan_id === p.plan_id); return r?.reason ? render(r.reason as Localized, c.locale) : p.current_change_note; })() }));
+    const planRevisions = revisions.map((p) => ({ ...planView(p, titles), reason: (() => { const r = revisionRuns.find((x) => x.plan_id === p.plan_id); return r?.reason ? render(r.reason as Localized, c.locale) : p.current_change_note; })() }));
 
     // This week: the weekly plan's actions, else the monthly actions scheduled in the next 7 days.
     const weekEnd = addDays(today, 6);
@@ -159,7 +177,7 @@ export async function home(c: ViewCtx, today: string) {
     const weekVersion = versionFor(weekly) ?? versionFor(monthly);
     const weekRows = weekVersion ? await trx.selectFrom('loom.plan_actions').selectAll().where('business_id', '=', c.businessId).where('plan_version_id', '=', weekVersion).orderBy('seq').execute() : [];
     const thisWeek = weekRows.map((row) => ({ ...rowToAction(row as never), id: row.id }))
-      .filter((a) => weekly || (a.schedule.from <= weekEnd && a.schedule.to >= today)).map((a) => actionView(a, c.locale));
+      .filter((a) => weekly || (a.schedule.from <= weekEnd && a.schedule.to >= today)).map((a) => actionView(a, c.locale, names));
 
     const lastRun = await trx.selectFrom('loom.planner_runs').selectAll().where('business_id', '=', c.businessId).where('kind', '!=', 'revision').orderBy('created_at', 'desc').executeTakeFirst();
     const setup = setupStatus(await loadFacts(trx, c.businessId));
@@ -171,7 +189,7 @@ export async function home(c: ViewCtx, today: string) {
         quality: dq.report ? { overall: dq.report.overall, domains: Object.fromEntries(Object.entries(dq.report.domains).map(([k, v]) => [k, { level: v.level, improve: v.improve }])) } : null,
       },
       top_opportunities: top,
-      plan: { monthly: monthly ? planView(monthly) : null, weekly: weekly ? planView(weekly) : null, this_week: thisWeek, last_run: lastRun ? runView(lastRun, c.locale) : null },
+      plan: { monthly: monthly ? planView(monthly, titles) : null, weekly: weekly ? planView(weekly, titles) : null, this_week: thisWeek, last_run: lastRun ? runView(lastRun, c.locale) : null },
       pending: { opportunities: pendingOpps, plan_revisions: planRevisions },
       results: { status: 'not_available_yet' as const, items: [] as unknown[] },
       alerts,

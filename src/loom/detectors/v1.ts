@@ -14,6 +14,8 @@ const DAYPART: Record<string, Localized> = { morning: L('الصباح', 'morning
 const WEEKDAY: Localized[] = [L('الأحد', 'Sunday'), L('الاثنين', 'Monday'), L('الثلاثاء', 'Tuesday'), L('الأربعاء', 'Wednesday'), L('الخميس', 'Thursday'), L('الجمعة', 'Friday'), L('السبت', 'Saturday')];
 const slotName = (key: string): Localized => { const [wd, dp] = key.split('.'); return L(`${WEEKDAY[Number(wd)]!.ar} ${DAYPART[dp!]!.ar}`, `${WEEKDAY[Number(wd)]!.en} ${DAYPART[dp!]!.en}`); };
 const nm = (o: Offering | undefined) => o?.name ?? L('—', '—');
+/** An inventory item's name: the linked offering's bilingual name when there is one, else the item's own (single-language) name. */
+export const itemName = (item: { name: string }, offering: Offering | undefined): Localized => (offering ? L(offering.name.ar || item.name, offering.name.en || offering.name.ar || item.name) : L(item.name, item.name));
 
 export function ev(c: DetectContext, key: string, grain = 'business', grade: EvidenceItem['grade'] = 'observed'): EvidenceItem {
   const m = c.metrics.get(key, grain);
@@ -236,11 +238,13 @@ export const slowMoverBundle: Detector = {
     if (!top || completed(c, top.id) === 0) return [];
     return slowMovers(c.ctx).slice(0, 2).map((item) => {
       const prod = c.ctx.offeringById.get(item.offering_id!);
+      // A sellable item linked to a product variant uses the product's bilingual name (LUMA-AUDIT-039).
+      const nameL = itemName(item, prod);
       return base(c, {
         detector_id: 'slow_mover_bundle', category: 'slow_mover_bundle', subject_key: `item:${item.id}`, subject: { offering_ids: [top.id, ...(prod ? [prod.id] : [])], item_ids: [item.id] },
-        title: L(`تحريك ${item.name} مع ${top.name.ar}`, `Move ${item.name} with ${top.name.en}`),
-        why_now: L(`${item.on_hand - item.reserved} وحدة من ${item.name} متاحة ومبيعاتها ${item.sold_90d} خلال ٩٠ يومًا، و${top.name.ar} أكثر خدماتك طلبًا.`,
-          `${item.on_hand - item.reserved} units of ${item.name} on hand with ${item.sold_90d} sold in 90 days, and ${top.name.en} is your most requested service.`),
+        title: L(`تحريك ${nameL.ar} مع ${top.name.ar}`, `Move ${nameL.en} with ${top.name.en}`),
+        why_now: L(`${item.on_hand - item.reserved} وحدة من ${nameL.ar} متاحة ومبيعاتها ${item.sold_90d} خلال ٩٠ يومًا، و${top.name.ar} أكثر خدماتك طلبًا.`,
+          `${item.on_hand - item.reserved} units of ${nameL.en} on hand with ${item.sold_90d} sold in 90 days, and ${top.name.en} is your most requested service.`),
         evidence: [ev(c, 'inventory.on_hand', `item:${item.id}`), ev(c, 'inventory.days_of_cover', `item:${item.id}`), ev(c, 'sales.completed_count', `offering:${top.id}`)],
         hypotheses: [L('قد يكون المنتج غير معروض بالقرب من الخدمة المناسبة.', 'The product may not be presented next to the right service.')],
         target_volume: Math.min(item.on_hand - item.reserved, Math.max(1, Math.ceil((completed(c, top.id) * 14) / 90 * 0.2))), check_offering_id: top.id,

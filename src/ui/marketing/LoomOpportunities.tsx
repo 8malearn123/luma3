@@ -10,7 +10,8 @@ import { Button } from '../components/button';
 import { Alert, Badge, EmptyState, ErrorState, LoadingState } from '../components/feedback';
 import { Field, Input, MoneyInput, Select, Textarea } from '../components/form';
 import { Card } from '../components/layout';
-import { loomKey, useAct } from './loom-shared';
+import { useToast } from '../components/toast';
+import { loomKey, useAct, useChannelLabel, useLoomFmt } from './loom-shared';
 import { DecisionHistory } from './LoomResults';
 
 const REASONS = ['capacity_staffing', 'capacity_inventory', 'budget', 'brand_fit', 'timing', 'already_doing', 'disagree_with_data', 'not_valuable', 'other'] as const;
@@ -101,8 +102,14 @@ function OpportunityCard({ o }: { o: any }) {
   const detail = useApiQuery<any>(loomKey(access.slug, 'opp', c.opportunity_id), open ? access.api(`/loom/opportunities/${c.opportunity_id}`) : null);
   const canManage = access.can('marketing.manage');
   const money = (v: number | null) => (v == null ? '—' : formatMoney(v, access.currency, locale));
+  const fmt = useLoomFmt();
+  const channelLabel = useChannelLabel();
+  const toast = useToast();
   const decide = (body: Record<string, unknown>) => act(`d${body.action}`, `/loom/opportunities/${c.opportunity_id}/decision`, { body, ok: t('loom.decision.done') }).then((r) => { if (r) { setMode(null); setReason(''); setNote(''); } });
-  const convert = (body: Record<string, unknown>) => act(`c${body.target}`, `/loom/opportunities/${c.opportunity_id}/convert`, { body, ok: t('loom.convert.done') });
+  const convert = (body: Record<string, unknown>) => act<any>(`c${body.target}`, `/loom/opportunities/${c.opportunity_id}/convert`, { body }).then((r) => {
+    if (r) toast({ tone: r.result?.status === 'already_in_plan' ? 'info' : 'ok', text: r.result?.status === 'already_in_plan' ? t('loomux.plans.already_in_plan') : t('loom.convert.done') });
+    return r;
+  });
   const open_ = ['detected', 'assessed', 'proposed', 'studying'].includes(o.status);
   return (
     <li className="rounded-2xl border border-line bg-white p-4">
@@ -133,19 +140,20 @@ function OpportunityCard({ o }: { o: any }) {
           <Detail label={t('loom.card.period')} value={`${c.period.from} → ${c.period.to}`} ltr />
           <Detail label={t('loom.card.timing')} value={`${c.timing.window}${c.timing.event_ref ? ` · ${t('loom.card.event')}` : ''}`} />
           <Detail label={t('loom.card.segment')} value={`${c.target_segment.size != null ? t('loom.card.segment_size', { n: c.target_segment.size }) : '—'} (${t(`loom.segment_status.${c.target_segment.size_status}`)})`} />
-          <Detail label={t('loom.card.channel')} value={c.channel.join(', ') || '—'} />
+          <Detail label={t('loom.card.channel')} value={c.channel.map(channelLabel).join(locale === 'ar' ? '، ' : ', ') || '—'} />
           <Detail label={t('loom.card.cost')} value={`${money(c.estimated_cost.amount_minor)} (${t(`loom.cost_basis.${c.estimated_cost.basis}`)})`} />
           <Detail label={t('loom.card.capacity')} value={`${c.capacity_check.note}${c.capacity_check.max_additional != null ? ` · ${t('loom.card.max_additional', { n: c.capacity_check.max_additional })}` : ''}`} />
           <Detail label={t('loom.card.inventory')} value={o.details.inventory_note || t(`loom.inventory.${c.inventory_check.status}`)} />
           <Detail label={t('loom.card.margin')} value={[
             o.details.margin_note,
-            c.margin_check.unit_margin_before_minor != null ? t('loom.card.margin_before', { amount: money(c.margin_check.unit_margin_before_minor) }) : '',
+            // The rules note already states the unit margin (formatted); repeat it only when there is no note.
+            c.margin_check.unit_margin_before_minor != null && !o.details.margin_note ? t('loom.card.margin_before', { amount: money(c.margin_check.unit_margin_before_minor) }) : '',
             c.margin_check.breakeven_volume_increase != null ? t('loom.card.breakeven', { pct: `${Math.round(c.margin_check.breakeven_volume_increase * 1000) / 10}%` }) : '',
           ].filter(Boolean).join(' · ')} />
           {c.prerequisites.length ? <ListDetail label={t('loom.card.prerequisites')} items={c.prerequisites} /> : null}
           {c.hypotheses.length ? <ListDetail label={t('loom.card.hypotheses')} items={c.hypotheses.map((h: any) => h.text)} /> : null}
           {c.alternatives_considered.length ? <ListDetail label={t('loom.card.alternatives')} items={c.alternatives_considered.map((a: any) => `${t(`loom.action_kind.${a.kind}`)}: ${a.rejected_because}`)} /> : null}
-          <ListDetail label={`${t('loom.card.success')} (${t('loom.card.target_note')})`} items={c.success_metrics.filter((m: any) => m.target_kind !== 'model_forecast').map((m: any) => `${m.metric_key}: ${m.baseline ?? '—'} → ${m.target ?? '—'}`)} ltr />
+          <ListDetail label={`${t('loom.card.success')} (${t('loom.card.target_note')})`} items={c.success_metrics.map((m: any, i: number) => ({ m, d: o.display?.success_metrics?.[i] ?? { label: t('loomux.diff.section.metric'), unit: null } })).filter(({ m }: any) => m.target_kind !== 'model_forecast').map(({ m, d }: any) => `${d.label}: ${fmt(d.unit, m.baseline)} → ${fmt(d.unit, m.target)}`)} />
           {/* Phase 6: forecasts are listed apart from the proposed goals, labelled with their source and interval (never mixed). */}
           {c.success_metrics.some((m: any) => m.target_kind === 'model_forecast') ? (
             <ListDetail label={`${t('loom_models.card.title')} — ${t('loom_models.card.note')}`} items={c.success_metrics.filter((m: any) => m.target_kind === 'model_forecast').map((m: any) => t('loom_models.card.line', {
@@ -162,8 +170,8 @@ function OpportunityCard({ o }: { o: any }) {
             {detail.isLoading ? <LoadingState rows={1} /> : (
               <ul className="mt-1 flex flex-col gap-1 text-xs">
                 {(detail.data?.evidence ?? []).map((e: any) => (
-                  <li key={e.id} className="flex flex-wrap items-center gap-2"><span className="font-mono" dir="ltr">{e.id}</span><span dir="auto">{e.label}</span>
-                    <span dir="ltr">= {e.value ?? '—'} (n={e.n})</span><Badge>{t(`loom.card.evidence_grade.${e.grade}`)}</Badge></li>
+                  <li key={e.id} className="flex flex-wrap items-center gap-2"><span dir="auto">{e.label}:</span>
+                    <span className="font-medium tabular-nums">{fmt(e.unit, e.value)}</span><span className="text-ink-muted">({t('loomux.evidence_sample', { n: e.n })})</span><Badge>{t(`loom.card.evidence_grade.${e.grade}`)}</Badge></li>
                 ))}
               </ul>
             )}
@@ -173,7 +181,7 @@ function OpportunityCard({ o }: { o: any }) {
             <p className="text-xs font-medium text-ink-muted">{t('loomp.card.methodology')}</p>
             {detail.data?.knowledge?.length ? (
               <ul className="mt-1 flex flex-col gap-1 text-xs">
-                {detail.data.knowledge.map((k: any) => <li key={k.ref}><span dir="auto">{k.title}</span> <span className="text-ink-muted" dir="ltr">({k.ref} · {k.source?.reviewed_at})</span></li>)}
+                {detail.data.knowledge.map((k: any) => <li key={k.ref}><span dir="auto">{k.title}</span>{k.source?.reviewed_at ? <span className="text-ink-muted"> ({formatDate(k.source.reviewed_at, { locale, tz: access.timezone })})</span> : null}</li>)}
               </ul>
             ) : <p className="text-xs text-ink-muted">{t('loomp.card.no_methodology')}</p>}
             {o.details.wording ? <p className="mt-1 text-xs text-ink-muted">{t(`loomp.card.wording_${o.details.wording.source}`)}</p> : null}

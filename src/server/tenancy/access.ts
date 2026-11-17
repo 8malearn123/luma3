@@ -7,6 +7,7 @@ import type { SessionUser } from '../auth/service';
 import { Errors } from '../http/errors';
 import type { PlanFeatureKey, PlanLimitKey } from '@/shared/plans';
 import { mfaPending } from '../domains/platform/mfa-state';
+import { restrictForWorkspace, workspaceModeFor, type WorkspaceMode } from './workspace-mode';
 
 export type PlanEntitlements = {
   planCode: string | null;
@@ -31,6 +32,8 @@ export type TenantAccess = {
   plan: PlanEntitlements;
   /** Expired/cancelled subscriptions keep data readable but block new writes. */
   readOnly: boolean;
+  /** Business-type workspace rules (workspace-mode.ts); absent = no restriction. */
+  workspace?: WorkspaceMode;
 };
 
 export async function loadEntitlements(trx: Tx | ReturnType<typeof db>, tenantId: string): Promise<PlanEntitlements & { readOnly: boolean }> {
@@ -70,12 +73,13 @@ export async function resolveTenantAccess(user: SessionUser, slug: string): Prom
 
   if (m) {
     const ent = await withSystem('load plan entitlements for member', (trx) => loadEntitlements(trx, tenant.id));
+    const workspace = await workspaceModeFor(tenant.id, tenant.business_type);
     return {
       tenantId: tenant.id, slug: tenant.slug, name: tenant.name, status: tenant.status, businessType: tenant.business_type,
       timezone: tenant.timezone, currency: tenant.currency, defaultLocale: tenant.default_locale,
       role: m.role, membershipId: m.membership_id, staffProfileId: m.staff_profile_id,
-      capabilities: m.tenant_status === 'suspended' ? new Set() : effectiveCapabilities(m.role, m.granted_capabilities, m.revoked_capabilities),
-      supportGrantId: null, plan: ent, readOnly: ent.readOnly || tenant.status === 'suspended',
+      capabilities: m.tenant_status === 'suspended' ? new Set() : restrictForWorkspace(effectiveCapabilities(m.role, m.granted_capabilities, m.revoked_capabilities), tenant.business_type, workspace),
+      supportGrantId: null, plan: ent, readOnly: ent.readOnly || tenant.status === 'suspended', workspace,
     };
   }
 
@@ -89,12 +93,13 @@ export async function resolveTenantAccess(user: SessionUser, slug: string): Prom
       .orderBy('expires_at', 'desc').executeTakeFirst());
     if (grant) {
       const ent = await withSystem('load plan entitlements for support', (trx) => loadEntitlements(trx, tenant.id));
+      const workspace = await workspaceModeFor(tenant.id, tenant.business_type);
       return {
         tenantId: tenant.id, slug: tenant.slug, name: tenant.name, status: tenant.status, businessType: tenant.business_type,
         timezone: tenant.timezone, currency: tenant.currency, defaultLocale: tenant.default_locale,
         role: 'support', membershipId: null, staffProfileId: null,
-        capabilities: supportCapabilities(grant.access_level as 'read' | 'write'),
-        supportGrantId: grant.id, plan: ent, readOnly: grant.access_level === 'read',
+        capabilities: restrictForWorkspace(supportCapabilities(grant.access_level as 'read' | 'write'), tenant.business_type, workspace),
+        supportGrantId: grant.id, plan: ent, readOnly: grant.access_level === 'read', workspace,
       };
     }
   }

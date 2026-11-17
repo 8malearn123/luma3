@@ -125,8 +125,9 @@ function ReviewsCard({ reviews }: { reviews: NonNullable<Reviews> }) {
 function PlanNudge({ plan }: { plan: NonNullable<Plan> }) {
   const { t, locale } = useI18n();
   const access = useAccess();
-  if (!plan.nudge) return null;
-  const near = plan.items.filter((i) => i.near_limit);
+  // R5: a solo freelancer has one studio, so the branch limit is not an upsell for her.
+  const near = plan.items.filter((i) => i.near_limit && !(access.solo && i.key === 'limit.branches'));
+  if (!plan.nudge || !near.length) return null;
   return (
     <Alert tone="warn" title={t('business.overview.plan_nudge_title')}>
       <ul className="mt-1 flex flex-col gap-0.5">

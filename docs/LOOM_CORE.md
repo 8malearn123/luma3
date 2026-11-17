@@ -165,6 +165,30 @@ Since phase 3 the Loom planner writes plans into the same `marketing_plans` / `p
 
 `trend_assessment`, `employee_insights`, campaigns and the trend radar are not affected.
 
+### 8.1 Two plan implementations — inventory and recommendation (LUMA-AUDIT-021, 2026-11-17)
+
+**What exists.** Both paths write the SAME LUMA tables (`marketing_plans` + append-only `plan_versions`, one lifecycle: draft → proposed → under_review → approved → in_progress → completed / deferred / rejected, `POST /marketing/plans/{id}/transition`). They differ in who produces a version:
+
+| | Legacy marketing pipeline | Loom planner (canonical) |
+|---|---|---|
+| Entry points | `POST /marketing/jobs {kind: monthly_plan \| weekly_plan}`, `POST /marketing/plans/{id}/regenerate`, the hourly `marketing.scheduler` (scheduled weekly/monthly runs), `?tab=summary` buttons | `POST /loom/plans {kind, period_start?, mode?}` (home page, «الخطط الشهرية/الأسبوعية», and — since this change — the plan drawer's «إعادة التحليل») |
+| Job / provenance | `ai_jobs` + `marketing.ai_job`, `ai_runs`, `metric_snapshots`; `plan_versions.source = ai \| rules` | `loom.planner_runs` + `loom.plan` job; same `source`, plus `loom.plan_actions` (checks, real slots, materials, owners, knowledge), bilingual draft in `planner_runs.result.draft`, opportunity wording |
+| Input | `marketing/snapshot.ts` (`metric_snapshots`) and `rules.ts` | the latest Loom analysis: evidence-backed opportunities, metrics registry, capacity/inventory/margin checks |
+| Revisions | none (only regeneration) | `proposePlanRevision` (change aggregator), approval untouched |
+| Data ownership | LUMA (`ai_jobs`, `metric_snapshots`, `recommendations`) | Loom schema (`loom.*`); plan rows still in LUMA through `PlanStorePort` |
+
+**Existing records** (seeded demo database `luma_remloom_e2e`, queried 2026-11-17 before any test mutation): `marketing_plans` = 2 (Noura: one Loom rules-based monthly plan with 1 version, 1 `planner_runs` row and 6 `loom.plan_actions`; one labelled example plan), `ai_jobs` = 0, `recommendations` = 0, approved plans = 0. Lamar (expert): none. So in the demo every non-example plan already comes from the Loom planner; legacy-generated versions exist only where the scheduler or the old buttons were used.
+
+**Recommendation (for the owner's decision Q10; nothing deleted or migrated).**
+1. **Canonical workflow = Loom planner.** Analysis (`loom.analysis`) → opportunities (approve / study / defer / dismiss) → `POST /loom/plans` (monthly, then weekly under it) → owner reviews/edits/approves the plan version in «الخطط الشهرية/الأسبوعية» → conversions add items idempotently (`loom:<opportunity>` change note) → results/measurement. One lifecycle and one table set, as today.
+2. **Legacy generation is frozen, not removed.** Keep `/marketing/plans*` read/edit/transition/export/diff routes (they ARE the plan store). Keep `POST /marketing/jobs` (monthly_plan / weekly_plan / recommendations) and `/regenerate` callable for backward compatibility but unused by the UI. **Pending decision:** switch `marketing.scheduler`'s scheduled weekly/monthly runs to `requestPlan` (Loom) — today they still enqueue legacy jobs, so a scheduled version has no `plan_actions` and is shown without Loom items.
+3. **Approved plans stay as they are.** Their approved version never changes; a later Loom version is appended and must be approved explicitly (existing rule). No back-fill of `plan_actions` for legacy versions; the drawer simply shows no «بنود الخطة من لووم» for them, and their provenance is shown as stored.
+4. **Retirement criteria** (later, separate change): 0 legacy plan jobs for N months, scheduler moved, then remove the legacy generation code (`pipeline.ts` plan kinds, `rules.ts` plan builders, `prompts.ts` plan prompts) — never the stored versions.
+
+**Done now (non-destructive, UI):** the Loom page shows the agreed primary experience first — «الرئيسية», «الخطط الشهرية», «الخطط الأسبوعية», «الفرص المستمرة», «الاتجاهات والأدلة», «النتائج» (then «الحملات», «إعداد لووم») — and moves provider/model/job/connection configuration to «متقدم» (marketing.manage only): «حالة التحليل» (now the real state of `loom.analyses`, `loom.planner_runs` and legacy `ai_jobs` with timestamps and reasons), «الربط والبيانات», «النماذج», «الجدولة والتقويم». Old `?tab=plans|jobs|connections|models|preferences` links still resolve. Plans are labelled «أعدّها لووم بالقواعد» / «Rules-based (no AI)»; the page never claims AI or live trends: in this environment AI and radar providers are not connected and the UI says so.
+
+**Display rules (LUMA-AUDIT-022/023/024/038/039).** Owners never see internal keys or minor units: `src/loom/display.ts` (`metricDisplay`, `metricLabel`, `grainLabel`, `moneyText`) gives every metric its registry label + subject name (offering, item, weekday/daypart) and unit; the UI formats with `useLoomFmt` (money from minor units in the business currency). Evidence ids (`ev_*`) and knowledge refs are not shown. Plan views (`GET /marketing/plans[/{id}]`) re-render Loom versions from the bilingual draft in the reader's locale (`src/server/loom-host/plan-view.ts`), add `display` (labels/units per baseline/metric row) and `provenance` per version (`rules`, `ai`, `regenerated`, `opportunity_added`, `revision`, `user_edit`, `user_created`, `example`). Version comparison returns `summary` (`humanDiff`: section, item title, field, plain before/after) next to the raw `changes`. Converting an opportunity to a plan item is idempotent (`already_in_plan` when the current version holds it as a Loom action or an earlier conversion), written in the plan's own language, and creates at most one initiative per artifact.
+
 ## 9. Tests
 
 `tests/unit/loom-{architecture,engine,economics,connector,metrics-quality,ranking}.test.ts` (pure, synthetic datasets in `tests/helpers/loom-dataset.ts`) and `tests/integration/loom-{core,api,settings}.test.ts` (DB, fixtures in `tests/helpers/loom-core.ts`). §20 coverage on the rules path: T1, T2, T3, T4, T5, T6, T7, T8, T11, T12, T13, T15 (T9, T10, T14 belong to phases 3 and 5).
