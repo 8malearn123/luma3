@@ -25,7 +25,11 @@ function dirtyParts(doc: Doc, saved: Doc): Part[] {
   return out;
 }
 
-export type SaveStatus = 'idle' | 'saving' | 'saved' | 'error' | 'conflict';
+export type SaveStatus = 'idle' | 'saving' | 'saved' | 'error' | 'conflict' | 'retrying';
+
+/** Network loss, server hiccups and rate limits are retried; validation errors are not. */
+const transient = (e: unknown) => e instanceof ApiError && (e.status === 0 || e.status === 429 || e.status >= 500);
+const RETRY_MAX_MS = 30_000;
 
 /**
  * Local working copy of the draft with undo/redo history and debounced
@@ -58,6 +62,9 @@ export function useBuilder(slug: string, initial: BuilderState) {
   const saving = useRef<Promise<boolean> | null>(null);
   const coalesce = useRef<{ key: string; at: number } | null>(null);
   const conflictRef = useRef<Part | null>(null);
+  const retryTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const retryAttempt = useRef(0);
+  const flushRef = useRef<() => Promise<boolean>>(async () => true);
   const markConflict = useCallback((c: Part | null) => { conflictRef.current = c; setConflict(c); }, []);
 
   const dirty = useMemo(() => dirtyParts(doc, saved), [doc, saved]);
@@ -138,18 +145,36 @@ export function useBuilder(slug: string, initial: BuilderState) {
           await savePart(part, d);
         } catch (e) {
           if (e instanceof ApiError && e.status === 409) { markConflict(part); setStatus('conflict'); return false; }
+          if (transient(e)) {
+            // Keep the edit and retry with backoff (and immediately when the browser is back online).
+            const delay = Math.min(RETRY_MAX_MS, 2000 * 2 ** retryAttempt.current++);
+            if (retryTimer.current) clearTimeout(retryTimer.current);
+            retryTimer.current = setTimeout(() => { retryTimer.current = null; void flushRef.current(); }, delay);
+            setError(e); setStatus('retrying');
+            return false;
+          }
           const ref = part === 'brand' ? d.brand : part === 'layout' ? d.layout : d.blocks[part.slice(5)];
           if (ref) failed.current.add(ref);
           setError(e); setStatus('error');
           return false;
         }
       }
+      retryAttempt.current = 0;
+      if (retryTimer.current) { clearTimeout(retryTimer.current); retryTimer.current = null; }
       setError(null); setStatus('saved'); setLastSavedAt(new Date());
       return true;
     })();
     saving.current = run;
     try { return await run; } finally { saving.current = null; }
   }, [savePart, markConflict]);
+
+  useEffect(() => { flushRef.current = flush; }, [flush]);
+  // Reconnect: save at once instead of waiting for the next backoff step.
+  useEffect(() => {
+    const onOnline = () => { retryAttempt.current = 0; if (retryTimer.current) { clearTimeout(retryTimer.current); retryTimer.current = null; } void flushRef.current(); };
+    window.addEventListener('online', onOnline);
+    return () => { window.removeEventListener('online', onOnline); if (retryTimer.current) clearTimeout(retryTimer.current); };
+  }, []);
 
   // Debounced autosave (skips values that already failed validation until they change).
   useEffect(() => {
@@ -203,7 +228,7 @@ export function useBuilder(slug: string, initial: BuilderState) {
     return flush();
   }, [slug, flush, markSaved, markConflict]);
 
-  const retry = useCallback(() => { failed.current = new WeakSet(); setError(null); return flush(); }, [flush]);
+  const retry = useCallback(() => { failed.current = new WeakSet(); retryAttempt.current = 0; setError(null); return flush(); }, [flush]);
 
   /** Registers a page created through the API. */
   const addPage = useCallback((page: { id: string; version: number; blocks: PageBlock[] }) => {

@@ -10,7 +10,7 @@ export const common = {
     },
     states: {
       loading: 'جارٍ التحميل…', empty: 'لا توجد بيانات بعد', error: 'تعذّر تحميل البيانات', denied: 'ليست لديكِ صلاحية لعرض هذه الصفحة',
-      denied_hint: 'اطلبي من مالكة النشاط منحكِ الصلاحية المناسبة.', offline: 'لا يوجد اتصال بالإنترنت', saved: 'تم الحفظ', unsaved: 'لديكِ تغييرات غير محفوظة',
+      denied_hint: 'اطلبي من مالكة النشاط منحكِ الصلاحية المناسبة.', not_available: 'هذا القسم غير متاح هنا', not_available_hint: 'قد لا يكون ضمن صلاحياتكِ أو باقتكِ أو نوع نشاطكِ، أو أنه لم يعد موجوداً.', offline: 'لا يوجد اتصال بالإنترنت', saved: 'تم الحفظ', unsaved: 'لديكِ تغييرات غير محفوظة',
       unsaved_leave: 'لديكِ تغييرات غير محفوظة. هل تريدين المغادرة؟', not_found: 'الصفحة غير موجودة', success: 'تمت العملية بنجاح',
       last_saved: 'آخر حفظ: {time}', unknown: 'غير معروف', none: 'لا يوجد', simulated: 'محاكاة', test_data: 'بيانات تجريبية', example: 'مثال',
     },
@@ -21,6 +21,7 @@ export const common = {
       from: 'من', to: 'إلى', total: 'الإجمالي', quantity: 'الكمية', reason: 'السبب', role: 'الدور', image: 'الصورة', alt_text: 'نص بديل للصورة',
     },
     locale: { switch: 'English', current: 'العربية' },
+    theme: { label: 'المظهر', system: 'حسب الجهاز', light: 'فاتح', dark: 'داكن' },
     time: { tz_note: 'الأوقات معروضة {tz}', h12: '١٢ ساعة', h24: '٢٤ ساعة' },
     pagination: { prev: 'السابق', next: 'التالي', page: 'صفحة {n}' },
     a11y: { skip_to_content: 'تخطي إلى المحتوى', menu: 'القائمة', open_menu: 'فتح القائمة', close_menu: 'إغلاق القائمة', notifications: 'الإشعارات' },
@@ -37,7 +38,7 @@ export const common = {
     },
     states: {
       loading: 'Loading…', empty: 'Nothing here yet', error: 'Could not load data', denied: 'You do not have permission to view this page',
-      denied_hint: 'Ask the business owner to grant you the right access.', offline: 'You are offline', saved: 'Saved', unsaved: 'You have unsaved changes',
+      denied_hint: 'Ask the business owner to grant you the right access.', not_available: 'This is not available here', not_available_hint: 'It may not be part of your role, plan or business type, or it no longer exists.', offline: 'You are offline', saved: 'Saved', unsaved: 'You have unsaved changes',
       unsaved_leave: 'You have unsaved changes. Leave anyway?', not_found: 'Page not found', success: 'Done',
       last_saved: 'Last saved: {time}', unknown: 'Unknown', none: 'None', simulated: 'Simulated', test_data: 'Test data', example: 'Example',
     },
@@ -48,6 +49,7 @@ export const common = {
       from: 'From', to: 'To', total: 'Total', quantity: 'Quantity', reason: 'Reason', role: 'Role', image: 'Image', alt_text: 'Image alt text',
     },
     locale: { switch: 'العربية', current: 'English' },
+    theme: { label: 'Appearance', system: 'Match device', light: 'Light', dark: 'Dark' },
     time: { tz_note: 'Times shown in {tz}', h12: '12-hour', h24: '24-hour' },
     pagination: { prev: 'Previous', next: 'Next', page: 'Page {n}' },
     a11y: { skip_to_content: 'Skip to content', menu: 'Menu', open_menu: 'Open menu', close_menu: 'Close menu', notifications: 'Notifications' },

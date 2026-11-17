@@ -28,9 +28,9 @@ export function ImageUpload({ slug, purpose, value, onChange, label }: { slug: s
         <div className="flex flex-col gap-1">
           <Button variant="outline" size="sm" loading={crop.busy} onClick={() => input.current?.click()}>{crop.busy ? t('onboarding.uploading') : label}</Button>
           {value && crop.canCrop ? <Button variant="ghost" size="sm" icon={<Crop className="size-4" />} onClick={() => crop.recrop(value)}>{t('business.crop.edit')}</Button> : null}
-          {value ? <Button variant="ghost" size="sm" icon={<Trash2 className="size-4" />} onClick={() => onChange(null)}>{t('onboarding.remove')}</Button> : null}
+          {value ? <Button variant="ghost" size="sm" icon={<Trash2 className="size-4" />} onClick={() => onChange(null)} aria-label={`${t('onboarding.remove')}: ${label}`}>{t('onboarding.remove')}</Button> : null}
         </div>
-        <input ref={input} type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif" className="sr-only" aria-label={label}
+        <input ref={input} type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif" className="sr-only" tabIndex={-1} aria-hidden
           onChange={(e) => { const file = e.target.files?.[0]; if (file) crop.pick(file); e.target.value = ''; }} />
       </div>
       {crop.error ? <p className="text-xs text-danger" role="alert">{msg(crop.error)}</p> : null}

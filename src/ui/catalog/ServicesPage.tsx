@@ -17,6 +17,7 @@ import { ServiceDrawer } from './ServiceDrawer';
 import { PackagesTab } from './PackagesTab';
 import { ResourcesTab } from './ResourcesTab';
 import { ProposalsTab } from './ProposalsTab';
+import { BookingStatusBanner } from '../builder/BookingStatusBanner';
 
 export type ServiceRow = {
   id: string; version: number; name_ar: string | null; name_en: string | null; description_ar: string | null; description_en: string | null;
@@ -101,6 +102,7 @@ export function ServicesPage() {
         { value: 'proposals', label: t('catalog_ui.proposals'), count: pending.data?.length || undefined },
       ]} />
 
+      {canEdit ? <BookingStatusBanner slug={access.slug} showLink={false} /> : null}
       {tab === 'packages' ? <PackagesTab /> : tab === 'resources' ? <ResourcesTab /> : tab === 'proposals' ? <ProposalsTab /> : (
         <div className="flex flex-col gap-4">
           <CategoriesPanel categories={cats} canEdit={canEdit} />

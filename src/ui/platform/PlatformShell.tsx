@@ -74,7 +74,7 @@ export function PlatformShell({ platform, user, gate, children }: { platform: Pl
     <Ctx.Provider value={platform}>
       <StepUpProvider>
         <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:bg-white focus:p-2">{t('a11y.skip_to_content')}</a>
-        <div className="flex min-h-dvh">
+        <div className="luma-app flex min-h-dvh">
           {!gate ? (
             <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 overflow-y-auto border-e border-line bg-white lg:block">
               <div className="flex items-center gap-2 border-b border-line px-4 py-3">

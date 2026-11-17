@@ -16,7 +16,7 @@ import { useToast } from '../components/toast';
 import { cx } from '../components/cx';
 
 type Item = { service_name_ar: string | null; service_name_en: string | null; staff_name: string };
-type Booking = { id: string; tenant_name: string; tenant_slug: string; number: string; status: string; starts_at: string; timezone: string; total_minor: number; currency: string; items: Item[]; detail_path: string };
+type Booking = { id: string; tenant_name: string; tenant_slug: string; number: string; status: string; payment_status?: string; starts_at: string; timezone: string; total_minor: number; currency: string; items: Item[]; detail_path: string };
 
 const statusTone = (s: string) => (s === 'confirmed' || s === 'completed' ? 'ok' : s === 'cancelled' || s === 'expired' || s === 'no_show' ? 'neutral' : 'warn');
 
@@ -40,7 +40,11 @@ export function BookingsPanel() {
                   <p className="text-sm">{formatDateTime(b.starts_at, { locale, tz: b.timezone, timeFormat, weekday: true })}</p>
                   <p className="text-xs text-ink-muted">{tzLabel(b.timezone, locale)}</p>
                 </div>
-                <Badge tone={statusTone(b.status)}>{t(`account.booking_status.${b.status}`)}</Badge>
+                <span className="flex flex-wrap gap-1">
+                  <Badge tone={statusTone(b.status)}>{t(`account.booking_status.${b.status}`)}</Badge>
+                  {/* Payment state is visible in the list, not only in the details (LUMA-AUDIT-049). */}
+                  {b.payment_status ? <Badge tone={b.payment_status === 'paid' ? 'ok' : b.payment_status.includes('refund') ? 'info' : b.payment_status === 'unpaid' && b.status === 'pending_payment' ? 'warn' : 'neutral'}>{t(`booking.payment_status.${b.payment_status}`)}</Badge> : null}
+                </span>
               </div>
               {b.items.length ? (
                 <ul className="mt-2 text-sm text-ink-muted">

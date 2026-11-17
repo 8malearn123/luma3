@@ -62,8 +62,18 @@ export function messagesFor(locale: Locale) {
 }
 
 /** Interpolates {name} placeholders. Missing keys fall back to the other language, then the key. */
+const pluralRules: Partial<Record<Locale, Intl.PluralRules>> = {};
+/** `{ key: { zero?, one?, two?, few?, many?, other } }` messages are picked by `vars.n` (CLDR plural rules). */
+function plural(locale: Locale, key: string, n: unknown): string | undefined {
+  if (typeof n !== 'number') return undefined;
+  const d = flat[locale];
+  if (d[`${key}.other`] === undefined) return undefined;
+  const cat = (pluralRules[locale] ??= new Intl.PluralRules(locale === 'ar' ? 'ar' : 'en')).select(n);
+  return (n === 0 ? d[`${key}.zero`] : undefined) ?? d[`${key}.${cat}`] ?? d[`${key}.other`];
+}
+
 export function translate(locale: Locale, key: string, vars?: Record<string, string | number>): string {
-  let s = flat[locale][key] ?? flat[locale === 'ar' ? 'en' : 'ar'][key] ?? key;
+  let s = flat[locale][key] ?? plural(locale, key, vars?.n) ?? flat[locale === 'ar' ? 'en' : 'ar'][key] ?? key;
   if (vars) for (const [k, v] of Object.entries(vars)) s = s.replaceAll(`{${k}}`, String(v));
   return s;
 }

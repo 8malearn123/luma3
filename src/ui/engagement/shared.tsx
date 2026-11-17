@@ -15,8 +15,8 @@ import { cx } from '../components/cx';
  * Confirmation that requires a written reason (void, reverse, cancel). Keeps the
  * text after a failure and shows the server's error inside the dialog.
  */
-export function ReasonDialog({ open, onClose, onConfirm, title, body, confirmLabel, danger = true, minLength = 3, maxLength = 300 }: {
-  open: boolean; onClose: () => void; onConfirm: (reason: string) => Promise<unknown>; title: ReactNode; body?: ReactNode; confirmLabel?: string; danger?: boolean; minLength?: number; maxLength?: number;
+export function ReasonDialog({ open, onClose, onConfirm, title, body, confirmLabel, cancelLabel, danger = true, minLength = 3, maxLength = 300 }: {
+  open: boolean; onClose: () => void; onConfirm: (reason: string) => Promise<unknown>; title: ReactNode; body?: ReactNode; confirmLabel?: string; cancelLabel?: string; danger?: boolean; minLength?: number; maxLength?: number;
 }) {
   const { t } = useI18n();
   const msg = useErrorMessage();
@@ -30,7 +30,7 @@ export function ReasonDialog({ open, onClose, onConfirm, title, body, confirmLab
   }
   return (
     <Dialog open={open} onClose={() => { if (!busy) onClose(); }} title={title} footer={<>
-      <Button variant="ghost" onClick={onClose} disabled={busy}>{t('actions.cancel')}</Button>
+      <Button variant="ghost" onClick={onClose} disabled={busy}>{cancelLabel ?? t('actions.cancel')}</Button>
       <Button variant={danger ? 'danger' : 'primary'} loading={busy} disabled={!ok} onClick={go}>{confirmLabel ?? t('actions.confirm')}</Button>
     </>}>
       <div className="flex flex-col gap-3">

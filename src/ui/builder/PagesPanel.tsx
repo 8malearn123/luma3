@@ -31,7 +31,7 @@ function PageMeta({ slug, page, onSaved }: { slug: string; page: BuilderPage; on
     catch (e) { setErr(e); } finally { setBusy(false); }
   };
   return (
-    <div className="flex flex-col gap-3 rounded-lg border border-line bg-white p-3">
+    <div className="flex flex-col gap-3 rounded-lg border border-line bg-surface p-3">
       <FormErrorSummary message={err ? msg(err) : null} />
       <Field label={t('builder.pages.title_ar')}>{(p) => <Input {...p} dir="rtl" maxLength={120} value={f.title_ar} onChange={(e) => setF({ ...f, title_ar: e.target.value })} />}</Field>
       <Field label={t('builder.pages.title_en')}>{(p) => <Input {...p} dir="ltr" maxLength={120} value={f.title_en} onChange={(e) => setF({ ...f, title_en: e.target.value })} />}</Field>
@@ -86,7 +86,7 @@ export function PagesPanel({ slug, pages, current, onSelect, onChanged, onCreate
         {active.map((p) => (
           <li key={p.id}>
             <button type="button" onClick={() => onSelect(p.id)} aria-current={p.id === current ? 'page' : undefined}
-              className={cx('flex w-full items-center gap-2 rounded-lg px-2 py-2 text-start text-sm', p.id === current ? 'bg-luma-700 text-white' : 'hover:bg-luma-100')}>
+              className={cx('flex w-full items-center gap-2 rounded-lg px-2 py-2 text-start text-sm', p.id === current ? 'bg-primary text-on-primary' : 'hover:bg-accent-soft')}>
               <FileText className="size-4 shrink-0" aria-hidden />
               <span className="flex-1 truncate">{pick(p.title_ar, p.title_en)}</span>
               {p.show_in_nav ? <Badge tone={p.id === current ? 'brand' : 'neutral'}>{t('builder.pages.nav_badge')}</Badge> : null}
@@ -99,7 +99,7 @@ export function PagesPanel({ slug, pages, current, onSelect, onChanged, onCreate
       <div className="flex flex-col gap-2">
         <p className="text-xs text-ink-muted">{limit === null ? t('builder.pages.unlimited', { n: customCount }) : t('builder.pages.limit', { n: customCount, max: limit })}</p>
         {adding ? (
-          <div className="flex flex-col gap-2 rounded-lg border border-line bg-white p-3">
+          <div className="flex flex-col gap-2 rounded-lg border border-line bg-surface p-3">
             <FormErrorSummary message={err ? msg(err) : null} />
             <Field label={t('builder.pages.title_ar')}>{(p) => <Input {...p} dir="rtl" maxLength={120} value={form.title_ar} onChange={(e) => setForm({ ...form, title_ar: e.target.value })} />}</Field>
             <Field label={t('builder.pages.title_en')}>{(p) => <Input {...p} dir="ltr" maxLength={120} value={form.title_en} onChange={(e) => setForm({ ...form, title_en: e.target.value, slug: form.slug || '' })} />}</Field>
@@ -120,7 +120,7 @@ export function PagesPanel({ slug, pages, current, onSelect, onChanged, onCreate
           <summary className="cursor-pointer text-ink-muted">{t('builder.pages.archived', { n: archived.length })}</summary>
           <ul className="mt-2 flex flex-col gap-1">
             {archived.map((p) => (
-              <li key={p.id} className="flex items-center gap-2 rounded-md bg-luma-50 px-2 py-1">
+              <li key={p.id} className="flex items-center gap-2 rounded-md bg-surface-muted px-2 py-1">
                 <span className="flex-1 truncate">{pick(p.title_ar, p.title_en)}</span>
                 <Button size="sm" variant="ghost" icon={<ArchiveRestore className="size-4" />} disabled={atLimit}
                   onClick={async () => { try { await api(`/api/v1/t/${slug}/builder/pages/${p.id}`, { method: 'PATCH', body: { restore: true } }); onChanged(); } catch (e) { setErr(e); } }}>{t('builder.pages.restore')}</Button>
