@@ -538,8 +538,10 @@ export async function getCustomerOrder(tenantId: string, userId: string, orderId
     const payment = o.status === 'pending_payment' ? await shopPaymentPaths(trx, tenantId, { tenantCustomerId: o.tenant_customer_id, userId }) : null;
     const items = await trx.selectFrom('order_items').select(['id', 'variant_id', 'name_ar', 'name_en', 'variant_name_ar', 'variant_name_en', 'unit_price_minor', 'quantity', 'line_total_minor'])
       .where('order_id', '=', orderId).orderBy('created_at').execute();
+    // The business's own tax label (LUMA-AUDIT-039): the UI localizes an Arabic-only label in English.
+    const tax = await trx.selectFrom('tenant_settings').select('tax_label').where('tenant_id', '=', tenantId).executeTakeFirst();
     const { tenant_customer_id: _tc, ...rest } = o;
-    return { ...rest, items, payment };
+    return { ...rest, tax_label: tax?.tax_label ?? null, items, payment };
   });
 }
 

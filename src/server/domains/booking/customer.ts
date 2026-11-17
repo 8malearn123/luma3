@@ -32,8 +32,10 @@ export async function customerBookingDetail(userId: string, bookingId: string, n
     if (!b || b.customer_user_id !== userId) throw Errors.notFound('booking');
     const [tenant, items, payments, receipts, group] = await Promise.all([
       trx.selectFrom('tenants').select(['name', 'slug']).where('id', '=', ref.tenant_id).executeTakeFirstOrThrow(),
-      trx.selectFrom('booking_items').select(['id', 'service_id', 'variant_id', 'staff_id', 'service_name_ar', 'service_name_en', 'staff_name', 'starts_at', 'ends_at', 'duration_min', 'line_total_minor', 'addons'])
-        .where('booking_id', '=', bookingId).where('superseded_at', 'is', null).orderBy('sequence').execute(),
+      // The stored snapshot keeps the staff name as booked; the English name is read live for the English UI (LUMA-AUDIT-039).
+      trx.selectFrom('booking_items as i').leftJoin('staff_profiles as sp', 'sp.id', 'i.staff_id')
+        .select(['i.id', 'i.service_id', 'i.variant_id', 'i.staff_id', 'i.service_name_ar', 'i.service_name_en', 'i.staff_name', 'sp.display_name_en as staff_name_en', 'i.starts_at', 'i.ends_at', 'i.duration_min', 'i.line_total_minor', 'i.addons'])
+        .where('i.booking_id', '=', bookingId).where('i.superseded_at', 'is', null).orderBy('i.sequence').execute(),
       trx.selectFrom('payments').select(['id', 'kind', 'method', 'amount_minor', 'currency', 'status', 'captured_at', 'created_at']).where('booking_id', '=', bookingId).orderBy('created_at').execute(),
       trx.selectFrom('invoices').select(['id', 'number', 'kind', 'total_minor', 'currency', 'issued_at']).where('booking_id', '=', bookingId).orderBy('issued_at').execute(),
       trx.selectFrom('group_session_bookings').select(['group_session_id', 'seats']).where('booking_id', '=', bookingId).executeTakeFirst(),

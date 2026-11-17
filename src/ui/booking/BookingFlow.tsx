@@ -28,7 +28,7 @@ type CouponPreview = { code: string; subtotal_minor: number; discount_minor: num
 type Pick = { key: string; serviceId: string; staffId: string | null; variantId?: string | null; addonIds?: string[] };
 /** Selection saved across a sign-in round trip (sessionStorage), re-validated against live availability and prices on return. */
 type Draft = { picks: Pick[]; day: string; start: string; note: string; savedAt: number; branchId?: string | null; coupon?: string; totalMinor?: number; reason?: 'sign_in' | 'session_expired' };
-type Option = { start: string; end: string; gaps_min: number[]; total_gap_min: number; items: Array<{ key: string; service_id: string; staff_id: string; staff_name: string; start: string; end: string; price_minor: number; duration_min: number }> };
+type Option = { start: string; end: string; gaps_min: number[]; total_gap_min: number; items: Array<{ key: string; service_id: string; staff_id: string; staff_name: string; staff_name_en?: string | null; start: string; end: string; price_minor: number; duration_min: number }> };
 type Search = { days: Record<string, Option[]>; next_available_date: string | null; empty_reason: string | null; suggestion: string | null; timezone: string };
 
 const STORAGE_KEY = (slug: string) => `luma.booking.${slug}`;
@@ -267,7 +267,7 @@ export function BookingFlow({ slug, tenantName, timezone, services: allServices,
                     </div>
                     <button className="text-sf-muted hover:text-sf-text" aria-label={t('booking.flow.remove_service')} onClick={() => setPicks(picks.filter((x) => x.key !== p.key))}><Trash2 className="size-4" /></button>
                   </div>
-                  <label className="mt-2 block text-xs text-sf-muted" htmlFor={`st-${p.key}`}>{idx + 1}. {t('booking.flow.choose_staff')}</label>
+                  <label className="mt-2 block text-xs text-sf-muted" htmlFor={`st-${p.key}`}>{picks.length > 1 ? t('booking.flow.staff_for', { n: idx + 1, service: pick(s.name_ar, s.name_en) }) : t('booking.flow.choose_staff')}</label>
                   <select id={`st-${p.key}`} value={p.staffId ?? ''} onChange={(e) => setPicks(picks.map((x) => (x.key === p.key ? { ...x, staffId: e.target.value || null } : x)))}
                     className="mt-1 h-10 w-full rounded-[var(--radius-sf)] border border-sf-border bg-sf-bg px-2 text-sm">
                     <option value="">{t('booking.flow.any_staff')}</option>
@@ -390,7 +390,7 @@ export function BookingFlow({ slug, tenantName, timezone, services: allServices,
                     {optionLabel(svc(i.service_id), picks.find((p) => p.key === i.key), pick) ? <p className="text-xs text-sf-muted">{optionLabel(svc(i.service_id), picks.find((p) => p.key === i.key), pick)}</p> : null}
                     <p className="flex flex-wrap items-center gap-x-3 text-xs text-sf-muted">
                       <span className="inline-flex items-center gap-1"><Clock className="size-3" />{fmtT(i.start)}–{fmtT(i.end)}</span>
-                      <span className="inline-flex items-center gap-1"><User className="size-3" />{t('booking.flow.with', { name: i.staff_name })}</span>
+                      <span className="inline-flex items-center gap-1"><User className="size-3" />{t('booking.flow.with', { name: pick(i.staff_name, i.staff_name_en) })}</span>
                     </p>
                   </div>
                   <span>{formatMoney(i.price_minor, 'SAR', locale)}</span>

@@ -160,16 +160,27 @@ test('two services with two different qualified specialists are booked as one vi
   await page.getByRole('button', { name: /Cut & style/ }).first().click();
   await page.getByText(/Add another service/).click();
   await page.getByRole('button', { name: /Manicure/ }).first().click();
+  // Each service's specialist picker names its service — not a second "1." under step 1 (LUMA-AUDIT-041).
+  const svc = page.locator('section[aria-labelledby="svc-h"]');
+  await expect(svc.getByText(/^Specialist for service 1 \(Cut & style/)).toBeVisible();
+  await expect(svc.getByText(/^Specialist for service 2 \(Manicure/)).toBeVisible();
+  await expect(svc).not.toContainText('1. Choose a specialist');
   // The first day with a joint itinerary is selected automatically.
   await timeButton(page).click();
   const summary = page.locator('section[aria-labelledby="rev-h"]');
-  // Staff names are shown as entered (Arabic display names in the demo).
-  await expect(summary).toContainText('with سارة');
-  await expect(summary).toContainText('with هدى');
+  // The English UI shows the specialists' English names (LUMA-AUDIT-039); the Arabic snapshot is kept on the booking.
+  await expect(summary).toContainText('with Sara');
+  await expect(summary).toContainText('with Huda');
   await shot(page, 'multi-specialist-summary');
   await page.getByRole('button', { name: /Reserve this time/ }).click();
   await page.waitForURL(/\/checkout\/booking\//);
   const id = page.url().split('/checkout/booking/')[1]!.split('?')[0]!;
+  // Checkout: English staff names and the localized tax label (the business typed an Arabic-only label).
+  await expect(page.getByText(/· Sara ·/)).toBeVisible();
+  await expect(page.getByText('Tax', { exact: true })).toBeVisible();
+  await expect(page.locator('main')).not.toContainText('ضريبة القيمة المضافة');
+  const snap = await db<{ staff_name: string }>('select staff_name from booking_items where booking_id = $1 order by sequence', [id]);
+  expect(snap.map((r) => r.staff_name)).toContain('سارة');
   const staff = await db<{ staff_id: string }>('select distinct staff_id from booking_items where booking_id = $1', [id]);
   expect(staff).toHaveLength(2);
   done();

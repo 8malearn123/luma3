@@ -19,7 +19,7 @@ export type ResolvedItem = {
   variant: { id: string; name_ar: string | null; name_en: string | null; price_minor: number; duration_min: number } | null;
   addons: Array<{ id: string; name_ar: string | null; name_en: string | null; price_minor: number; duration_min: number }>;
   /** Per qualified staff: price and duration (incl. add-ons), honouring per-specialist overrides. */
-  staffTerms: Record<string, { priceMinor: number; durationMin: number; name: string }>;
+  staffTerms: Record<string, { priceMinor: number; durationMin: number; name: string; nameEn: string | null }>;
   spec: ItemSpec;
 };
 
@@ -43,7 +43,7 @@ export async function resolveItems(trx: Tx, tenantId: string, branchId: string, 
   const staffLinks = await trx.selectFrom('service_staff as ss')
     .innerJoin('staff_profiles as sp', 'sp.id', 'ss.staff_id')
     .innerJoin('staff_branch_assignments as sba', (j) => j.onRef('sba.staff_id', '=', 'ss.staff_id').on('sba.branch_id', '=', branchId))
-    .select(['ss.service_id', 'ss.staff_id', 'ss.price_override_minor', 'ss.duration_override_min', 'sp.display_name', 'sp.is_public'])
+    .select(['ss.service_id', 'ss.staff_id', 'ss.price_override_minor', 'ss.duration_override_min', 'sp.display_name', 'sp.display_name_en', 'sp.is_public'])
     .where('ss.service_id', 'in', serviceIds).where('sp.is_active', '=', true).where('sp.archived_at', 'is', null).execute();
   const reqs = await trx.selectFrom('service_resource_requirements').selectAll().where('service_id', 'in', serviceIds).execute();
 
@@ -73,7 +73,7 @@ export async function resolveItems(trx: Tx, tenantId: string, branchId: string, 
     for (const l of links) {
       // Variant wins over per-specialist override, which wins over the base service.
       const base = variant ? { p: variant.price_minor, d: variant.duration_min } : { p: l.price_override_minor ?? s.price_minor, d: l.duration_override_min ?? s.duration_min };
-      staffTerms[l.staff_id] = { priceMinor: base.p + addonPrice, durationMin: base.d + addonMin, name: l.display_name };
+      staffTerms[l.staff_id] = { priceMinor: base.p + addonPrice, durationMin: base.d + addonMin, name: l.display_name, nameEn: l.display_name_en };
     }
     return {
       key: req.key, service: s, variant: variant ? { id: variant.id, name_ar: variant.name_ar, name_en: variant.name_en, price_minor: variant.price_minor, duration_min: variant.duration_min } : null,
