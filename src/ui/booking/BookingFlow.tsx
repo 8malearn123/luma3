@@ -125,7 +125,8 @@ export function BookingFlow({ slug, tenantName, timezone, services: allServices,
     }).then((r) => {
       setSearch(r);
       const firstDay = Object.entries(r.days).find(([, opts]) => opts.length)?.[0] ?? null;
-      setDay((d) => (d && r.days[d] ? d : firstDay));
+      // Keep the chosen day only while it still has times (e.g. adding a service can empty it).
+      setDay((d) => (d && r.days[d]?.length ? d : firstDay));
     }).catch((e) => { if ((e as Error).name !== 'AbortError') setError(e); }).finally(() => setLoading(false));
     return () => ctrl.abort();
   // eslint-disable-next-line react-hooks/exhaustive-deps
