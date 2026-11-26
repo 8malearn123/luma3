@@ -61,7 +61,7 @@ import * as wsSummary from '@/app/api/v1/t/[tenantSlug]/workspace/summary/route'
 
 // ── Shared helpers ──────────────────────────────────────────────────────────
 const iso = (s: string) => new Date(s).toISOString();
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Riyadh' }).format(new Date()); // the business's local day (reports run in Asia/Riyadh), not the UTC date
 
 async function accessOf(c: TestClient, slug: string) {
   const user = (await resolveSession(c.cookies.get(SESSION_COOKIE)))!;

@@ -271,6 +271,9 @@ describe('phase 6 — shared-training consent and sector models', () => {
     expect(list.body.data.versions.map((v: { id: string }) => v.id)).toContain(sector[0]!.id);
     expect((await owners[0]!.call(platformModels.GET)).status).toBe(404);
     await stepUp(admin);
+    // The model was trained at the fixed dataset clock (NOW); the route promotes at the real clock, so pin
+    // the shadow period to still be running for this check instead of depending on today's date.
+    await withSystem('test: shadow still running', (trx) => trx.updateTable('loom.model_versions').set({ shadow_until: new Date(Date.now() + DAY) }).where('id', '=', sector[0]!.id).execute());
     const early = await admin.call(platformModels.POST, { method: 'POST', body: { action: 'promote', version_id: sector[0]!.id } });
     expect(early.status).toBe(409);
     await setModels({ enabled: true });

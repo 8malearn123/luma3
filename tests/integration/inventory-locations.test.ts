@@ -353,7 +353,7 @@ describe('purchasing and accounts payable', () => {
     const j = await journal(s.biz.tenantId, 'stock_movement', sale.id);
     expect(j.map((r) => [r.account, r.debit_minor, r.credit_minor])).toEqual([['cogs', 8000, 0], ['inventory', 0, 8000]]);
     // Editing the product cost later changes neither the sale's cost nor the report.
-    const today = new Date().toISOString().slice(0, 10);
+    const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Riyadh' }).format(new Date()); // the business's local day (reports run in Asia/Riyadh), not the UTC date
     const before = (await s.owner.call(financeReport.GET, { params: s.p, query: { from: today, to: today } })).body.data.product_costs.amount_minor;
     expect(before).toBe(8000);
     await withTenant(s.biz.tenantId, (trx) => trx.updateTable('inventory_items').set({ cost_per_unit_minor: 9999 }).where('id', '=', itemId).execute());
