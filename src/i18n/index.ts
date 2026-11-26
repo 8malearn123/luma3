@@ -20,13 +20,23 @@ import { admin } from './messages/admin';
 import { customer } from './messages/customer';
 import { business } from './messages/business';
 import { expert } from './messages/expert';
+import { loom } from './messages/loom';
+import { loomMemory } from './messages/loom_memory';
+import { loomPlanner } from './messages/loom_planner';
+import { loomRadar } from './messages/loom_radar';
+import { loomConnectors } from './messages/loom_connectors';
+import { loomModels } from './messages/loom_models';
+import { inventoryOps } from './messages/inventory_ops';
+import { hosting } from './messages/hosting';
+import { loomUx } from './messages/loom_ux';
+import { workspaceMode } from './messages/workspace_mode';
 
 /**
  * Translation dictionary. Arabic is the primary language; English mirrors it.
  * Each domain owns one file in ./messages exporting { ar, en } with identical
  * keys (checked by tests/unit/i18n.test.ts).
  */
-export const dictionaries = [common, errors, auth, dashboard, onboarding, marketingSite, operations, commerce, policy, platform, builder, marketing, bookingsUi, catalogTeamUi, financeEngagementUi, payroll, hr, market, admin, customer, business, expert] as const;
+export const dictionaries = [common, errors, auth, dashboard, onboarding, marketingSite, operations, commerce, policy, platform, builder, marketing, bookingsUi, catalogTeamUi, financeEngagementUi, payroll, hr, market, admin, customer, business, expert, loom, loomMemory, loomPlanner, loomRadar, loomConnectors, loomModels, inventoryOps, hosting, loomUx, workspaceMode] as const;
 
 export type Locale = 'ar' | 'en';
 export const LOCALES: Locale[] = ['ar', 'en'];
@@ -54,8 +64,18 @@ export function messagesFor(locale: Locale) {
 }
 
 /** Interpolates {name} placeholders. Missing keys fall back to the other language, then the key. */
+const pluralRules: Partial<Record<Locale, Intl.PluralRules>> = {};
+/** `{ key: { zero?, one?, two?, few?, many?, other } }` messages are picked by `vars.n` (CLDR plural rules). */
+function plural(locale: Locale, key: string, n: unknown): string | undefined {
+  if (typeof n !== 'number') return undefined;
+  const d = flat[locale];
+  if (d[`${key}.other`] === undefined) return undefined;
+  const cat = (pluralRules[locale] ??= new Intl.PluralRules(locale === 'ar' ? 'ar' : 'en')).select(n);
+  return (n === 0 ? d[`${key}.zero`] : undefined) ?? d[`${key}.${cat}`] ?? d[`${key}.other`];
+}
+
 export function translate(locale: Locale, key: string, vars?: Record<string, string | number>): string {
-  let s = flat[locale][key] ?? flat[locale === 'ar' ? 'en' : 'ar'][key] ?? key;
+  let s = flat[locale][key] ?? plural(locale, key, vars?.n) ?? flat[locale === 'ar' ? 'en' : 'ar'][key] ?? key;
   if (vars) for (const [k, v] of Object.entries(vars)) s = s.replaceAll(`{${k}}`, String(v));
   return s;
 }

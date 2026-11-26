@@ -6,7 +6,7 @@
 |---|---|---|---|
 | Unit | `tests/unit/*.test.ts` (3 files) | Vitest | Pure modules: the availability engine, the capability model, i18n dictionaries |
 | Integration | `tests/integration/*.test.ts` (24 files) | Vitest | Route handlers called **in process** through `TestClient` (`tests/helpers/http.ts`, with cookies and CSRF headers) and domain services, against a **real PostgreSQL** database with RLS, constraints and triggers |
-| E2E | `tests/e2e/*.spec.ts` (4 files) | Playwright | Browser journeys against a production build (`next build && next start`) on port 3110 with a seeded `_e2e` database |
+| E2E | `tests/e2e/*.spec.ts` (5 files) | Playwright | Browser journeys against a production build (`next build`, then `tests/e2e/serve.ts` = `next start` + the job worker) on port 3110 with a seeded `_e2e` database |
 
 **Integration setup**: `tests/setup/global-setup.ts` migrates `TEST_DATABASE_OWNER_URL` and truncates every table except `schema_migrations`, `plans` and `plan_features`. It **refuses** a database whose name does not end in `_test`. `tests/setup/env.ts` sets `APP_ENV=test`, `DEV_OTP_ECHO=true`, `DEMO_MODE=false`, a test webhook secret, empty AI settings, and `STORAGE_LOCAL_DIR=./storage-test`. Files run serially (`fileParallelism: false`), so concurrency tests control their own parallelism. Helpers live in `tests/helpers/` (`factory.ts` with `signup` and `createBusinessFor`, plus `salon.ts`, `commerce.ts`, `policy.ts`, `platform.ts`, `loom.ts`, `marketing-data.ts`). AI tests inject a fake provider with `setAiProviderForTests`. Trend tests inject a fake resolver and transport, so **no network is used**.
 
@@ -71,7 +71,7 @@ Test names are quoted from the `describe` / `it` / `test` titles.
 | No account enumeration | auth › "does not reveal whether an account exists on duplicate registration", "recovery responds identically for unknown accounts" |
 | Lockout and rate limits | auth › "locks the account after repeated failures and rate limits" |
 | Recovery revokes sessions | auth › "recovers a password and revokes old sessions" |
-| Demo switcher off in production | demo › "is absent when DEMO_MODE is off", "is absent in production even if DEMO_MODE is on", "never signs into a non-demo account" |
+| Demo switcher off in production | demo › "is absent when DEMO_MODE is off", "is absent on every deployed build; DEMO_MODE there refuses to start" · env-safety (unit) · deployed-auth · platform-mfa-routes (every platform route, real requests) · invitations · storefront-lapsed · webhook-abuse, "never signs into a non-demo account" |
 
 ### Availability, booking, lifecycle
 
@@ -140,13 +140,16 @@ Test names are quoted from the `describe` / `it` / `test` titles.
 
 ### E2E (Playwright)
 
-Projects: `desktop` (Desktop Chrome, all specs) and `mobile` (Pixel 7, `responsive.spec.ts` only). Locale is `ar-SA`. Global setup (`tests/e2e/global-setup.ts`) refuses non-`_e2e` or non-local databases and production, drops and recreates the schemas, migrates and seeds (credentials go to `./.e2e/credentials.json`).
+Projects: `desktop` (Desktop Chrome, all specs) and `mobile` (Pixel 7, `responsive.spec.ts` only). Locale is `ar-SA`. Global setup (`tests/e2e/global-setup.ts`) refuses non-`_e2e` or non-local databases and production, drops and recreates the schemas, migrates and seeds (credentials go to `./.e2e/credentials.json`), then writes `.e2e/seeded` so `tests/e2e/serve.ts` starts the job worker (Loom analyses/plans, hold expiry and outbox progress during the run; `E2E_WORKER=0` disables it).
+
+To run the app and worker by hand for a demo or manual QA, see RUNBOOK → «Running the app and the worker together».
 
 | Spec | Tests |
 |---|---|
 | `shop-journey.spec.ts` | "customer adds a product to the cart, checks out and pays in the sandbox; the order shows as paid" |
 | `dashboard-smoke.spec.ts` | "owner dashboard pages render without errors" (overview, bookings list + calendar, services, team, finance, waitlist, groups, loyalty, gifts, memberships, settings → payments, products, orders, inventory, customers, policies, marketing, analytics, builder, settings, audit); "specialist portal shows her own day without money fields"; "platform staff must set up MFA before using the admin area"; "customer account pages render" (incl. the decision explanation with appeal route) |
 | `booking-journey.spec.ts` | "a selection made before signing in survives sign-in and is re-validated"; "customer books from the published storefront and pays in the sandbox; confirmation comes from the server"; "a signed-out visitor is sent to sign in before reserving, never shown another customer's data"; "staff role boundaries: a specialist cannot open finance; a customer cannot reach the platform admin"; "owner sees the dashboard overview for her business" |
+| `loom-and-expert.spec.ts` | "Loom: primary tabs first, analysis status is real and an analysis completes through the worker" (a new analysis reaches «Succeeded» — proves the worker runs); "Loom: plans and opportunities show business labels, formatted money and English names"; "Loom: converting an opportunity already in the plan does not duplicate it"; "freelancer: own schedule is editable, team-admin areas hidden, hidden pages say not available" |
 | `responsive.spec.ts` | "RTL + mobile: {path}" for `/`, `/pricing`, `/s/noura-salon`, `/s/noura-salon/services`, `/s/noura-salon/booking`, `/s/lamar-makeup` and `/auth/login` (status < 400, `dir="rtl"`, no horizontal scroll, no page errors); "English switches direction to LTR"; "preview links are not indexable and unknown storefronts 404" |
 
 ## What is covered, by level

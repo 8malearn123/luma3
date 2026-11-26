@@ -6,7 +6,7 @@ Capabilities are defined **in code**, not in `roles` / `permissions` tables. A m
 
 ## Tenant roles
 
-`owner`, `manager`, `receptionist`, `specialist`, `finance` (`TENANT_ROLES`). There is exactly one active owner per business (partial unique index `memberships_one_owner`). Invitations cannot carry the `owner` role (CHECK constraint).
+`owner`, `manager`, `receptionist`, `specialist`, `finance`, `warehouse` (`TENANT_ROLES`). There is exactly one active owner per business (partial unique index `memberships_one_owner`). Invitations cannot carry the `owner` role (CHECK constraint).
 
 Effective capabilities are computed by `effectiveCapabilities(role, granted, revoked)`:
 
@@ -91,6 +91,25 @@ Delegable allowlists, verbatim from `ROLE_DELEGABLE`:
 
 `business.manage`, `subscription.manage` and `staff_file.manage` (`OWNER_ONLY`). They are never added by delegation, even if a grant array contains them, and `invalidGrants()` rejects them.
 
+### Inventory, purchasing and the warehouse role (0800)
+
+New role `warehouse` (مسؤول مستودع). New capabilities and their defaults (D = delegable):
+
+| Capability | owner | manager | receptionist | specialist | finance | warehouse |
+|---|:-:|:-:|:-:|:-:|:-:|:-:|
+| `inventory.view` | ✓ | ✓ | ✓ |  | ✓ | ✓ |
+| `inventory.manage` | ✓ | ✓ |  |  |  | ✓ |
+| `inventory.transfer` | ✓ | ✓ |  |  |  | ✓ |
+| `inventory.count` | ✓ | ✓ |  |  |  | ✓ |
+| `inventory.adjust_usage` | ✓ | ✓ |  | D |  | ✓ |
+| `purchasing.view` | ✓ | ✓ |  |  | ✓ | ✓ |
+| `purchasing.receive` | ✓ | ✓ |  |  |  | ✓ |
+| `purchasing.manage` | ✓ | D |  |  | ✓ | D |
+| `purchasing.pay` | ✓ | D |  |  | ✓ |  |
+| `costs.view` | ✓ | D |  |  | ✓ | D |
+
+The warehouse keeper has no finance, payroll or subscription capability and sees no costs unless `costs.view` is delegated. Supplier invoices and payments are readable with `purchasing.manage`, `purchasing.pay` or `finance.view` (the accountant view). Plan keys (0801, «مقترح — غير معتمد»): `limit.stock_locations` (0 / 10 / unlimited, extra locations beyond each branch default), `feature.inventory_transfers`, `feature.inventory_counts`, `feature.purchasing` (off / on / on), `feature.inventory_finance_link`, `feature.inventory_reports_advanced` (off / off / on).
+
 ### HR (see [HR.md](HR.md))
 
 - `hr.request` (every role, self-scoped): submit requests for her own linked staff profile and cancel them while pending; read her own balance, own non-sensitive file fields (`GET /me/hr`) and own late/absent flags. Holders of `schedule.manage` may submit on behalf of a staff member.
@@ -141,11 +160,14 @@ Changing a member (`PATCH /api/v1/t/{slug}/members/{id}`) requires `team.manage`
 | `platform.settlements.manage` | ✓ |  |  |  |
 | `platform.referrals.manage` (marketers, rewards, withdrawals) | ✓ |  |  |  |
 | `platform.settings.manage` (maintenance, sign-ups, approvals switch, founding, referral defaults) | ✓ |  |  |  |
+| `platform.loom.manage` (Loom Marketing defaults: ranking weights, cost-completeness threshold, learned-model thresholds, official event sources, sector packs; step-up, audited) | ✓ |  |  |  |
 
 `platform.marketplace.review` covers the سوق لوما queues (join requests, verification files and documents — every document view is audited), the commission ledger and reading marketplace settings. `platform.marketplace.manage` sets a business's commission rate and the marketplace settings (both with step-up). On the tenant side, the marketplace listing and verification documents need `business.manage` (owner only) and «عمولة سوق لوما» needs `finance.view`. See `docs/MARKETPLACE.md`.
 
 Phase-2 endpoints and rules: [PLATFORM_ADMIN.md](PLATFORM_ADMIN.md). Promotions use `platform.plans.manage`; approving new businesses uses `platform.tenants.manage` (the queue is readable with `platform.tenants.view`). The business «الإحالة» screen (`/app/{slug}/referrals`) needs the owner-only `business.manage`; a withdrawal request also needs step-up.
 
+
+**Loom Marketing (`/api/v1/t/{slug}/loom/**`, plan feature `feature.marketing_ai`)** maps Loom capabilities onto LUMA's: `loom.view` → `marketing.view` or `marketing.manage` (read cards, data quality, profile, setup, analyses); `loom.manage` → `marketing.manage` (run analyses, decisions, conversions, goals, preferences, setup items); `loom.connections.manage` → `business.manage` (connector status); the **shared-training consent** setup item is owner only (`business.manage`). Conversions run through LUMA's own rules: campaign drafts need `feature.campaigns` and are sent only after `campaigns.approve`; price proposals need `catalog.edit` and the owner's approval in the catalog. See [LOOM_CORE.md](LOOM_CORE.md).
 
 Every `/api/v1/platform/**` handler is built with `platformRoute()`. A caller with **no** platform role gets **404**, not 403, so the platform API does not reveal that it exists. A missing specific capability also returns 404. `GET /api/v1/platform/overview` and the MFA/me endpoints need only some platform role. Platform roles grant no tenant capabilities.
 

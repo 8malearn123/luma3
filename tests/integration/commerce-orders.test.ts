@@ -183,7 +183,7 @@ describe('payment, expiry and cancellation are exactly-once', () => {
     }
     expect(await stock(o.biz.tenantId, o.v.inventory_item_id)).toEqual({ on_hand: 3, reserved: 0 });
     const mv = await movements(o.biz.tenantId, o.v.inventory_item_id);
-    expect(mv.map((m) => m.kind)).toEqual(['receipt', 'reservation', 'sale']);
+    expect(mv.map((m) => m.kind)).toEqual(['opening', 'reservation', 'sale']); // opening stock is its own movement kind
     const back = await o.owner.call(orderStatus.POST, { params: { ...o.p, id: o.orderId }, body: { to: 'preparing' } });
     expect(back.status).toBe(409);
     const cancel = await o.owner.call(orderCancel.POST, { params: { ...o.p, id: o.orderId }, body: { reason: 'changed mind' } });

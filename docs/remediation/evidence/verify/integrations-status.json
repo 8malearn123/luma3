@@ -1,0 +1,28 @@
+{
+  "messaging": {
+    "email": "dev_simulation",
+    "sms": "dev_simulation",
+    "whatsapp": "dev_simulation"
+  },
+  "ai": {
+    "status": {
+      "state": "disconnected",
+      "reason": "no_api_key"
+    }
+  },
+  "payments": {
+    "live_accounts": 0,
+    "sandbox_accounts": 2,
+    "accounts": [
+      {
+        "provider": "sandbox",
+        "mode": "test",
+        "status": "active",
+        "n": 2
+      }
+    ]
+  },
+  "storage": {
+    "driver": "local"
+  }
+}

@@ -9,7 +9,7 @@
  * See PERMISSIONS.md for the matrix and enforcement points.
  */
 
-export const TENANT_ROLES = ['owner', 'manager', 'receptionist', 'specialist', 'finance'] as const;
+export const TENANT_ROLES = ['owner', 'manager', 'receptionist', 'specialist', 'finance', 'warehouse'] as const;
 export type TenantRole = (typeof TENANT_ROLES)[number];
 
 export const CAPABILITIES = [
@@ -42,6 +42,14 @@ export const CAPABILITIES = [
   'orders.manage',
   'inventory.view',
   'inventory.manage',
+  // Multi-location inventory & purchasing (0800_inventory_locations.sql)
+  'inventory.transfer',
+  'inventory.count',
+  'inventory.adjust_usage',
+  'purchasing.view',
+  'purchasing.receive',
+  'purchasing.manage',
+  'purchasing.pay',
   // Money
   'payments.collect',
   'payments.configure',
@@ -80,6 +88,10 @@ export const CAPABILITIES = [
   'waitlist.manage',
   // Governance
   'audit.view',
+  // Workspace hosting: a salon hosting spaces / an expert booking them
+  'hosting.view',
+  'hosting.manage',
+  'workspace.book',
 ] as const;
 export type Capability = (typeof CAPABILITIES)[number];
 
@@ -91,15 +103,17 @@ const ROLE_DEFAULTS: Record<TenantRole, readonly Capability[]> = {
     'bookings.view_all', 'bookings.manage', 'bookings.view_financial',
     'customers.view', 'customers.manage', 'customers.view_notes',
     'orders.view', 'orders.manage', 'inventory.view', 'inventory.manage',
+    'inventory.transfer', 'inventory.count', 'inventory.adjust_usage', 'purchasing.view', 'purchasing.receive',
     'payments.collect', 'refunds.request',
     'schedule.manage', 'leave.approve', 'attendance.manage', 'attendance.own', 'schedule.view_own', 'payroll.view_own', 'hr.request',
     'marketing.view', 'analytics.view', 'waitlist.manage', 'giftcards.manage', 'loyalty.manage', 'memberships.manage',
+    'hosting.view', 'hosting.manage', 'workspace.book',
   ],
   receptionist: [
     'bookings.view_all', 'bookings.manage',
     'customers.view', 'customers.manage', 'customers.view_notes',
     'orders.view', 'orders.manage', 'inventory.view',
-    'payments.collect', 'waitlist.manage', 'giftcards.manage',
+    'payments.collect', 'waitlist.manage', 'giftcards.manage', 'hosting.view',
     'attendance.own', 'schedule.view_own', 'payroll.view_own', 'hr.request',
   ],
   specialist: [
@@ -109,7 +123,15 @@ const ROLE_DEFAULTS: Record<TenantRole, readonly Capability[]> = {
   finance: [
     'finance.view', 'finance.manage', 'finance.export', 'costs.view',
     'bookings.view_financial', 'orders.view', 'refunds.request', 'refunds.approve',
-    'attendance.own', 'schedule.view_own', 'payroll.view', 'payroll.manage', 'payroll.view_own', 'hr.request',
+    'attendance.own', 'schedule.view_own', 'payroll.view', 'payroll.manage', 'payroll.view_own', 'hr.request', 'hosting.view',
+    // Accountant view of inventory: costs, supplier invoices and payments (read-mostly on stock).
+    'inventory.view', 'purchasing.view', 'purchasing.manage', 'purchasing.pay',
+  ],
+  // مسؤول مستودع: stock, locations, transfers, counts and receiving goods. No finance, payroll or costs by default.
+  warehouse: [
+    'inventory.view', 'inventory.manage', 'inventory.transfer', 'inventory.count', 'inventory.adjust_usage',
+    'purchasing.view', 'purchasing.receive',
+    'attendance.own', 'schedule.view_own', 'payroll.view_own', 'hr.request',
   ],
 };
 
@@ -120,10 +142,12 @@ const ROLE_DELEGABLE: Record<TenantRole, readonly Capability[]> = {
     'subscription.view', 'team.manage', 'staff.edit', 'catalog.edit', 'costs.view', 'builder.edit', 'builder.publish',
     'finance.view', 'finance.export', 'refunds.approve', 'payments.configure', 'payroll.view', 'payroll.manage', 'hr.configure',
     'incidents.submit', 'incidents.review', 'marketing.manage', 'campaigns.approve', 'audit.view',
+    'purchasing.manage', 'purchasing.pay',
   ],
   receptionist: ['incidents.submit', 'builder.edit', 'refunds.request', 'analytics.view', 'loyalty.manage'],
-  specialist: ['incidents.submit', 'customers.view'],
+  specialist: ['incidents.submit', 'customers.view', 'inventory.adjust_usage'],
   finance: ['subscription.view', 'analytics.view', 'incidents.submit'],
+  warehouse: ['costs.view', 'purchasing.manage', 'catalog.edit', 'incidents.submit'],
 };
 
 /** Capabilities that must never be granted to anyone but the owner, even by delegation. */
@@ -225,6 +249,8 @@ export const PLATFORM_CAPABILITIES = [
   'platform.referrals.manage',
   'platform.settings.manage',
   'platform.feed.view',
+  // Loom Marketing platform settings (ranking defaults, thresholds, event sources, sector packs): platform owner only.
+  'platform.loom.manage',
 ] as const;
 export type PlatformCapability = (typeof PLATFORM_CAPABILITIES)[number];
 

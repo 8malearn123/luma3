@@ -59,6 +59,12 @@ export type EngineInput = {
   resources: ResourceSchedule[];
   /** Booked minutes per staff per local date (for least-booked tie-breaks). */
   bookedMinutes: Record<string, Record<string, number>>;
+  /**
+   * Chairs linked to a staff member (resource_staff_links, D1b): when she is
+   * booked, one free linked chair is allocated too, so the chair's exclusion
+   * constraint also covers internal use. Staff without links are unaffected.
+   */
+  staffChairs?: Record<string, string[]>;
 };
 
 export type PlannedItem = { key: string; serviceId: string; staffId: string; start: number; end: number; occupied: Range; resourceIds: string[] };
@@ -185,6 +191,24 @@ function pickResources(input: EngineInput, needs: ItemSpec['resourceNeeds'], occ
   return chosen;
 }
 
+/** Resources for one staff member's item: a free linked chair first (if she has links), then the service's needs. */
+function pickForStaff(input: EngineInput, staffId: string, needs: ItemSpec['resourceNeeds'], occ: Range, taken: Map<string, Range[]>): string[] | null {
+  const chairs = input.staffChairs?.[staffId];
+  if (!chairs?.length) return pickResources(input, needs, occ, taken);
+  for (const chairId of chairs) {
+    const chair = input.resources.find((r) => r.resourceId === chairId);
+    if (!chair || [...chair.busy, ...(taken.get(chairId) ?? [])].some((b) => b.start < occ.end && b.end > occ.start)) continue;
+    // The linked chair satisfies one unit of a matching resource need.
+    const idx = needs.findIndex((n) => n.typeId === chair.typeId);
+    const reduced = needs.map((n, i) => (i === idx ? { ...n, quantity: n.quantity - 1 } : n)).filter((n) => n.quantity > 0);
+    const withChair = new Map(taken);
+    withChair.set(chairId, [...(taken.get(chairId) ?? []), occ]);
+    const rest = pickResources(input, reduced, occ, withChair);
+    if (rest) return [chairId, ...rest];
+  }
+  return null;
+}
+
 export type SearchLimits = { maxItinerariesPerDay: number; maxNodes: number };
 
 /**
@@ -233,7 +257,7 @@ export function itinerariesForDate(input: EngineInput, items: ItemSpec[], dateIS
         const occ = { start: t - it.bufferBefore * MIN, end: end + it.bufferAfter * MIN };
         const staffTaken = taken.get(`staff:${sid}`) ?? [];
         if (!contains(free[sid]!, occ) || staffTaken.some((b) => b.start < occ.end && b.end > occ.start)) continue;
-        const res = pickResources(input, it.resourceNeeds, occ, taken);
+        const res = pickForStaff(input, sid, it.resourceNeeds, occ, taken);
         if (!res) continue;
         const nextTaken = new Map(taken);
         nextTaken.set(`staff:${sid}`, [...staffTaken, occ]);
@@ -296,7 +320,7 @@ export function validateItinerary(input: EngineInput, items: ItemSpec[], request
     const free = freeWindows(input, s, dateISO);
     const staffTaken = taken.get(`staff:${req.staffId}`) ?? [];
     if (!contains(free, occ) || staffTaken.some((b) => b.start < occ.end && b.end > occ.start)) return { ok: false, reason: 'slot_unavailable', key: it.key };
-    const res = pickResources(input, it.resourceNeeds, occ, taken);
+    const res = pickForStaff(input, req.staffId, it.resourceNeeds, occ, taken);
     if (!res) return { ok: false, reason: 'resource_unavailable', key: it.key };
     taken.set(`staff:${req.staffId}`, [...staffTaken, occ]);
     for (const r of res) taken.set(r, [...(taken.get(r) ?? []), occ]);

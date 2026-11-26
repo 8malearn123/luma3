@@ -43,8 +43,8 @@ export function DisplaySection({ slug, data }: { slug: string; data: SettingsDat
         <fieldset className="flex flex-wrap gap-2">
           <legend className="mb-1 text-sm font-medium">{t('biz_settings.display.time_format')}</legend>
           {(['12h', '24h'] as const).map((f) => (
-            <label key={f} className={cx('flex cursor-pointer items-center gap-2 rounded-lg border p-3 text-sm', s.values.time_format === f ? 'border-luma-500 bg-luma-50' : 'border-line')}>
-              <input type="radio" name="time_format" className="accent-luma-700" checked={s.values.time_format === f} onChange={() => s.set({ time_format: f })} />
+            <label key={f} className={cx('flex cursor-pointer items-center gap-2 rounded-lg border p-3 text-sm', s.values.time_format === f ? 'border-brand bg-surface-muted' : 'border-line')}>
+              <input type="radio" name="time_format" className="accent-primary" checked={s.values.time_format === f} onChange={() => s.set({ time_format: f })} />
               {t(f === '12h' ? 'time.h12' : 'time.h24')} <span className="text-ink-muted" dir="ltr">({formatClock('18:30', locale, f)})</span>
             </label>
           ))}

@@ -78,7 +78,7 @@ export function PolicyPanel() {
                   <span className="text-xs text-ink-muted">{formatDate(a.created_at, { locale })}</span>
                 </div>
                 <p className="mt-1 text-ink-muted">{a.message}</p>
-                {a.resolution_note ? <p className="mt-1"><span className="text-xs text-luma-800">{t('account.policy.reply')}: </span>{a.resolution_note}</p> : null}
+                {a.resolution_note ? <p className="mt-1"><span className="text-xs text-heading">{t('account.policy.reply')}: </span>{a.resolution_note}</p> : null}
               </li>
             ))}
           </ul>

@@ -12,11 +12,15 @@ import { post, splitTax } from '../finance/journal';
 import { provider } from './providers/registry';
 import { WebhookVerificationError, type VerifiedEvent } from './providers/types';
 import { paymentTargets } from './targets';
+import { ensureOrderPayableOnline } from '../commerce';
 import type { PaymentOption, PaymentTerms } from '@/shared/payments';
+import { recordRejectedWebhook } from '../../infra/webhook-rejections';
 
 // ── Accounts ────────────────────────────────────────────────────────────────
+/** The business's active account with a working adapter (the sandbox never counts in production). */
 export async function activeAccount(trx: Tx, tenantId: string) {
-  return trx.selectFrom('payment_accounts').selectAll().where('tenant_id', '=', tenantId).where('status', '=', 'active').orderBy('created_at').executeTakeFirst();
+  const rows = await trx.selectFrom('payment_accounts').selectAll().where('tenant_id', '=', tenantId).where('status', '=', 'active').orderBy('created_at').execute();
+  return rows.find((a) => !!provider(a.provider) && !(a.provider === 'sandbox' && env().isProduction));
 }
 
 /** Connects the LUMA Sandbox (test mode). Real providers are not integrated; see providers/registry.ts. */
@@ -97,6 +101,8 @@ export async function checkoutBooking(tenantId: string, bookingId: string, input
 /** Customer checkout for a pending order (full online payment). */
 export async function checkoutOrder(tenantId: string, orderId: string, input: { userId: string; idempotencyKey: string; returnUrl: string; actor: AuditActor }) {
   const scope = `tenant:${tenantId}:user:${input.userId}`;
+  // Revalidated at payment time: the provider may have been disconnected since the cart (owner decision R2).
+  await ensureOrderPayableOnline(tenantId, input.userId, orderId);
   return withTenant(tenantId, (trx) => idempotent(trx, { scope, operation: 'checkout.order', key: input.idempotencyKey, hash: requestHash({ orderId }) }, async () => {
     const o = await trx.selectFrom('orders').selectAll().where('id', '=', orderId).forUpdate().executeTakeFirst();
     if (!o || o.customer_user_id !== input.userId) throw Errors.notFound('order');
@@ -119,13 +125,15 @@ export async function checkoutOrder(tenantId: string, orderId: string, input: { 
 type Account = NonNullable<Awaited<ReturnType<typeof activeAccount>>>;
 
 async function createProviderPayment(trx: Tx, a: {
-  tenantId: string; account: Account; purpose: 'booking' | 'order' | 'gift_card' | 'membership' | 'event'; bookingId?: string; orderId?: string; giftCardId?: string; membershipId?: string; eventBookingId?: string;
+  tenantId: string; account: Account; purpose: 'booking' | 'order' | 'gift_card' | 'membership' | 'event' | 'workspace'; bookingId?: string; orderId?: string; giftCardId?: string; membershipId?: string; eventBookingId?: string;
+  workspaceBookingId?: string; payerTenantId?: string;
   kind: 'full' | 'deposit' | 'balance'; amountMinor: number; currency: string; payerUserId: string | null; idempotencyKey: string; description: string; returnUrl: string; expiresAt: Date | null;
 }) {
   const p = provider(a.account.provider)!;
   const row = await trx.insertInto('payments').values({
     tenant_id: a.tenantId, payment_account_id: a.account.id, purpose: a.purpose, booking_id: a.bookingId ?? null, order_id: a.orderId ?? null,
-    gift_card_id: a.giftCardId ?? null, customer_membership_id: a.membershipId ?? null, event_booking_id: a.eventBookingId ?? null, kind: a.kind, method: 'sandbox',
+    gift_card_id: a.giftCardId ?? null, customer_membership_id: a.membershipId ?? null, event_booking_id: a.eventBookingId ?? null,
+    ...(a.workspaceBookingId ? { workspace_booking_id: a.workspaceBookingId, payer_tenant_id: a.payerTenantId ?? null } : {}), kind: a.kind, method: 'sandbox',
     amount_minor: a.amountMinor, currency: a.currency, status: 'pending', provider: a.account.provider, idempotency_key: a.idempotencyKey,
     payer_user_id: a.payerUserId, expires_at: a.expiresAt, created_by: a.payerUserId,
   }).returning('id').executeTakeFirstOrThrow();
@@ -174,15 +182,35 @@ export async function createEventCheckout(trx: Tx, a: { tenantId: string; eventB
   return { ...payment, simulation: p.isSimulation };
 }
 
+/**
+ * Hosted checkout for a workspace booking (domains/hosting): the expert's
+ * business pays the HOST salon through the host's payment account (D3b — the
+ * salon is the merchant). The row lives in the host tenant; `payer_tenant_id`
+ * records the paying business. Amount computed on the server.
+ */
+export async function createWorkspaceCheckout(trx: Tx, a: { hostTenantId: string; workspaceBookingId: string; payerTenantId: string; kind: 'full' | 'balance'; amountMinor: number; currency: string; payerUserId: string; idempotencyKey: string; description: string; returnUrl: string; expiresAt: Date | null }) {
+  const acct = await activeAccount(trx, a.hostTenantId);
+  const p = acct ? provider(acct.provider) : null;
+  if (!acct || !p) throw Errors.unavailable('payments_unavailable', 'Online payment is not set up for this business');
+  if (!(a.amountMinor > 0)) throw Errors.invalid('invalid_amount');
+  const payment = await createProviderPayment(trx, {
+    tenantId: a.hostTenantId, account: acct, purpose: 'workspace', workspaceBookingId: a.workspaceBookingId, payerTenantId: a.payerTenantId, kind: a.kind,
+    amountMinor: a.amountMinor, currency: a.currency, payerUserId: a.payerUserId, idempotencyKey: `workspace:${a.workspaceBookingId}:${a.idempotencyKey}`,
+    description: a.description, returnUrl: a.returnUrl, expiresAt: a.expiresAt,
+  });
+  return { ...payment, simulation: p.isSimulation };
+}
+
 /** Payment status for the payer (never trusts a browser redirect as proof of payment). */
 export async function paymentStatusForPayer(tenantId: string, paymentId: string, userId: string) {
   return withTenant(tenantId, async (trx) => {
-    const p = await trx.selectFrom('payments').select(['id', 'status', 'amount_minor', 'currency', 'booking_id', 'order_id', 'event_booking_id', 'needs_reconciliation', 'payer_user_id']).where('id', '=', paymentId).executeTakeFirst();
+    const p = await trx.selectFrom('payments').select(['id', 'status', 'amount_minor', 'currency', 'booking_id', 'order_id', 'event_booking_id', 'workspace_booking_id', 'needs_reconciliation', 'payer_user_id']).where('id', '=', paymentId).executeTakeFirst();
     if (!p || p.payer_user_id !== userId) throw Errors.notFound('payment');
     let target: { status: string; payment_status?: string } | null = null;
     if (p.booking_id) target = await trx.selectFrom('bookings').select(['status', 'payment_status']).where('id', '=', p.booking_id).executeTakeFirst() ?? null;
     if (p.order_id) target = await trx.selectFrom('orders').select(['status']).where('id', '=', p.order_id).executeTakeFirst() ?? null;
     if (p.event_booking_id) target = await trx.selectFrom('event_bookings').select(['status']).where('id', '=', p.event_booking_id).executeTakeFirst() ?? null;
+    if (p.workspace_booking_id) target = await trx.selectFrom('workspace_bookings').select(['status', 'payment_status']).where('id', '=', p.workspace_booking_id).executeTakeFirst() ?? null;
     const { payer_user_id: _p, ...rest } = p;
     return { ...rest, target };
   });
@@ -285,6 +313,13 @@ async function applyCaptured(trx: Tx, tenantId: string, paymentId: string, actor
       await flagReconciliation(trx, tenantId, p.id, r.refund);
       await requestRefundInternal(trx, tenantId, { paymentId: p.id, amountMinor: p.amount_minor, reason: r.refund, basis: { auto: true }, idempotencyKey: `auto-event:${p.id}`, system: true });
     }
+  } else if (p.workspace_booking_id) {
+    // Journal entries for both parties are posted by the hosting service (it knows the line breakdown).
+    const r = await paymentTargets.workspace.onCaptured(trx, tenantId, p.workspace_booking_id, { paymentId: p.id, amountMinor: p.amount_minor }) as { refund?: string } | undefined;
+    if (r?.refund) {
+      await flagReconciliation(trx, tenantId, p.id, r.refund);
+      await requestRefundInternal(trx, tenantId, { paymentId: p.id, amountMinor: p.amount_minor, reason: r.refund, basis: { auto: true }, idempotencyKey: `auto-workspace:${p.id}`, system: true });
+    }
   } else if (p.gift_card_id) {
     await paymentTargets.giftCard.onCaptured(trx, tenantId, p.gift_card_id, { paymentId: p.id, amountMinor: p.amount_minor });
     await post(trx, tenantId, { type: 'payment', id: p.id }, [{ account: cashAccount, debit: p.amount_minor }, { account: 'gift_card_liability', credit: p.amount_minor }], { createdBy: actorUserId });
@@ -331,10 +366,8 @@ export async function handleWebhook(providerName: string, rawBody: string, heade
     ev = p.verifyWebhook(rawBody, headers);
   } catch (e) {
     if (e instanceof WebhookVerificationError) {
-      await withSystem('record rejected webhook', (trx) => trx.insertInto('provider_events').values({
-        provider: providerName, provider_event_id: `rejected:${Date.now()}:${Math.random().toString(36).slice(2)}`, event_type: 'rejected', signature_valid: false,
-        payload: JSON.stringify({ reason: e.message, length: rawBody.length }), status: 'ignored', error: e.message,
-      }).execute());
+      // Aggregated per provider/reason/10 min, so forged traffic cannot grow the table without bound (LUMA-AUDIT-026).
+      await recordRejectedWebhook(providerName, e.message, rawBody.length);
       throw new AppError(400, 'invalid_webhook', 'Webhook verification failed');
     }
     throw e;
@@ -403,6 +436,7 @@ async function processEvent(providerName: string, ev: VerifiedEvent): Promise<{ 
     }
     if (pay.order_id) await paymentTargets.order.onFailed(trx, ref.tenant_id, pay.order_id, { paymentId: pay.id });
     if (pay.event_booking_id) await paymentTargets.event.onFailed(trx, ref.tenant_id, pay.event_booking_id, { paymentId: pay.id });
+    if (pay.workspace_booking_id) await paymentTargets.workspace.onFailed(trx, ref.tenant_id, pay.workspace_booking_id, { paymentId: pay.id });
     return 'processed';
   });
   return { result, tenantId: ref.tenant_id };
@@ -471,6 +505,8 @@ async function applyRefundSucceeded(trx: Tx, tenantId: string, refundId: string)
     await post(trx, tenantId, { type: 'refund', id: r.id }, [
       { account: ev.completed ? 'refunds' : 'customer_deposits', debit: r.amount_minor }, { account: cashAccount, credit: r.amount_minor },
     ], { memo: 'event refund' });
+  } else if (p.workspace_booking_id) {
+    await paymentTargets.workspace.onRefunded(trx, tenantId, p.workspace_booking_id, { refundId: r.id, amountMinor: r.amount_minor, paymentMethod: p.method });
   } else {
     await post(trx, tenantId, { type: 'refund', id: r.id }, [{ account: p.gift_card_id ? 'gift_card_liability' : 'membership_liability', debit: r.amount_minor }, { account: cashAccount, credit: r.amount_minor }]);
   }
@@ -540,6 +576,22 @@ export async function refundBookingDue(trx: Tx, tenantId: string, bookingId: str
     if (room <= 0) continue;
     const amt = Math.min(room, remaining);
     await requestRefundInternal(trx, tenantId, { paymentId: p.id, amountMinor: amt, reason: basis, basis: { policy: basis }, idempotencyKey: `policy:${bookingId}:${p.id}:${basis}`, system: true });
+    remaining -= amt;
+  }
+  return amountMinor - remaining;
+}
+
+/** Hosting hook: refund due on a workspace booking per its saved terms (system-approved, newest capture first). */
+export async function refundWorkspaceDue(trx: Tx, hostTenantId: string, workspaceBookingId: string, amountMinor: number, basis: string) {
+  const pays = await trx.selectFrom('payments').selectAll().where('tenant_id', '=', hostTenantId).where('workspace_booking_id', '=', workspaceBookingId).where('status', '=', 'captured').orderBy('captured_at', 'desc').execute();
+  let remaining = amountMinor;
+  for (const p of pays) {
+    if (remaining <= 0) break;
+    const used = await trx.selectFrom('refunds').select(sql<number>`coalesce(sum(amount_minor), 0)::bigint`.as('n')).where('payment_id', '=', p.id).where('status', 'not in', ['failed', 'cancelled']).executeTakeFirstOrThrow();
+    const room = p.amount_minor - Number(used.n);
+    if (room <= 0) continue;
+    const amt = Math.min(room, remaining);
+    await requestRefundInternal(trx, hostTenantId, { paymentId: p.id, amountMinor: amt, reason: basis, basis: { policy: basis }, idempotencyKey: `workspace-policy:${workspaceBookingId}:${p.id}:${basis}`, system: true });
     remaining -= amt;
   }
   return amountMinor - remaining;

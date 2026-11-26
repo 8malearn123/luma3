@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { ACCOUNTS, demoSignIn, english, expectPageRenders } from './helpers';
+import { ACCOUNTS, demoSignIn, english, enrolAuthenticator, expectPageRenders } from './helpers';
 
 /**
  * Every request alternates between two server instances that each hold their
@@ -17,9 +17,17 @@ test('public pages render without signing in', async ({ page }) => {
   }
 });
 
-test('the login page lists every demo account', async ({ page }) => {
+test('deployed build (R3): no one-click demo sign-in, no code exposure, honest unavailable registration/recovery', async ({ page, request }) => {
   await page.goto('/auth/login');
-  for (const a of Object.values(ACCOUNTS)) await expect(page.getByRole('button', { name: a.label, exact: true })).toBeVisible();
+  await expect(page.getByText('Role switcher', { exact: false })).toHaveCount(0);
+  expect((await request.get('/api/v1/demo/users')).status()).toBe(404);
+  expect((await request.get('/api/v1/auth/dev-outbox?destination=admin%40luma.demo')).status()).toBe(404);
+  const rec = await request.post('/api/v1/auth/recovery/request', { headers: { 'x-luma-csrf': '1' }, data: { identifier: 'owner@noura.demo' } });
+  expect(JSON.stringify(await rec.json())).not.toContain('dev_code');
+  await page.goto('/auth/recover');
+  await expect(page.getByText('Password recovery is not available here')).toBeVisible();
+  await page.goto('/auth/register');
+  await expect(page.getByText('Creating accounts is not available here')).toBeVisible();
 });
 
 for (const [key, account] of Object.entries(ACCOUNTS)) {
@@ -79,18 +87,15 @@ test('signed-out visitors are sent to sign in', async ({ page }) => {
   }
 });
 
-test('platform staff: the demo two-step code is the fixed 2002; then the whole admin area opens on every instance', async ({ page }) => {
+test('platform staff: no fixed demo code on a deployed build; an authenticator app verifies the session, then the whole admin area opens on every instance', async ({ page, request }) => {
   await demoSignIn(page, ACCOUNTS.platformOwner);
   await expect(page.getByRole('heading', { name: 'Two-step verification' })).toBeVisible();
-  // Nothing is sent on the demo: no WhatsApp button, just the code.
+  // No WhatsApp provider: no send button; the old fixed demo code is refused by the server.
   await expect(page.getByRole('button', { name: 'Send code on WhatsApp' })).toHaveCount(0);
-  await page.getByLabel('Verification code').fill('1234');
-  await page.getByRole('button', { name: 'Verify' }).click();
-  await expect(page.getByText('The verification code is incorrect.')).toBeVisible();
-  await expect(page).toHaveURL(/\/platform\/mfa/);
-
-  await page.getByLabel('Verification code').fill('2002');
-  await page.getByRole('button', { name: 'Verify' }).click();
+  const cookies = (await page.context().cookies()).map((c) => `${c.name}=${c.value}`).join('; ');
+  const fixed = await request.post('/api/v1/platform/mfa/verify', { headers: { 'x-luma-csrf': '1', cookie: cookies }, data: { code: '2002' } });
+  expect(fixed.status()).toBe(422);
+  await enrolAuthenticator(page);
   await page.waitForURL(/\/platform$/);
   // Every following request alternates instance: none asks for the code again.
   for (const path of PLATFORM_PAGES) {
@@ -99,10 +104,9 @@ test('platform staff: the demo two-step code is the fixed 2002; then the whole a
   }
 });
 
-test('policy reviewer: verifies with 2002, then her admin pages open', async ({ page }) => {
+test('policy reviewer: verifies with an authenticator app, then her admin pages open', async ({ page }) => {
   await demoSignIn(page, ACCOUNTS.policyReviewer);
-  await page.getByLabel('Verification code').fill('2002');
-  await page.getByRole('button', { name: 'Verify' }).click();
+  await enrolAuthenticator(page);
   await page.waitForURL(/\/platform$/);
   for (const path of ['', '/policies']) await expectPageRenders(page, `/platform${path}`);
 });

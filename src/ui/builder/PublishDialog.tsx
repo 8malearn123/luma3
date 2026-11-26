@@ -63,7 +63,7 @@ export function PublishDialog({ open, onClose, slug, prepare, canPublish, onPubl
                 <li key={i.key} className="flex items-center gap-2">
                   {i.ok ? <CheckCircle2 className="size-4 text-ok" aria-hidden /> : <CircleAlert className="size-4 text-danger" aria-hidden />}
                   <span className="flex-1">{t(`onboarding.readiness_items.${i.key}`)}</span>
-                  {!i.ok ? <Link href={i.action_path} className="text-xs text-luma-700 underline">{t('builder.publish.fix')}</Link> : null}
+                  {!i.ok ? <Link href={i.action_path} className="text-xs text-link underline">{t('builder.publish.fix')}</Link> : null}
                   <span className="sr-only">{i.ok ? t('builder.publish.ok') : t('builder.publish.missing')}</span>
                 </li>
               ))}

@@ -1,3 +1,4 @@
+import { existsSync } from 'node:fs';
 import { defineConfig, devices } from '@playwright/test';
 
 /**
@@ -7,6 +8,8 @@ import { defineConfig, devices } from '@playwright/test';
  * "single-instance" pins requests to one, like a warm serverless instance.
  */
 const PORT = Number(process.env.DEMO_PORT ?? 3300);
+/** A preinstalled Chromium (sandboxes without the pinned Playwright browser); override with PW_CHROMIUM_PATH. */
+const CHROMIUM = process.env.PW_CHROMIUM_PATH ?? (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
 
 export default defineConfig({
   testDir: 'tests/demo',
@@ -15,7 +18,7 @@ export default defineConfig({
   timeout: 180_000,
   expect: { timeout: 20_000 },
   reporter: [['list'], ['html', { open: 'never', outputFolder: 'playwright-report-demo' }]],
-  use: { baseURL: `http://localhost:${PORT}`, trace: 'retain-on-failure', screenshot: 'only-on-failure', locale: 'en-US' },
+  use: { baseURL: `http://localhost:${PORT}`, trace: 'retain-on-failure', screenshot: 'only-on-failure', locale: 'en-US', ...(CHROMIUM ? { launchOptions: { executablePath: CHROMIUM } } : {}) },
   projects: [
     { name: 'multi-instance', testMatch: /multi-instance\.spec\.ts/, use: { ...devices['Desktop Chrome'] } },
     { name: 'single-instance', testMatch: /single-instance\.spec\.ts/, use: { ...devices['Desktop Chrome'], extraHTTPHeaders: { 'x-demo-route': 'sticky' } } },

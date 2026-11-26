@@ -4,6 +4,8 @@ import { getLocale } from '@/i18n/server';
 import { dir } from '@/i18n';
 import { Providers } from '@/ui/providers';
 import { getSessionUser } from '@/server/pages';
+import { cookies } from 'next/headers';
+import { parseThemePref, THEME_COOKIE } from '@/ui/shell/theme';
 
 export const metadata: Metadata = {
   title: { default: 'LUMA — لوما', template: '%s · LUMA' },
@@ -16,8 +18,11 @@ export const viewport: Viewport = { width: 'device-width', initialScale: 1, them
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const locale = await getLocale();
   const user = await getSessionUser().catch(() => null);
+  // Dark mode for LUMA's internal surfaces: an explicit choice is rendered on the server
+  // (no flash); without one, CSS follows prefers-color-scheme.
+  const theme = parseThemePref((await cookies()).get(THEME_COOKIE)?.value);
   return (
-    <html lang={locale} dir={dir(locale)}>
+    <html lang={locale} dir={dir(locale)} data-theme={theme === 'system' ? undefined : theme}>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />

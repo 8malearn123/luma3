@@ -24,16 +24,16 @@ export function PricingPlans({ data, promo }: { data: PricingData; promo?: strin
   return (
     <>
       <div className="mt-6 flex flex-col items-center gap-3">
-        <div role="radiogroup" aria-label={t('pricing.billing_cycle')} className="inline-flex rounded-full border border-luma-200 bg-white p-1">
+        <div role="radiogroup" aria-label={t('pricing.billing_cycle')} className="inline-flex rounded-full border border-highlight bg-surface p-1">
           {(['monthly', 'yearly'] as const).map((c) => (
             <button key={c} role="radio" aria-checked={cycle === c} onClick={() => setCycle(c)}
-              className={`rounded-full px-5 py-2 text-sm font-medium ${cycle === c ? 'bg-luma-700 text-white' : 'text-ink'}`}>
-              {t(`pricing.${c}`)}{c === 'yearly' ? <span className={`ms-2 rounded-full px-2 py-0.5 text-xs ${cycle === c ? 'bg-white/20' : 'bg-luma-100 text-luma-800'}`}>{t('pricing.yearly_badge')}</span> : null}
+              className={`rounded-full px-5 py-2 text-sm font-medium ${cycle === c ? 'bg-primary text-on-primary' : 'text-ink'}`}>
+              {t(`pricing.${c}`)}{c === 'yearly' ? <span className={`ms-2 rounded-full px-2 py-0.5 text-xs ${cycle === c ? 'bg-surface/20' : 'bg-accent-soft text-heading'}`}>{t('pricing.yearly_badge')}</span> : null}
             </button>
           ))}
         </div>
         {founding ? (
-          <p className="inline-flex items-center gap-2 rounded-full bg-amber-50 px-4 py-1.5 text-sm text-amber-900">
+          <p className="inline-flex items-center gap-2 rounded-full bg-warn-bg px-4 py-1.5 text-sm text-warn">
             <Sparkles className="size-4" aria-hidden />{t('pricing.founding_left', { n: data.founding.remaining, total: data.founding.total, pct: data.founding.discount_bp / 100 })}
           </p>
         ) : null}
@@ -46,8 +46,8 @@ export function PricingPlans({ data, promo }: { data: PricingData; promo?: strin
           const best = c.promo_minor != null && (c.founding_minor == null || c.promo_minor < c.founding_minor) ? c.promo_minor : null;
           const choose = `/app/new?plan=${p.code}&cycle=${cycle}${promo ? `&promo=${encodeURIComponent(promo)}` : ''}`;
           return (
-            <article key={p.id} className="flex flex-col rounded-3xl border border-luma-200 bg-white p-6">
-              <h2 className="font-display text-2xl text-luma-700">{pick(p.name_ar, p.name_en)}</h2>
+            <article key={p.id} className="flex flex-col rounded-3xl border border-highlight bg-surface p-6">
+              <h2 className="font-display text-2xl text-link">{pick(p.name_ar, p.name_en)}</h2>
               <p className="mt-1 text-sm text-ink-muted">{pick(p.description_ar, p.description_en)}</p>
               {c.list_minor == null ? <p className="mt-4 text-base text-ink-muted">{t('site.price_not_set')}</p> : (
                 <div className="mt-4">
@@ -56,9 +56,9 @@ export function PricingPlans({ data, promo }: { data: PricingData; promo?: strin
                     {founding && c.founding_minor != null ? <span className="ms-2">{money(c.founding_minor, p.currency)}</span> : best != null ? <span className="ms-2">{money(best, p.currency)}</span> : null}
                     <span className="ms-1 text-sm font-normal">{per}</span>
                   </p>
-                  {founding && c.founding_minor != null ? <p className="text-xs text-amber-800">{t('pricing.founding_badge')} · {t('pricing.founding_note')}</p> : null}
+                  {founding && c.founding_minor != null ? <p className="text-xs text-warn">{t('pricing.founding_badge')} · {t('pricing.founding_note')}</p> : null}
                   {c.promotion ? <p className="mt-1 text-xs text-ok">{t('pricing.promo', { name: pick(c.promotion.name_ar, c.promotion.name_en), pct: c.promotion.discount_bp / 100 })} · {t('pricing.promo_until', { date: formatDate(c.promotion.ends_at, { locale }) })}</p> : null}
-                  {cycle === 'yearly' && p.yearly_saving_minor ? <p className="text-xs text-luma-700">{t('pricing.save', { amount: money(p.yearly_saving_minor, p.currency) })}</p> : null}
+                  {cycle === 'yearly' && p.yearly_saving_minor ? <p className="text-xs text-link">{t('pricing.save', { amount: money(p.yearly_saving_minor, p.currency) })}</p> : null}
                   {p.price_is_test ? <p className="text-xs text-warn">{t('site.price_test')}</p> : null}
                 </div>
               )}
@@ -77,7 +77,7 @@ export function PricingPlans({ data, promo }: { data: PricingData; promo?: strin
                   );
                 })}
               </ul>
-              <Link href={`/auth/register?next=${encodeURIComponent(choose)}`} className="mt-6 rounded-xl bg-luma-700 px-4 py-2.5 text-center text-sm font-medium text-white">{t('site.choose')}</Link>
+              <Link href={`/auth/register?next=${encodeURIComponent(choose)}`} className="mt-6 rounded-xl bg-primary px-4 py-2.5 text-center text-sm font-medium text-on-primary">{t('site.choose')}</Link>
             </article>
           );
         })}

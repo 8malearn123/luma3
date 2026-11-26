@@ -2,6 +2,9 @@ export const onboarding = {
   ar: {
     onboarding: {
       title: 'لنجهّز متجركِ', subtitle: 'سبع خطوات قصيرة. يمكنكِ الحفظ والعودة في أي وقت.', step_of: 'الخطوة {n} من ٧',
+      resume_note: 'أنجزتِ {done} من ٧ خطوات، وفتحنا لكِ الخطوة التالية. الخطوات المنجزة عليها علامة ✓ ويمكنكِ مراجعتها في أي وقت.', step_done: '(مكتملة)', step_current: '(الحالية)',
+      hours_mismatch: 'في {branch}: سيظهر المتجر «مغلق» يوم {days}، لكن لدى أخصائيات مواعيد عمل فيه وستظهر أوقات للحجز. أضيفي هذه الأيام لساعات العمل، أو عدّلي جداول الأخصائيات من صفحة الفريق.',
+      hours_note: 'هذه الساعات تظهر في متجرك فقط. أوقات الحجز تأتي من جدول كل أخصائية (صفحة الفريق).',
       steps: {
         1: { title: 'النشاط والفرع', hint: 'الاسم، النوع، المدينة والفرع الرئيسي.' },
         2: { title: 'هويتك الحالية', hint: 'ارفعي شعارك أو ابدئي باسم نصي فقط — لن نخترع شعاراً نهائياً.' },
@@ -27,13 +30,16 @@ export const onboarding = {
       palette_suggested: 'لوحة مقترحة — لن تُطبّق إلا بموافقتك', accept_palette: 'اعتماد اللوحة', from_logo: 'اقتراح من الشعار',
       generate: 'إنشاء مسودة المتجر', generated: 'تم إنشاء المسودة. لم يُنشر شيء بعد.', generator_note: 'تم الإنشاء بقواعد ثابتة دون ذكاء اصطناعي.',
       readiness: 'جاهزية النشر', ready: 'جاهز للنشر', not_ready: 'أكملي العناصر التالية قبل النشر',
-      readiness_items: { bookable_service: 'خدمة قابلة للحجز مع أخصائية مؤهلة', provider: 'موظفة أو مقدّمة خدمة نشطة', working_schedule: 'جدول عمل', contact_details: 'بيانات التواصل', booking_policy: 'مراجعة سياسة الحجز والدفع' },
+      readiness_items: { bookable_service: 'خدمة قابلة للحجز مع أخصائية مؤهلة', provider: 'موظفة أو مقدّمة خدمة نشطة', working_schedule: 'جدول عمل', contact_details: 'بيانات التواصل', booking_policy: 'مراجعة سياسة الحجز والدفع', payment_method: 'طريقة لاستلام المدفوعات (مزوّد دفع أو الدفع في المحل)' },
       create_business: 'إنشاء النشاط', saved_resume: 'تم الحفظ — يمكنكِ المتابعة من أي جهاز.', open_builder: 'فتح محرر المتجر', go_overview: 'الذهاب للوحة', add_service: 'إضافة خدمة', remove: 'إزالة', add_hours: 'إضافة فترة', drag_hint: 'استخدمي الأسهم لإعادة الترتيب', upload_logo: 'رفع الشعار', upload_cover: 'رفع صورة الغلاف', uploading: 'جارٍ الرفع…', finish: 'إنهاء الإعداد', none_selected: 'لم يتم اختيار شيء',
     },
   },
   en: {
     onboarding: {
       title: "Let's set up your storefront", subtitle: 'Seven short steps. Save and come back any time.', step_of: 'Step {n} of 7',
+      resume_note: 'You have completed {done} of 7 steps, so we opened the next one. Completed steps are marked ✓ and you can review them any time.', step_done: '(completed)', step_current: '(current)',
+      hours_mismatch: 'At {branch}: the store will show “Closed” on {days}, but specialists work then and customers will see times to book. Add these days to the opening hours, or adjust the specialists’ schedules on the Team page.',
+      hours_note: 'These hours are shown on your store only. Booking times come from each specialist’s schedule (Team page).',
       steps: {
         1: { title: 'Business & branch', hint: 'Name, type, city and main branch.' },
         2: { title: 'Existing identity', hint: 'Upload your logo or start with a text name — we will not invent a final logo.' },
@@ -59,7 +65,7 @@ export const onboarding = {
       palette_suggested: 'Suggested palette — applied only if you approve', accept_palette: 'Approve palette', from_logo: 'Suggest from logo',
       generate: 'Generate storefront draft', generated: 'Draft created. Nothing has been published.', generator_note: 'Generated with fixed rules, without AI.',
       readiness: 'Publishing readiness', ready: 'Ready to publish', not_ready: 'Complete these items before publishing',
-      readiness_items: { bookable_service: 'A bookable service with a qualified provider', provider: 'An active team member or provider', working_schedule: 'A working schedule', contact_details: 'Contact details', booking_policy: 'Reviewed booking & payment policy' },
+      readiness_items: { bookable_service: 'A bookable service with a qualified provider', provider: 'An active team member or provider', working_schedule: 'A working schedule', contact_details: 'Contact details', booking_policy: 'Reviewed booking & payment policy', payment_method: 'A way to get paid (payment provider or pay on site)' },
       create_business: 'Create business', saved_resume: 'Saved — continue from any device.', open_builder: 'Open storefront builder', go_overview: 'Go to dashboard', add_service: 'Add service', remove: 'Remove', add_hours: 'Add hours', drag_hint: 'Use the arrows to reorder', upload_logo: 'Upload logo', upload_cover: 'Upload cover image', uploading: 'Uploading…', finish: 'Finish setup', none_selected: 'Nothing selected',
     },
   },

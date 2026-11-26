@@ -24,8 +24,8 @@ export function BarList({ items, format = (v) => String(v), label, empty }: {
             <span className="min-w-0 truncate">{i.label}</span>
             <span className="shrink-0 font-medium tabular-nums" dir="ltr">{format(i.value)}</span>
           </div>
-          <div className="h-2 w-full overflow-hidden rounded-full bg-luma-100" aria-hidden>
-            <div className="h-full rounded-full bg-luma-500" style={{ width: `${Math.max(2, (i.value / max) * 100)}%` }} />
+          <div className="h-2 w-full overflow-hidden rounded-full bg-accent-soft" aria-hidden>
+            <div className="h-full rounded-full bg-brand" style={{ width: `${Math.max(2, (i.value / max) * 100)}%` }} />
           </div>
           {i.hint ? <p className="mt-0.5 text-xs text-ink-muted">{i.hint}</p> : null}
         </li>
@@ -44,7 +44,7 @@ export function Sparkline({ points, label, height = 64 }: { points: Array<{ x: s
   return (
     <figure>
       <svg viewBox={`0 0 ${w} ${height}`} className="h-16 w-full" role="img" aria-label={label} preserveAspectRatio="none">
-        <path d={d} fill="none" stroke="currentColor" strokeWidth={2} className="text-luma-500" vectorEffect="non-scaling-stroke" />
+        <path d={d} fill="none" stroke="currentColor" strokeWidth={2} className="text-brand" vectorEffect="non-scaling-stroke" />
       </svg>
       <table className="sr-only"><caption>{label}</caption><tbody>{points.map((p) => <tr key={p.x}><th scope="row">{p.x}</th><td>{p.y}</td></tr>)}</tbody></table>
     </figure>
@@ -59,7 +59,7 @@ export function Funnel({ steps, label }: { steps: Array<{ key: string; label: Re
       {steps.map((s) => (
         <li key={s.key} className="text-sm">
           <div className="flex items-baseline justify-between"><span>{s.label}</span><span className="tabular-nums" dir="ltr">{s.value}</span></div>
-          <div className="h-3 rounded bg-luma-100" aria-hidden><div className="h-full rounded bg-luma-300" style={{ width: `${Math.max(2, Math.min(100, (s.value / first) * 100))}%` }} /></div>
+          <div className="h-3 rounded bg-accent-soft" aria-hidden><div className="h-full rounded bg-line-strong" style={{ width: `${Math.max(2, Math.min(100, (s.value / first) * 100))}%` }} /></div>
         </li>
       ))}
     </ol>
@@ -80,7 +80,7 @@ export function HeatTable({ rows, cols, cell, caption }: { rows: Array<{ key: st
               {cols.map((c) => {
                 const v = cell(r.key, c.key);
                 return (
-                  <td key={c.key} className={cx('rounded-md px-2 py-2 text-center tabular-nums', v === null ? 'bg-white text-ink-muted' : v >= 0.85 ? 'bg-luma-700 text-white' : v >= 0.5 ? 'bg-luma-300' : v >= 0.25 ? 'bg-luma-200' : 'bg-luma-100')}>
+                  <td key={c.key} className={cx('rounded-md px-2 py-2 text-center tabular-nums', v === null ? 'bg-surface text-ink-muted' : v >= 0.85 ? 'bg-primary text-on-primary' : v >= 0.5 ? 'bg-line-strong' : v >= 0.25 ? 'bg-highlight' : 'bg-accent-soft')}>
                     {v === null ? '—' : `${Math.round(v * 100)}%`}
                   </td>
                 );

@@ -44,7 +44,7 @@ export function AuditDetail({ row, onClose }: { row: AuditRow; onClose: () => vo
       </dl>
       <h3 className="mt-4 text-sm font-semibold">{t('platform.audit.data')}</h3>
       <p className="text-xs text-ink-muted">{t('platform.audit.redacted')}</p>
-      <pre dir="ltr" className="mt-2 max-h-96 overflow-auto rounded-lg bg-luma-50 p-3 text-xs">{JSON.stringify(row.data, null, 2)}</pre>
+      <pre dir="ltr" className="mt-2 max-h-96 overflow-auto rounded-lg bg-surface-muted p-3 text-xs">{JSON.stringify(row.data, null, 2)}</pre>
     </Drawer>
   );
 }

@@ -16,7 +16,7 @@ import { isIP } from 'node:net';
  */
 
 export type FetchResponse = { status: number; headers: Record<string, string | string[] | undefined>; body: AsyncIterable<Uint8Array> | null };
-export type Transport = (url: URL, init: { signal: AbortSignal; headers: Record<string, string> }) => Promise<FetchResponse>;
+export type Transport = (url: URL, init: { signal: AbortSignal; headers: Record<string, string>; method?: 'GET' | 'POST'; body?: string }) => Promise<FetchResponse>;
 export type Resolver = (host: string) => Promise<string[]>;
 
 export class SafeFetchError extends Error {
@@ -99,7 +99,7 @@ export const defaultResolver: Resolver = async (host) => {
 /** Node https transport whose DNS lookup refuses non-public addresses at connect time. */
 export const defaultTransport: Transport = (url, init) => new Promise((resolve, reject) => {
   const req = https.request(url, {
-    method: 'GET', headers: init.headers, signal: init.signal,
+    method: init.method ?? 'GET', headers: init.headers, signal: init.signal,
     lookup: (hostname, options, cb) => {
       dnsLookup(hostname, options, (err, address, family) => {
         if (err) return (cb as (e: Error | null, a: string, f: number) => void)(err, '', 0);
@@ -110,7 +110,7 @@ export const defaultTransport: Transport = (url, init) => new Promise((resolve, 
     },
   }, (res) => resolve({ status: res.statusCode ?? 0, headers: res.headers, body: res }));
   req.on('error', reject);
-  req.end();
+  req.end(init.body);
 });
 
 export type SafeFetchOptions = {
@@ -120,6 +120,12 @@ export type SafeFetchOptions = {
   timeoutMs?: number;
   maxRedirects?: number;
   accept?: RegExp;
+  /** POST (webhooks): the body is sent once and redirects are not followed. */
+  method?: 'GET' | 'POST';
+  body?: string;
+  /** Extra request headers (e.g. API auth). Host and content-length are set by the transport. */
+  headers?: Record<string, string>;
+  userAgent?: string;
 };
 
 const header = (h: FetchResponse['headers'], k: string) => {
@@ -131,7 +137,8 @@ export async function safeFetch(rawUrl: string, opts: SafeFetchOptions = {}): Pr
   const transport = opts.transport ?? defaultTransport;
   const resolver = opts.resolver ?? defaultResolver;
   const maxBytes = opts.maxBytes ?? 1_000_000;
-  const maxRedirects = opts.maxRedirects ?? 3;
+  const method = opts.method ?? 'GET';
+  const maxRedirects = method === 'POST' ? 0 : opts.maxRedirects ?? 3;
   const accept = opts.accept ?? /^(application\/(rss\+xml|atom\+xml|xml|json|feed\+json)|text\/(xml|html|plain))\b/i;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), opts.timeoutMs ?? 8000);
@@ -144,7 +151,9 @@ export async function safeFetch(rawUrl: string, opts: SafeFetchOptions = {}): Pr
       if (!addrs.length || addrs.some((a) => isBlockedIp(a))) throw new SafeFetchError('blocked_address');
       let res: FetchResponse;
       try {
-        res = await transport(url, { signal: controller.signal, headers: { 'user-agent': 'LUMA-TrendRadar/1.0 (+https://luma.example)', accept: 'application/rss+xml, application/atom+xml, application/xml, text/html;q=0.8, */*;q=0.1' } });
+        const headers: Record<string, string> = { 'user-agent': opts.userAgent ?? 'LUMA-TrendRadar/1.0 (+https://luma.example)', accept: 'application/rss+xml, application/atom+xml, application/xml, text/html;q=0.8, */*;q=0.1', ...(opts.headers ?? {}) };
+        if (opts.body !== undefined) headers['content-length'] = String(Buffer.byteLength(opts.body));
+        res = await transport(url, { signal: controller.signal, headers, method, body: opts.body });
       } catch (e) {
         if (e instanceof SafeFetchError) throw e;
         if (controller.signal.aborted) throw new SafeFetchError('timeout');

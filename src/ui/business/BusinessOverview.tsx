@@ -51,7 +51,7 @@ export function DayColumns({ points, label, format = (v) => String(v) }: { point
         {points.map((p, i) => (
           <div key={p.date} className="flex h-full flex-1 flex-col items-center justify-end gap-1">
             <span className="text-[10px] tabular-nums text-ink-muted" dir="ltr">{p.value ? format(p.value) : ''}</span>
-            <div className={cx('w-full rounded-t-md', i === points.length - 1 ? 'bg-luma-700' : 'bg-luma-300')} style={{ height: `${Math.max(3, (p.value / max) * 100)}%` }} />
+            <div className={cx('w-full rounded-t-md', i === points.length - 1 ? 'bg-primary' : 'bg-line-strong')} style={{ height: `${Math.max(3, (p.value / max) * 100)}%` }} />
             <span className="text-[10px] text-ink-muted">{new Intl.DateTimeFormat(locale === 'ar' ? 'ar-SA-u-nu-latn' : 'en', { weekday: 'short', timeZone: 'UTC' }).format(new Date(`${p.date}T12:00:00Z`))}</span>
           </div>
         ))}
@@ -62,7 +62,7 @@ export function DayColumns({ points, label, format = (v) => String(v) }: { point
 }
 
 function Stars({ n }: { n: number }) {
-  return <span className="inline-flex text-amber-500" aria-label={`${n}/5`}>{Array.from({ length: 5 }, (_, i) => <Star key={i} className={cx('size-3.5', i < n ? 'fill-current' : 'opacity-30')} aria-hidden />)}</span>;
+  return <span className="inline-flex text-rating" aria-label={`${n}/5`}>{Array.from({ length: 5 }, (_, i) => <Star key={i} className={cx('size-3.5', i < n ? 'fill-current' : 'opacity-30')} aria-hidden />)}</span>;
 }
 
 function useWhen() {
@@ -80,7 +80,7 @@ function Appointments({ items, empty, showDay }: { items: Appt[]; empty: string;
     <ul className="flex flex-col divide-y divide-line">
       {items.map((a) => (
         <li key={a.id}>
-          <Link href={`/app/${access.slug}/bookings/${a.id}`} className="flex items-center gap-3 py-2.5 hover:bg-luma-50">
+          <Link href={`/app/${access.slug}/bookings/${a.id}`} className="flex items-center gap-3 py-2.5 hover:bg-surface-muted">
             <div className="w-16 shrink-0 text-center">
               <p className="text-sm font-semibold tabular-nums">{w.time(a.starts_at)}</p>
               {showDay ? <p className="text-[10px] text-ink-muted">{w.day(a.starts_at)}</p> : null}
@@ -117,7 +117,7 @@ function ReviewsCard({ reviews }: { reviews: NonNullable<Reviews> }) {
           ))}
         </ul>
       ) : <p className="text-sm text-ink-muted">{t('business.overview.no_reviews')}</p>}
-      {access.can('customers.view') ? <Link href={`/app/${access.slug}/customers`} className="mt-3 inline-block text-xs text-luma-700 underline">{t('business.overview.all_reviews')}</Link> : null}
+      {access.can('customers.view') ? <Link href={`/app/${access.slug}/customers`} className="mt-3 inline-block text-xs text-link underline">{t('business.overview.all_reviews')}</Link> : null}
     </Card>
   );
 }
@@ -125,8 +125,9 @@ function ReviewsCard({ reviews }: { reviews: NonNullable<Reviews> }) {
 function PlanNudge({ plan }: { plan: NonNullable<Plan> }) {
   const { t, locale } = useI18n();
   const access = useAccess();
-  if (!plan.nudge) return null;
-  const near = plan.items.filter((i) => i.near_limit);
+  // R5: a solo freelancer has one studio, so the branch limit is not an upsell for her.
+  const near = plan.items.filter((i) => i.near_limit && !(access.solo && i.key === 'limit.branches'));
+  if (!plan.nudge || !near.length) return null;
   return (
     <Alert tone="warn" title={t('business.overview.plan_nudge_title')}>
       <ul className="mt-1 flex flex-col gap-0.5">
@@ -157,8 +158,8 @@ function DigestLink() {
   const access = useAccess();
   if (!access.can('business.manage', 'analytics.view')) return null;
   return (
-    <Link href={`/app/${access.slug}/digest`} className="flex items-center gap-3 rounded-2xl border border-line bg-white p-4 shadow-sm hover:border-luma-300">
-      <Newspaper className="size-5 text-luma-500" aria-hidden />
+    <Link href={`/app/${access.slug}/digest`} className="flex items-center gap-3 rounded-2xl border border-line bg-surface p-4 shadow-sm hover:border-line-strong">
+      <Newspaper className="size-5 text-brand" aria-hidden />
       <span className="text-sm"><span className="block font-medium">{t('business.digest.title')}</span><span className="text-xs text-ink-muted">{t('business.digest.overview_hint')}</span></span>
     </Link>
   );
@@ -170,11 +171,11 @@ function Charts({ series, money }: { series: NonNullable<Series>; money: boolean
   const fmtMoneyShort = (v: number) => formatNumber(Math.round(v / 100), locale, { notation: 'compact' });
   return (
     <div className={cx('grid gap-4', money && 'lg:grid-cols-2')}>
-      <Card title={<span className="inline-flex items-center gap-2"><CalendarDays className="size-4 text-luma-500" aria-hidden />{t('business.overview.chart_bookings')}</span>}>
+      <Card title={<span className="inline-flex items-center gap-2"><CalendarDays className="size-4 text-brand" aria-hidden />{t('business.overview.chart_bookings')}</span>}>
         <DayColumns points={series.map((p) => ({ date: p.date, value: p.bookings }))} label={t('business.overview.chart_bookings')} />
       </Card>
       {money ? (
-        <Card title={<span className="inline-flex items-center gap-2"><TrendingUp className="size-4 text-luma-500" aria-hidden />{t('business.overview.chart_sales', { currency: access.currency })}</span>}>
+        <Card title={<span className="inline-flex items-center gap-2"><TrendingUp className="size-4 text-brand" aria-hidden />{t('business.overview.chart_sales', { currency: access.currency })}</span>}>
           <DayColumns points={series.map((p) => ({ date: p.date, value: p.sales_minor ?? 0 }))} label={t('business.overview.chart_sales', { currency: access.currency })} format={fmtMoneyShort} />
           <p className="mt-1 text-[11px] text-ink-muted">{t('business.overview.sales_basis')}</p>
         </Card>
@@ -207,13 +208,13 @@ function BusinessView({ d }: { d: Extract<OverviewData, { variant: 'business' }>
       {d.series ? <Charts series={d.series} money={d.perms.money} /> : null}
       <div className="grid gap-4 lg:grid-cols-3">
         {d.next_appointments ? (
-          <Card className="lg:col-span-2" title={<span className="inline-flex items-center gap-2"><CalendarClock className="size-4 text-luma-500" aria-hidden />{t('business.overview.next_appointments')}</span>}
-            actions={<Link href={`/app/${access.slug}/bookings`} className="text-xs text-luma-700 underline">{t('business.overview.all_bookings')}</Link>}>
+          <Card className="lg:col-span-2" title={<span className="inline-flex items-center gap-2"><CalendarClock className="size-4 text-brand" aria-hidden />{t('business.overview.next_appointments')}</span>}
+            actions={<Link href={`/app/${access.slug}/bookings`} className="text-xs text-link underline">{t('business.overview.all_bookings')}</Link>}>
             <Appointments items={d.next_appointments} empty={t('business.overview.no_upcoming')} showDay />
           </Card>
         ) : null}
         {d.staff_today ? (
-          <Card title={<span className="inline-flex items-center gap-2"><Users className="size-4 text-luma-500" aria-hidden />{t('business.overview.staff_today')}</span>}>
+          <Card title={<span className="inline-flex items-center gap-2"><Users className="size-4 text-brand" aria-hidden />{t('business.overview.staff_today')}</span>}>
             {d.staff_today.length ? (
               <ul className="flex flex-col gap-2">
                 {d.staff_today.map((s) => (
@@ -260,8 +261,8 @@ function ExpertView({ d }: { d: Extract<OverviewData, { variant: 'expert' }> }) 
       </div>
       <div className="grid gap-4 lg:grid-cols-3">
         {d.my_appointments_today ? (
-          <Card className="lg:col-span-2" title={<span className="inline-flex items-center gap-2"><CalendarClock className="size-4 text-luma-500" aria-hidden />{t('business.overview.my_appointments_today')}</span>}
-            actions={<Link href={`/app/${access.slug}/bookings`} className="text-xs text-luma-700 underline">{t('business.overview.all_bookings')}</Link>}>
+          <Card className="lg:col-span-2" title={<span className="inline-flex items-center gap-2"><CalendarClock className="size-4 text-brand" aria-hidden />{t('business.overview.my_appointments_today')}</span>}
+            actions={<Link href={`/app/${access.slug}/bookings`} className="text-xs text-link underline">{t('business.overview.all_bookings')}</Link>}>
             <Appointments items={d.my_appointments_today} empty={t('business.overview.free_today')} />
             {d.next_appointments && d.next_appointments.length > d.my_appointments_today.length ? (
               <>
@@ -272,8 +273,8 @@ function ExpertView({ d }: { d: Extract<OverviewData, { variant: 'expert' }> }) 
           </Card>
         ) : null}
         <Card title={t('business.overview.profile_completion')}>
-          <div className="mb-3 h-2 overflow-hidden rounded-full bg-luma-100" role="progressbar" aria-valuenow={pc.percent} aria-valuemin={0} aria-valuemax={100} aria-label={t('business.overview.profile_completion')}>
-            <div className="h-full rounded-full bg-luma-700" style={{ width: `${pc.percent}%` }} />
+          <div className="mb-3 h-2 overflow-hidden rounded-full bg-accent-soft" role="progressbar" aria-valuenow={pc.percent} aria-valuemin={0} aria-valuemax={100} aria-label={t('business.overview.profile_completion')}>
+            <div className="h-full rounded-full bg-primary" style={{ width: `${pc.percent}%` }} />
           </div>
           <ul className="flex flex-col gap-1.5 text-sm">
             {pc.items.map((i) => (

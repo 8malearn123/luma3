@@ -1,0 +1,60 @@
+{
+  "id": "pb.loyalty.points_over_discount",
+  "version": 1,
+  "title": {
+    "ar": "ولاء بالنقاط بدل الخصومات المتكررة",
+    "en": "Points loyalty instead of repeated discounts"
+  },
+  "applies_to": {
+    "sectors": [
+      "beauty"
+    ],
+    "detectors": [
+      "loyalty_over_discount"
+    ],
+    "interventions": [
+      "loyalty_program"
+    ],
+    "channels": [
+      "in_app"
+    ]
+  },
+  "guidance": {
+    "ar": "عندما تأتي نسبة كبيرة من المبيعات بخصومات والعودة ضعيفة، استبدلي الخصومات ببرنامج بسيط يكافئ الزيارة التالية، وأوقفي الخصومات العامة تدريجيًا.",
+    "en": "When a large share of sales comes with discounts and repeat visits are weak, replace discounts with a simple program rewarding the next visit, and phase out general discounts."
+  },
+  "when_not_to_use": {
+    "ar": "لا يصلح لمنشأة جديدة بلا عميلات متكررات كافيات.",
+    "en": "Not suitable for a new business without enough repeat customers."
+  },
+  "common_mistakes": [
+    {
+      "ar": "نقاط معقدة لا تفهمها العميلات",
+      "en": "Points rules customers do not understand"
+    }
+  ],
+  "measurement": {
+    "primary": "customers.repeat_rate",
+    "design": "pre_post_with_control"
+  },
+  "examples": {
+    "good": [
+      {
+        "ar": "الزيارة الخامسة تأتي مع إضافة مجانية",
+        "en": "Your fifth visit comes with a free add-on"
+      }
+    ],
+    "bad": [
+      {
+        "ar": "خصم دائم لكل العميلات",
+        "en": "A permanent discount for all customers"
+      }
+    ]
+  },
+  "source": {
+    "type": "internal_review",
+    "ref": "Loom marketing methodology review, beauty pack v1",
+    "reviewed_at": "2026-11-01"
+  },
+  "owner": "loom.methodology"
+}

@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import pg from 'pg';
 import { e2eEnv } from '../../playwright.config';
 
@@ -18,6 +18,8 @@ export default async function globalSetup() {
   const c = new pg.Client({ connectionString: e2eEnv.DATABASE_OWNER_URL });
   await c.connect();
   await c.query('drop schema if exists app cascade');
+  await c.query('drop schema if exists loom_export cascade');
+  await c.query('drop schema if exists loom cascade');
   await c.query('drop schema public cascade');
   await c.query('create schema public');
   await c.query(`grant usage on schema public to ${pg.escapeIdentifier(e2eEnv.DB_APP_ROLE)}`);
@@ -27,4 +29,6 @@ export default async function globalSetup() {
   const env = { ...process.env, ...e2eEnv };
   execFileSync('pnpm', ['-s', 'exec', 'tsx', 'scripts/migrate.ts'], { env, stdio: 'inherit' });
   execFileSync('pnpm', ['-s', 'exec', 'tsx', 'scripts/seed.ts'], { env, stdio: 'inherit' });
+  // Lets tests/e2e/serve.ts start the job worker only once the database is migrated and seeded.
+  writeFileSync('.e2e/seeded', new Date().toISOString());
 }

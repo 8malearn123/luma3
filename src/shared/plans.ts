@@ -11,6 +11,8 @@ export const PLAN_FEATURES = {
   'limit.products': { kind: 'limit', label_ar: 'عدد المنتجات', label_en: 'Products' },
   'limit.custom_pages': { kind: 'limit', label_ar: 'الصفحات الإضافية', label_en: 'Custom pages' },
   'limit.ai_runs_monthly': { kind: 'limit', label_ar: 'تحليلات الذكاء الاصطناعي شهرياً', label_en: 'AI analyses per month' },
+  // Multi-location inventory & purchasing (0801_inventory_plan_features.sql; distribution «مقترح — غير معتمد»).
+  'limit.stock_locations': { kind: 'limit', label_ar: 'مواقع المخزون الإضافية', label_en: 'Additional stock locations' },
   // Feature switches
   'feature.products': { kind: 'switch', label_ar: 'المتجر والمنتجات', label_en: 'Products & shop' },
   'feature.inventory': { kind: 'switch', label_ar: 'المخزون التشغيلي', label_en: 'Operational inventory' },
@@ -25,6 +27,16 @@ export const PLAN_FEATURES = {
   'feature.resources': { kind: 'switch', label_ar: 'الموارد (غرف/كراسي)', label_en: 'Resources (rooms/chairs)' },
   'feature.finance_reports': { kind: 'switch', label_ar: 'التقارير المالية', label_en: 'Finance reports' },
   'feature.remove_powered_by': { kind: 'switch', label_ar: 'إخفاء "بدعم من لوما"', label_en: 'Hide "Powered by LUMA"' },
+  'feature.inventory_transfers': { kind: 'switch', label_ar: 'المناقلات بين المواقع', label_en: 'Stock transfers' },
+  'feature.inventory_counts': { kind: 'switch', label_ar: 'الجرد الفعلي', label_en: 'Physical stock counts' },
+  'feature.purchasing': { kind: 'switch', label_ar: 'المشتريات والموردون', label_en: 'Purchasing & suppliers' },
+  'feature.inventory_finance_link': { kind: 'switch', label_ar: 'ربط المخزون بالمحاسبة', label_en: 'Inventory accounting link' },
+  'feature.inventory_reports_advanced': { kind: 'switch', label_ar: 'تقارير المخزون المتقدمة', label_en: 'Advanced inventory reports' },
+  // Workspace hosting (migration 0810; distribution «مقترح — غير معتمد», D12)
+  'limit.hosting_spaces': { kind: 'limit', label_ar: 'المساحات المنشورة للإيجار', label_en: 'Spaces published for rent' },
+  'hosting.publish': { kind: 'switch', label_ar: 'نشر المساحات للإيجار', label_en: 'Publish spaces for rent' },
+  'hosting.reports': { kind: 'switch', label_ar: 'تقارير الاستضافة', label_en: 'Hosting reports' },
+  'workspace.book': { kind: 'switch', label_ar: 'حجز مساحة عمل', label_en: 'Book a workspace' },
 } as const;
 
 export type PlanFeatureKey = keyof typeof PLAN_FEATURES;

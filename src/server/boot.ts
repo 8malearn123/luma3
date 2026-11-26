@@ -14,9 +14,14 @@ import { offerFreedSlot } from './domains/waitlist/service';
 import { releaseSeats } from './domains/groups/service';
 import { paymentTargets } from './domains/payments/targets';
 import { recordServerEvent } from './domains/analytics/events';
-import { recordMarketplaceCommission } from './domains/marketplace/attribution';
-import { consumeMaterialsForBookingItem, markOrderPaid, releaseCouponRedemption } from './domains/commerce';
+import { recordMarketplaceCommission, reverseMarketplaceCommission } from './domains/marketplace/attribution';
+import { cancelPlannedUsage, consumeMaterialsForBookingItem, markOrderPaid, releaseCouponRedemption } from './domains/commerce';
 import { onEventPaymentCaptured, onEventPaymentFailed, onEventRefunded } from './domains/events/service';
+import { onWorkspacePaymentCaptured, onWorkspacePaymentFailed, onWorkspaceRefunded } from './domains/hosting/bookings';
+// Loom: LUMA change events → Loom change signals, and the default plan-revision adapter.
+import './loom-host/changes';
+// Loom host ports (SSRF-safe HTTP, encrypted secrets).
+import './loom-host/runtime';
 
 const g = globalThis as unknown as { __lumaBooted?: boolean };
 if (!g.__lumaBooted) {
@@ -53,6 +58,10 @@ if (!g.__lumaBooted) {
   paymentTargets.event.onCaptured = (trx, tenantId, id, payment) => onEventPaymentCaptured(trx, tenantId, id, payment);
   paymentTargets.event.onFailed = (trx, tenantId, id) => onEventPaymentFailed(trx, tenantId, id);
   paymentTargets.event.onRefunded = (trx, tenantId, id, refund) => onEventRefunded(trx, tenantId, id, refund);
+  // Workspace hosting: rent + add-ons paid to the host salon confirm the space booking for both tenants.
+  paymentTargets.workspace.onCaptured = (trx, tenantId, id, payment) => onWorkspacePaymentCaptured(trx, tenantId, id, payment);
+  paymentTargets.workspace.onFailed = (trx, tenantId, id) => onWorkspacePaymentFailed(trx, tenantId, id);
+  paymentTargets.workspace.onRefunded = (trx, tenantId, id, refund) => onWorkspaceRefunded(trx, tenantId, id, refund);
   registerBookingHook.refundDue(async (trx, tenantId, bookingId, amount, basis) => {
     await refundBookingDue(trx, tenantId, bookingId, amount, basis);
   });
@@ -62,10 +71,14 @@ if (!g.__lumaBooted) {
     await releaseForBooking(trx, bookingId);
     // A booking coupon is given back when the booking is cancelled or its hold expires (kept on a no-show).
     if (why !== 'no_show') await releaseCouponRedemption(trx, tenantId, { bookingId });
+    // Materials are not reserved for bookings: closing one without service only cancels planned usage.
+    await cancelPlannedUsage(trx, tenantId, bookingId);
   });
   onRefundSucceeded(async (trx, tenantId, refundId) => {
     await reverseForRefund(trx, tenantId, refundId);
     await restoreOnRefund(trx, tenantId, refundId);
+    // سوق لوما: a refund after completion reverses the commission proportionally (R1).
+    await reverseMarketplaceCommission(trx, tenantId, refundId);
   });
   registerBookingHook.slotFreed(async (trx, tenantId, bookingId) => {
     await offerFreedSlot(trx, tenantId, bookingId);

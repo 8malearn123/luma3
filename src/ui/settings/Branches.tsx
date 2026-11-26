@@ -14,6 +14,7 @@ import { Card } from '../components/layout';
 import { ConfirmDialog, Drawer } from '../components/overlay';
 import { useToast } from '../components/toast';
 import { SectionErrors } from './shared';
+import { useAccess } from '../shell/access-context';
 
 type Hour = { weekday: number; opens: string; closes: string };
 type Branch = { id: string; name: string; city: string | null; address: string | null; latitude: number | null; longitude: number | null; timezone: string; phone: string | null; is_primary: boolean; status: string; version: number; hours: Hour[] };
@@ -23,21 +24,24 @@ export function BranchesSection({ slug, canManage }: { slug: string; canManage: 
   const { t, locale, timeFormat } = useI18n();
   const q = useApiQuery<List>(['branches', slug], `/api/v1/t/${slug}/branches`);
   const [edit, setEdit] = useState<Branch | 'new' | null>(null);
+  // R5: a solo freelancer works from one studio — no branch list, «add branch» or branch-limit banner (the API refuses new branches too).
+  const studio = useAccess().solo;
   if (q.isLoading) return <LoadingState />;
   if (q.error) return <ErrorState error={q.error} onRetry={() => q.refetch()} />;
   const d = q.data!;
   const atLimit = d.limit !== null && d.active >= d.limit;
+  const items = studio ? d.items.filter((b) => b.status !== 'archived').slice(0, 1) : d.items;
   return (
-    <Card title={t('biz_settings.branches.title')} actions={canManage ? <Button size="sm" icon={<Plus className="size-4" />} disabled={atLimit} onClick={() => setEdit('new')}>{t('biz_settings.branches.add')}</Button> : null}>
-      <p className="mb-3 text-sm text-ink-muted">{t('biz_settings.branches.usage', { used: d.active, limit: d.limit ?? t('site.unlimited') })}</p>
-      {atLimit && canManage ? <Alert tone="info" className="mb-3">{t('biz_settings.branches.at_limit')}</Alert> : null}
-      {!d.items.length ? <EmptyState /> : (
+    <Card title={studio ? t('workspace_mode.studio_title') : t('biz_settings.branches.title')} actions={canManage && !studio ? <Button size="sm" icon={<Plus className="size-4" />} disabled={atLimit} onClick={() => setEdit('new')}>{t('biz_settings.branches.add')}</Button> : null}>
+      {studio ? <p className="mb-3 text-sm text-ink-muted">{t('workspace_mode.studio_hint')}</p> : <p className="mb-3 text-sm text-ink-muted">{t('biz_settings.branches.usage', { used: d.active, limit: d.limit ?? t('site.unlimited') })}</p>}
+      {atLimit && canManage && !studio ? <Alert tone="info" className="mb-3">{t('biz_settings.branches.at_limit')}</Alert> : null}
+      {!items.length ? <EmptyState /> : (
         <ul className="flex flex-col gap-2">
-          {d.items.map((b) => (
+          {items.map((b) => (
             <li key={b.id} className="rounded-xl border border-line p-3">
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div>
-                  <p className="flex items-center gap-1.5 font-medium"><MapPin className="size-4 text-luma-500" aria-hidden />{b.name}
+                  <p className="flex items-center gap-1.5 font-medium"><MapPin className="size-4 text-brand" aria-hidden />{b.name}
                     {b.is_primary ? <Badge tone="brand"><Star className="size-3" />{t('biz_settings.branches.primary')}</Badge> : null}
                     {b.status === 'archived' ? <Badge>{t('biz_settings.branches.archived')}</Badge> : null}</p>
                   <p className="text-xs text-ink-muted">{[b.city, b.address].filter(Boolean).map((x) => `${x} · `).join('')}<span dir="ltr">{b.timezone}</span></p>
@@ -125,7 +129,7 @@ function BranchEditor({ slug, branch, onClose }: { slug: string; branch: Branch 
               {f.hours.map((h, i) => (
                 <li key={i} className="flex flex-wrap items-end gap-2">
                   <Field label={t('biz_settings.branches.day')} className="w-36">{(p) => (
-                    <select {...p} value={h.weekday} onChange={(e) => setHour(i, { weekday: Number(e.target.value) })} className="h-10 w-full rounded-lg border border-line bg-white px-2 text-sm">
+                    <select {...p} value={h.weekday} onChange={(e) => setHour(i, { weekday: Number(e.target.value) })} className="h-10 w-full rounded-lg border border-line bg-surface px-2 text-sm">
                       {WEEKDAYS[locale].map((d, w) => <option key={w} value={w}>{d}</option>)}
                     </select>
                   )}</Field>

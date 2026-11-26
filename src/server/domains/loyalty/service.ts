@@ -121,18 +121,44 @@ export async function earnForBooking(trx: Tx, tenantId: string, bookingId: strin
   await addEntry(trx, tenantId, acct, { kind: 'earn', delta: points, refType: 'booking', refId: bookingId });
 }
 
-/** Refund hook: proportional reversal of points earned from that booking, never below zero. */
+/**
+ * Order hook (collection, owner decision R6): same programme rule as bookings —
+ * floor(SAR paid and kept × rate), once per order (points_entries_once).
+ */
+export async function earnForOrder(trx: Tx, tenantId: string, orderId: string) {
+  const prog = await trx.selectFrom('loyalty_programs').selectAll().where('tenant_id', '=', tenantId).executeTakeFirst();
+  if (!prog?.is_enabled) return;
+  const o = await trx.selectFrom('orders').select(['tenant_customer_id', 'paid_minor', 'refunded_minor', 'status']).where('id', '=', orderId).executeTakeFirstOrThrow();
+  if (o.status !== 'collected') return;
+  const points = Math.floor(((o.paid_minor - o.refunded_minor) / 100) * Number(prog.points_per_currency_unit));
+  if (points <= 0) return;
+  const acct = await account(trx, tenantId, o.tenant_customer_id);
+  await addEntry(trx, tenantId, acct, { kind: 'earn', delta: points, refType: 'order', refId: orderId });
+}
+
+/**
+ * Refund hook: proportional reversal of points earned from that booking or
+ * order, never below zero and never more than was earned from it in total
+ * (repeated partial refunds cannot over-reverse). Idempotent per refund.
+ */
 export async function reverseForRefund(trx: Tx, tenantId: string, refundId: string) {
   const prog = await trx.selectFrom('loyalty_programs').selectAll().where('tenant_id', '=', tenantId).executeTakeFirst();
   if (!prog?.is_enabled || !prog.reverse_on_refund) return;
-  const r = await trx.selectFrom('refunds as r').innerJoin('payments as p', 'p.id', 'r.payment_id').select(['r.amount_minor', 'p.booking_id']).where('r.id', '=', refundId).executeTakeFirst();
-  if (!r?.booking_id) return;
+  const r = await trx.selectFrom('refunds as r').innerJoin('payments as p', 'p.id', 'r.payment_id').select(['r.amount_minor', 'p.booking_id', 'p.order_id']).where('r.id', '=', refundId).executeTakeFirst();
+  const source = r?.booking_id ? { type: 'booking', id: r.booking_id } : r?.order_id ? { type: 'order', id: r.order_id } : null;
+  if (!r || !source) return;
   const earned = await trx.selectFrom('points_entries as e').innerJoin('loyalty_accounts as a', 'a.id', 'e.account_id')
-    .select(['e.delta', 'a.tenant_customer_id']).where('e.kind', '=', 'earn').where('e.ref_type', '=', 'booking').where('e.ref_id', '=', r.booking_id).executeTakeFirst();
+    .select(['e.delta', 'e.account_id', 'a.tenant_customer_id']).where('e.kind', '=', 'earn').where('e.ref_type', '=', source.type).where('e.ref_id', '=', source.id).executeTakeFirst();
   if (!earned) return;
   const due = Math.floor((r.amount_minor / 100) * Number(prog.points_per_currency_unit));
   const acct = await account(trx, tenantId, earned.tenant_customer_id);
-  const amount = Math.min(due, earned.delta, acct.balance);
+  // Reversals already made for other refunds of the same source.
+  const prior = await trx.selectFrom('points_entries as e').innerJoin('refunds as rf', 'rf.id', 'e.ref_id').innerJoin('payments as p', 'p.id', 'rf.payment_id')
+    .select((eb) => eb.fn.coalesce(eb.fn.sum<number>('e.delta'), eb.lit(0)).as('d'))
+    .where('e.account_id', '=', earned.account_id).where('e.kind', '=', 'reverse').where('e.ref_type', '=', 'refund')
+    .where(source.type === 'booking' ? 'p.booking_id' : 'p.order_id', '=', source.id).where('rf.id', '<>', refundId).executeTakeFirst();
+  const remaining = earned.delta + Number(prior?.d ?? 0);
+  const amount = Math.min(due, remaining, acct.balance);
   if (amount > 0) await addEntry(trx, tenantId, acct, { kind: 'reverse', delta: -amount, refType: 'refund', refId: refundId, reason: due > amount ? `partial reversal (balance ${acct.balance})` : undefined });
 }
 

@@ -40,7 +40,7 @@ export function TenantMarketplaceCard({ tenantId }: { tenantId: string }) {
     } catch (e) { setErr(e); } finally { setBusy(false); }
   };
   return (
-    <Card title={<span className="inline-flex items-center gap-2"><Store className="size-4 text-luma-700" aria-hidden />{t('market.name')}</span>}>
+    <Card title={<span className="inline-flex items-center gap-2"><Store className="size-4 text-link" aria-hidden />{t('market.name')}</span>}>
       {q.isLoading ? <LoadingState rows={2} /> : q.error ? <ErrorState error={q.error} onRetry={() => q.refetch()} /> : q.data ? (
         <div className="flex flex-col gap-3">
           <div className="flex flex-wrap gap-2">

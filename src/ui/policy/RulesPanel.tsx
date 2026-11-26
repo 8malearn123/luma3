@@ -80,7 +80,7 @@ export function RulesEditor({ endpoint, queryKey, writable }: { endpoint: string
       {q.isLoading ? <LoadingState rows={3} /> : q.error ? <ErrorState error={q.error} onRetry={() => q.refetch()} /> : !q.data?.length ? <EmptyState title={t('policy.rules.none')} icon={<FlaskConical className="size-8" aria-hidden />} /> : (
         <ul className="flex flex-col gap-2">
           {q.data.map((r) => (
-            <li key={r.id} className="flex flex-wrap items-center gap-3 rounded-xl border border-line bg-white p-3">
+            <li key={r.id} className="flex flex-wrap items-center gap-3 rounded-xl border border-line bg-surface p-3">
               <div className="min-w-48 flex-1">
                 <p className="font-medium" dir="ltr">{r.key}</p>
                 <p className="text-sm text-ink-muted">{r.criteria.incident_type ? `${t(`policy.types.${r.criteria.incident_type}`)} · ` : ''}{t('policy.rules.summary', { min: r.criteria.min_confirmed, days: r.criteria.window_days })}</p>

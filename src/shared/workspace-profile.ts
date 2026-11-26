@@ -40,7 +40,8 @@ const EXPERT: WorkspaceProfile = {
     'biz_settings.tabs.branches': 'expert.titles.studio',
   },
   // Group classes are a salon/academy concept; experts sell event bookings instead.
-  hiddenNav: ['groups'],
+  // Hosting spaces for rent is a salon feature; experts book spaces («احجزي مساحة عمل») instead.
+  hiddenNav: ['groups', 'hosting'],
 };
 
 export const WORKSPACE_PROFILES: Readonly<Record<string, WorkspaceProfile>> = { expert: EXPERT };

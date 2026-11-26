@@ -18,6 +18,7 @@ import { useFmt } from '../commerce/common';
 import { ApiErrorBox, intOrNull, PlanGate } from './common';
 import type { Category } from './CategoriesPanel';
 import type { ServiceRow } from './ServicesPage';
+import { ArchiveImpactNote } from '../builder/BookingStatusBanner';
 
 type Staff = { id: string; display_name: string; display_name_en: string | null; is_active: boolean };
 type ResourcesData = { types: Array<{ id: string; name_ar: string | null; name_en: string | null }>; resources: Array<{ id: string; resource_type_id: string; is_active: boolean }> };
@@ -142,6 +143,7 @@ function ServiceForm({ service, categories, onClose, refetch }: { service: Servi
       setConfirmArchive(false);
       toast({ tone: 'ok', text: value ? t('catalog_team.services.archived_done') : t('catalog_team.services.restored_done') });
       qc.invalidateQueries({ queryKey: ['services', access.slug] });
+      qc.invalidateQueries({ queryKey: ['booking-status', access.slug] });
       refetch();
     } catch (e) { setErr(e); } finally { setBusy(false); }
   }
@@ -288,7 +290,8 @@ function ServiceForm({ service, categories, onClose, refetch }: { service: Servi
         {isNew ? <p className="text-xs text-ink-muted">{t('catalog_team.services.options_after_create')}</p> : null}
       </div>
       <ConfirmDialog open={confirmArchive} onClose={() => setConfirmArchive(false)} onConfirm={() => archive(true)} loading={busy} danger
-        title={t('catalog_team.services.archive_title')} body={t('catalog_team.services.archive_body')} confirmLabel={t('actions.archive')} />
+        title={t('catalog_team.services.archive_title')} confirmLabel={t('actions.archive')}
+        body={<>{t('catalog_team.services.archive_body')}{confirmArchive && service ? <ArchiveImpactNote slug={access.slug} serviceId={service.id} /> : null}</>} />
     </Drawer>
   );
 }

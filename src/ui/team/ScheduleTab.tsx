@@ -31,7 +31,8 @@ type Week = Record<number, { ranges: Range[]; breaks: Range[] }>;
 
 const DAYS = [0, 1, 2, 3, 4, 5, 6];
 
-export function ScheduleTab({ staff, staffLoading, initialStaffId }: { staff: StaffRow[]; staffLoading: boolean; initialStaffId: string | null }) {
+/** `ownOnly`: the editor for the signed-in person's own schedule (used on «جدولي» by owners who manage schedules). */
+export function ScheduleTab({ staff, staffLoading, initialStaffId, ownOnly = false }: { staff: StaffRow[]; staffLoading: boolean; initialStaffId: string | null; ownOnly?: boolean }) {
   const { t, pick, locale } = useI18n();
   const access = useAccess();
   const caps = useTeamCaps();
@@ -47,7 +48,7 @@ export function ScheduleTab({ staff, staffLoading, initialStaffId }: { staff: St
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
-        {access.can('schedule.manage') ? (
+        {access.can('schedule.manage') && !ownOnly ? (
           <Field label={t('catalog_team.schedule.staff')} className="sm:w-64">{(fp) => (
             <Select {...fp} value={effective} onChange={(e) => setStaffId(e.target.value)} disabled={staffLoading}>
               {choices.map((s) => <option key={s.id} value={s.id}>{pick(s.display_name, s.display_name_en)}</option>)}
@@ -63,7 +64,7 @@ export function ScheduleTab({ staff, staffLoading, initialStaffId }: { staff: St
         ) : null}
         <p className="text-xs text-ink-muted sm:ms-auto">{t('time.tz_note', { tz: tzLabel(access.timezone, locale) })}</p>
       </div>
-      {staffLoading && access.can('schedule.manage') ? <LoadingState rows={3} /> : !effective ? (
+      {staffLoading && access.can('schedule.manage') && !ownOnly ? <LoadingState rows={3} /> : !effective ? (
         <EmptyState title={t('catalog_team.schedule.no_staff')} />
       ) : q.isLoading ? <LoadingState rows={5} /> : q.error ? <ErrorState error={q.error} onRetry={() => q.refetch()} /> : q.data ? (
         <>
@@ -223,7 +224,7 @@ function OverridesCard({ data, staffId, branchId, readOnly }: { data: Schedule; 
       <div className="flex flex-col gap-3">
         <ApiErrorBox err={err} />
         {adding ? (
-          <div className="grid gap-3 rounded-xl bg-luma-50/60 p-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-3 rounded-xl bg-surface-muted/60 p-3 sm:grid-cols-2 lg:grid-cols-4">
             <Field label={t('fields.date')} required>{(fp) => <Input {...fp} type="date" dir="ltr" min={today} value={form.on_date} onChange={(e) => setForm({ ...form, on_date: e.target.value })} />}</Field>
             <Field label={t('catalog_team.schedule.kind')}>{(fp) => (
               <Select {...fp} value={form.kind} onChange={(e) => setForm({ ...form, kind: e.target.value as typeof form.kind })}>
@@ -295,7 +296,7 @@ function BlocksCard({ data, staffId, branchId, readOnly }: { data: Schedule; sta
         <p className="text-xs text-ink-muted">{t('catalog_team.schedule.blocks_hint')}</p>
         <ApiErrorBox err={err} />
         {adding ? (
-          <div className="grid gap-3 rounded-xl bg-luma-50/60 p-3 sm:grid-cols-2">
+          <div className="grid gap-3 rounded-xl bg-surface-muted/60 p-3 sm:grid-cols-2">
             <Field label={t('fields.from')} required>{(fp) => <Input {...fp} type="datetime-local" dir="ltr" value={form.from} onChange={(e) => setForm({ ...form, from: e.target.value })} />}</Field>
             <Field label={t('fields.to')} required>{(fp) => <Input {...fp} type="datetime-local" dir="ltr" value={form.to} onChange={(e) => setForm({ ...form, to: e.target.value })} />}</Field>
             <Field label={t('fields.reason')} className="sm:col-span-2">{(fp) => <Input {...fp} maxLength={200} value={form.reason} onChange={(e) => setForm({ ...form, reason: e.target.value })} />}</Field>

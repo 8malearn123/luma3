@@ -1,6 +1,6 @@
 import { route } from '@/server/http/route';
 import { createHold } from '@/server/domains/booking/service';
-import { publicTenant } from '@/server/domains/storefront-public';
+import { publicTenantForSale } from '@/server/domains/storefront-public';
 import { holdInput } from '@/shared/schemas/booking';
 import { toItem } from '../availability/route';
 import { attachConversionSession, sessionFromRequest } from '@/server/domains/analytics/events';
@@ -15,7 +15,7 @@ export const POST = route({
   input: holdInput,
   rateLimit: { scope: 'user', name: 'public_hold', limit: 30, windowSec: 600 },
   handler: async ({ req, params, input, user, actor, idempotencyKey }) => {
-    const t = await publicTenant(params.slug!);
+    const t = await publicTenantForSale(params.slug!);
     const r = await createHold(t.id, {
       branchId: input.branch_id, items: input.items.map((i) => ({ ...toItem(i), staffId: i.staff_id, start: i.start })),
       customer: { kind: 'user', user }, source: 'storefront', audience: 'public', customerNote: input.customer_note ?? null, couponCode: input.coupon_code ?? null,

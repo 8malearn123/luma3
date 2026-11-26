@@ -71,7 +71,7 @@ export function SupportPage({ initialTenant = '' }: { initialTenant?: string }) 
       {list.isLoading ? <LoadingState /> : list.error ? <ErrorState error={list.error} onRetry={() => list.refetch()} /> : !list.data!.length ? <EmptyState title={t('platform.support.none')} /> : (
         <ul className="flex flex-col gap-2">
           {list.data!.map((g) => (
-            <li key={g.id} className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-line bg-white p-3">
+            <li key={g.id} className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-line bg-surface p-3">
               <div className="min-w-0">
                 <p className="font-medium">{g.tenant_name} <span className="text-xs text-ink-muted" dir="ltr">/{g.tenant_slug}</span></p>
                 <p className="text-sm text-ink-muted">{g.reason}</p>
@@ -83,7 +83,7 @@ export function SupportPage({ initialTenant = '' }: { initialTenant?: string }) 
               </div>
               {g.active ? (
                 <div className="flex gap-2">
-                  <a href={`/app/${g.tenant_slug}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-lg bg-luma-700 px-3 py-1.5 text-sm text-white hover:bg-luma-800">{t('platform.support.open')}<ExternalLink className="size-3.5" /></a>
+                  <a href={`/app/${g.tenant_slug}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-sm text-on-primary hover:bg-primary-hover">{t('platform.support.open')}<ExternalLink className="size-3.5" /></a>
                   <Button size="sm" variant="outline" icon={<XCircle className="size-4" />} onClick={() => revoke(g.id)}>{t('platform.support.end')}</Button>
                 </div>
               ) : null}

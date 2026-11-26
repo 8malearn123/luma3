@@ -156,11 +156,11 @@ function CodeOnceDialog({ card, onClose }: { card: Issued; onClose: () => void }
           <p className="font-medium text-warn">{t('engagement.gifts.code_once')}</p>
         </div>
         <p className="text-ink-muted">{t('fe.gifts.issued_body', { amount: money(card.amount_minor) })}</p>
-        <div className="flex items-center gap-2 rounded-xl border border-luma-300 bg-luma-50 p-3">
-          <code dir="ltr" className="flex-1 select-all break-all text-center font-mono text-lg font-semibold tracking-wider text-luma-900" aria-label={t('fe.gifts.code')}>{card.code}</code>
+        <div className="flex items-center gap-2 rounded-xl border border-line-strong bg-surface-muted p-3">
+          <code dir="ltr" className="flex-1 select-all break-all text-center font-mono text-lg font-semibold tracking-wider text-heading" aria-label={t('fe.gifts.code')}>{card.code}</code>
           <Button size="sm" variant="outline" icon={copied ? <Check className="size-4" /> : <Copy className="size-4" />} onClick={copy}>{copied ? t('actions.copied') : t('actions.copy')}</Button>
         </div>
-        <label className="flex items-start gap-2 text-sm"><input type="checkbox" className="mt-0.5 size-4 accent-luma-700" checked={ack} onChange={(e) => setAck(e.target.checked)} />{t('fe.gifts.saved_ack')}</label>
+        <label className="flex items-start gap-2 text-sm"><input type="checkbox" className="mt-0.5 size-4 accent-primary" checked={ack} onChange={(e) => setAck(e.target.checked)} />{t('fe.gifts.saved_ack')}</label>
       </div>
     </Dialog>
   );
@@ -194,7 +194,7 @@ function RedeemPanel({ onDone }: { onDone: () => void }) {
         <p className="text-sm text-ink-muted">{t('fe.gifts.redeem_intro')}</p>
         {result ? <Alert tone="ok">{t('fe.gifts.redeem_result', { amount: money(result.redeemed_minor), remaining: money(result.remaining_minor) })}</Alert> : null}
         {!canSearch ? <Alert tone="info">{t('fe.gifts.no_booking_search')}</Alert> : booking ? (
-          <div className="flex items-center justify-between gap-2 rounded-lg border border-luma-300 bg-luma-50 px-3 py-2 text-sm">
+          <div className="flex items-center justify-between gap-2 rounded-lg border border-line-strong bg-surface-muted px-3 py-2 text-sm">
             <span><span dir="ltr" className="font-mono font-medium">{booking.number}</span> · {booking.customer_name}<span className="block text-xs text-ink-muted">{when(booking.starts_at)} · {t('fe.gifts.due')}: <span dir="ltr">{money(due)}</span></span></span>
             <Button size="sm" variant="ghost" onClick={() => setBooking(null)}>{t('fe.common.change')}</Button>
           </div>
@@ -211,7 +211,7 @@ function RedeemPanel({ onDone }: { onDone: () => void }) {
                 {found.data.map((b) => (
                   <li key={b.id}>
                     <button type="button" disabled={['cancelled', 'expired'].includes(b.status)} onClick={() => { setBooking(b); setAmount(Math.max(0, b.total_minor - b.paid_minor)); setQ(''); }}
-                      className="flex w-full items-center justify-between gap-2 px-3 py-2 text-start text-sm hover:bg-luma-50 disabled:opacity-50">
+                      className="flex w-full items-center justify-between gap-2 px-3 py-2 text-start text-sm hover:bg-surface-muted disabled:opacity-50">
                       <span><span dir="ltr" className="font-mono">{b.number}</span> · {b.customer_name}<span className="block text-xs text-ink-muted">{when(b.starts_at)} · {t(`booking.status.${b.status}`)}</span></span>
                       <span dir="ltr" className="text-xs">{money(Math.max(0, b.total_minor - b.paid_minor))}</span>
                     </button>

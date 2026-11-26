@@ -9,6 +9,7 @@ const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const page = { limit: z.coerce.number().int().min(1).max(100).default(25), cursor: z.string().max(400).optional() };
 
 export const mfaCodeInput = z.object({ code: z.string().trim().regex(/^\d{4,8}$/, 'Enter the verification code') }).strict();
+export const mfaActivateInput = z.object({ code: z.string().trim().regex(/^\d{4,8}$/, 'Enter the verification code'), pending_token: z.string().max(2000).optional() }).strict();
 export const mfaResetInput = z.object({ reason }).strict();
 
 export const tenantListQuery = z.object({

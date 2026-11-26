@@ -42,7 +42,7 @@ function RecCard({ r }: { r: any }) {
   const decide = (decision: string, extra: Record<string, unknown> = {}) => act(`${decision}`, `/marketing/recommendations/${r.id}/decision`, { body: { decision, ...extra } });
   const flagged = r.validation?.status === 'flagged';
   return (
-    <li className="rounded-2xl border border-line bg-white p-4">
+    <li className="rounded-2xl border border-line bg-surface p-4">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <p className="font-semibold" dir="auto">{r.title}</p>
@@ -87,7 +87,7 @@ function RecCard({ r }: { r: any }) {
             {r.provider ? ` • ${r.provider}/${r.model}/${r.prompt_version}` : ` • ${r.prompt_version}`}
           </p>
           {canManage && r.category === 'pricing' && access.can('catalog.edit') && r.draft_content?.service_ids?.length ? (
-            <form className="flex flex-wrap items-end gap-2 rounded-lg bg-luma-50 p-3 sm:col-span-2" onSubmit={async (e) => { e.preventDefault(); if (price.minor !== null) await act('price', `/marketing/recommendations/${r.id}/price-proposal`, { body: { service_id: price.service_id, proposed_price_minor: price.minor }, ok: t('marketing.rec.proposal_created') }); }}>
+            <form className="flex flex-wrap items-end gap-2 rounded-lg bg-surface-muted p-3 sm:col-span-2" onSubmit={async (e) => { e.preventDefault(); if (price.minor !== null) await act('price', `/marketing/recommendations/${r.id}/price-proposal`, { body: { service_id: price.service_id, proposed_price_minor: price.minor }, ok: t('marketing.rec.proposal_created') }); }}>
               <p className="w-full text-xs text-ink-muted">{t('marketing.rec.price_hint')}</p>
               <Field label={t('marketing.rec.service')} className="w-56">{(p) => <Select {...p} value={price.service_id} onChange={(e) => setPrice({ ...price, service_id: e.target.value })}>{r.draft_content.service_ids.map((id: string) => { const s = services.data?.find((x) => x.id === id); return <option key={id} value={id}>{s ? (locale === 'ar' ? s.name_ar || s.name_en : s.name_en || s.name_ar) : id.slice(0, 8)}</option>; })}</Select>}</Field>
               <Field label={t('marketing.rec.new_price')} className="w-40">{(p) => <MoneyInput {...p} value={price.minor} onChange={(v) => setPrice({ ...price, minor: v })} />}</Field>

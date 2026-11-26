@@ -80,7 +80,7 @@ function Escalations({ onDecide }: { onDecide: (p: Prefill) => void }) {
         <>
           <ul className="flex flex-col gap-3">
             {q.data.items.map((e) => (
-              <li key={e.id} className="rounded-xl border border-line bg-white p-4">
+              <li key={e.id} className="rounded-xl border border-line bg-surface p-4">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-medium">{t(`policy.types.${e.type}`)}</span><IncidentStatus status={e.status} /><Badge tone="info">{t(`policy.escalation.${e.escalation_status}`)}</Badge>
                   <span className="text-xs text-ink-muted">{t('platform_policy.escalated_at')}: {formatDateTime(e.escalated_to_platform_at, { locale, tz: TZ, timeFormat })}</span>
@@ -150,14 +150,14 @@ function Decisions({ isOwner, onSupersede }: { isOwner: boolean; onSupersede: (p
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-end gap-2">
         <Field label={t('fields.status')} className="min-w-40">{(p) => <Select {...p} value={status} onChange={(e) => setStatus(e.target.value)}>{['active', 'superseded', 'revoked', 'expired', 'all'].map((s) => <option key={s} value={s}>{t(`policy.decisions.status.${s}`)}</option>)}</Select>}</Field>
-        <label className="flex h-10 items-center gap-2 text-sm"><input type="checkbox" className="size-4 accent-luma-700" checked={due} onChange={(e) => setDue(e.target.checked)} />{t('policy.decisions.review_due')}</label>
+        <label className="flex h-10 items-center gap-2 text-sm"><input type="checkbox" className="size-4 accent-primary" checked={due} onChange={(e) => setDue(e.target.checked)} />{t('policy.decisions.review_due')}</label>
       </div>
       <FormErrorSummary message={err ? msg(err) : null} />
       {q.isLoading ? <LoadingState rows={3} /> : q.error ? <ErrorState error={q.error} onRetry={() => q.refetch()} /> : !q.data?.items.length ? <EmptyState title={t('policy.decisions.none')} /> : (
         <>
           <ul className="flex flex-col gap-2">
             {q.data.items.map((d) => (
-              <li key={d.id} className="rounded-xl border border-line bg-white p-3 text-sm">
+              <li key={d.id} className="rounded-xl border border-line bg-surface p-3 text-sm">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-medium">{d.customer_name ?? d.customer_user_id}</span><ActionBadge action={d.action} /><DecisionStatus status={d.status} />
                   {d.is_experimental ? <Badge tone="warn">{t('policy.decisions.experimental')}</Badge> : null}

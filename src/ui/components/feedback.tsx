@@ -9,7 +9,7 @@ import { ApiError } from '../api';
 import { useErrorMessage } from '../hooks';
 
 export function Spinner({ className }: { className?: string }) {
-  return <Loader2 className={cx('size-5 animate-spin text-luma-500', className)} aria-hidden />;
+  return <Loader2 className={cx('size-5 animate-spin text-brand', className)} aria-hidden />;
 }
 
 export function LoadingState({ label, rows = 3 }: { label?: string; rows?: number }) {
@@ -25,8 +25,8 @@ export function LoadingState({ label, rows = 3 }: { label?: string; rows?: numbe
 export function EmptyState({ title, hint, action, icon }: { title?: ReactNode; hint?: ReactNode; action?: ReactNode; icon?: ReactNode }) {
   const { t } = useI18n();
   return (
-    <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-luma-200 bg-white/60 p-8 text-center">
-      <div className="text-luma-300">{icon ?? <SearchX className="size-8" aria-hidden />}</div>
+    <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-line bg-surface/60 p-8 text-center">
+      <div className="text-line-strong">{icon ?? <SearchX className="size-8" aria-hidden />}</div>
       <p className="font-medium">{title ?? t('states.empty')}</p>
       {hint ? <p className="max-w-md text-sm text-ink-muted">{hint}</p> : null}
       {action}
@@ -37,19 +37,32 @@ export function EmptyState({ title, hint, action, icon }: { title?: ReactNode; h
 export function DeniedState() {
   const { t } = useI18n();
   return (
-    <div className="flex flex-col items-center gap-2 rounded-xl border border-line bg-white p-8 text-center">
-      <Lock className="size-8 text-luma-300" aria-hidden />
+    <div className="flex flex-col items-center gap-2 rounded-xl border border-line bg-surface p-8 text-center">
+      <Lock className="size-8 text-line-strong" aria-hidden />
       <p className="font-medium">{t('states.denied')}</p>
       <p className="text-sm text-ink-muted">{t('states.denied_hint')}</p>
     </div>
   );
 }
 
-/** Error state that distinguishes permission errors from failures and offers retry. */
+/** A resource the server hides (404 for role/plan/business type) — not a failure, so no retry. */
+export function NotAvailableState() {
+  const { t } = useI18n();
+  return (
+    <div role="status" className="flex flex-col items-center gap-2 rounded-xl border border-line bg-surface p-8 text-center">
+      <SearchX className="size-8 text-line-strong" aria-hidden />
+      <p className="font-medium">{t('states.not_available')}</p>
+      <p className="text-sm text-ink-muted">{t('states.not_available_hint')}</p>
+    </div>
+  );
+}
+
+/** Error state that distinguishes permission errors and hidden resources from failures and offers retry. */
 export function ErrorState({ error, onRetry }: { error: unknown; onRetry?: () => void }) {
   const { t } = useI18n();
   const msg = useErrorMessage();
   if (error instanceof ApiError && error.status === 403) return <DeniedState />;
+  if (error instanceof ApiError && error.status === 404) return <NotAvailableState />;
   return (
     <div role="alert" className="flex flex-col items-center gap-3 rounded-xl border border-danger/20 bg-danger-bg/60 p-6 text-center">
       <XCircle className="size-7 text-danger" aria-hidden />
@@ -79,7 +92,7 @@ export function Alert({ tone = 'info', title, children, className }: { tone?: ke
 }
 
 const badgeTones: Record<string, string> = {
-  neutral: 'bg-luma-100 text-luma-800', ok: 'bg-ok-bg text-ok', warn: 'bg-warn-bg text-warn', danger: 'bg-danger-bg text-danger', info: 'bg-info-bg text-info', brand: 'bg-luma-700 text-white',
+  neutral: 'bg-accent-soft text-heading', ok: 'bg-ok-bg text-ok', warn: 'bg-warn-bg text-warn', danger: 'bg-danger-bg text-danger', info: 'bg-info-bg text-info', brand: 'bg-primary text-on-primary',
 };
 export function Badge({ tone = 'neutral', children, className }: { tone?: keyof typeof badgeTones; children: ReactNode; className?: string }) {
   return <span className={cx('inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium', badgeTones[tone], className)}>{children}</span>;

@@ -25,3 +25,14 @@ export async function enforce(key: string, limit: number, windowSec: number) {
 export async function resetKey(key: string) {
   await db().deleteFrom('rate_limit_buckets').where('key', '=', key).execute();
 }
+
+/** Current count of a fixed-window bucket without incrementing it (0 when absent or the window has elapsed). */
+export async function peek(key: string, windowSec: number): Promise<{ count: number; retryAfterSec: number }> {
+  const res = await sql<{ count: number; window_start: Date }>`
+    select count, window_start from rate_limit_buckets
+    where key = ${key} and window_start >= now() - make_interval(secs => ${windowSec})`.execute(db());
+  const row = res.rows[0];
+  if (!row) return { count: 0, retryAfterSec: 0 };
+  const elapsed = (Date.now() - new Date(row.window_start).getTime()) / 1000;
+  return { count: row.count, retryAfterSec: Math.max(1, Math.ceil(windowSec - elapsed)) };
+}

@@ -37,13 +37,13 @@ function EnrolForm({ enroll, busy, onActivate, onCancel }: { enroll: { secret: s
         <li>{t('platform.security.step2')}</li>
         <li>{t('platform.security.step3')}</li>
       </ol>
-      <div className="rounded-lg border border-line bg-luma-50 p-3">
+      <div className="rounded-lg border border-line bg-surface-muted p-3">
         <p className="text-xs text-ink-muted">{t('platform.security.secret')}</p>
         <div className="flex items-center gap-2">
           <code dir="ltr" data-testid="mfa-secret" className="break-all font-mono text-sm tracking-wider">{enroll.secret.replace(/(.{4})/g, '$1 ').trim()}</code>
-          <button type="button" aria-label={t('actions.copy')} onClick={() => navigator.clipboard?.writeText(enroll.secret).then(() => toast({ tone: 'ok', text: t('actions.copied') }))} className="rounded p-1 hover:bg-luma-100"><Copy className="size-4" /></button>
+          <button type="button" aria-label={t('actions.copy')} onClick={() => navigator.clipboard?.writeText(enroll.secret).then(() => toast({ tone: 'ok', text: t('actions.copied') }))} className="rounded p-1 hover:bg-accent-soft"><Copy className="size-4" /></button>
         </div>
-        <details className="mt-2 text-xs"><summary className="cursor-pointer text-luma-700">{t('platform.security.uri')}</summary><code dir="ltr" className="mt-1 block break-all">{enroll.otpauth_uri}</code></details>
+        <details className="mt-2 text-xs"><summary className="cursor-pointer text-link">{t('platform.security.uri')}</summary><code dir="ltr" className="mt-1 block break-all">{enroll.otpauth_uri}</code></details>
       </div>
       <Alert tone="info">{t('platform.security.shown_once')}</Alert>
       <CodeInput label={t('platform.mfa.code')} value={code} onChange={setCode} />
@@ -55,14 +55,22 @@ function EnrolForm({ enroll, busy, onActivate, onCancel }: { enroll: { secret: s
   );
 }
 
-/** Session second-factor prompt (gate page: no navigation until verified). */
-export function MfaPrompt({ next, demo = false }: { next: string; demo?: boolean }) {
+/**
+ * Session second-factor prompt (gate page: no navigation until verified).
+ * totp: an authenticator app is enrolled → only its code is asked for.
+ * Otherwise: the WhatsApp code when messages can be delivered, and setting up
+ * an authenticator app (password step-up), which also verifies this session.
+ */
+export function MfaPrompt({ next, demo = false, totp = false, whatsapp = true }: { next: string; demo?: boolean; totp?: boolean; whatsapp?: boolean }) {
   const { t } = useI18n();
   const msg = useErrorMessage();
+  const stepUp = useStepUp();
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<unknown>(null);
   const [sent, setSent] = useState<{ destination?: string; delivery?: { status: string; dev_code?: string } } | null>(null);
+  const [enroll, setEnroll] = useState<{ secret: string; otpauth_uri: string; pending_token?: string } | null>(null);
+  const done = () => { window.location.href = safeInternalPath(next, '/platform', '/platform'); };
   async function send() {
     setBusy(true); setErr(null);
     try { setSent(await api('/api/v1/platform/mfa/send', { body: {} })); } catch (e) { setErr(e); } finally { setBusy(false); }
@@ -71,33 +79,55 @@ export function MfaPrompt({ next, demo = false }: { next: string; demo?: boolean
     setBusy(true); setErr(null);
     try {
       await api('/api/v1/platform/mfa/verify', { body: { code } });
-      window.location.href = safeInternalPath(next, '/platform', '/platform');
+      done();
     } catch (e) { setErr(e); setCode(''); setBusy(false); }
   }
-  const canEnter = demo || sent;
+  async function startEnroll() {
+    setBusy(true); setErr(null);
+    try { setEnroll(await stepUp(() => api<{ secret: string; otpauth_uri: string; pending_token?: string }>('/api/v1/platform/mfa/enroll', { body: {} }))); } catch (e) { setErr(e); } finally { setBusy(false); }
+  }
+  async function activate(c: string) {
+    setBusy(true); setErr(null);
+    try { await api('/api/v1/platform/mfa/activate', { body: { code: c, ...(enroll?.pending_token ? { pending_token: enroll.pending_token } : {}) } }); done(); } catch (e) { setErr(e); setBusy(false); }
+  }
+  const canEnter = demo || totp || sent;
+  const body = demo ? t('platform.mfa.demo_body') : totp ? t('platform.mfa.totp_body') : whatsapp ? t('platform.mfa.prompt_body') : t('platform.mfa.enrol_body');
   return (
     <div className="mx-auto flex max-w-md flex-col gap-4 py-10">
       <LumaLogo className="h-10 w-auto self-center" />
       <Card>
-        <form onSubmit={(e) => { e.preventDefault(); if (code.length >= 4) submit(); }} className="flex flex-col gap-4">
-          <div className="flex items-center gap-2"><KeyRound className="size-5 text-luma-700" aria-hidden /><h1 className="text-lg font-semibold">{t('platform.mfa.prompt_title')}</h1></div>
-          <p className="text-sm text-ink-muted">{demo ? t('platform.mfa.demo_body') : t('platform.mfa.prompt_body')}</p>
-          <FormErrorSummary message={err ? msg(err) : null} />
-          {sent?.destination ? <p role="status" className="text-sm">{t('platform.mfa.sent_to', { destination: sent.destination })}</p> : null}
-          <DeliveryNotice delivery={sent?.delivery} />
-          {canEnter ? (
-            <>
-              <CodeInput label={t('platform.mfa.code')} value={code} onChange={setCode} />
-              <Button type="submit" loading={busy} disabled={code.length < 4}>{t('platform.mfa.verify')}</Button>
-            </>
-          ) : null}
-          {!demo ? (
-            <Button type="button" variant={sent ? 'ghost' : 'primary'} className="self-start" loading={busy && !sent} onClick={send}>
-              {sent ? t('platform.mfa.resend') : t('platform.mfa.send')}
-            </Button>
-          ) : null}
-          {!demo ? <p className="text-xs text-ink-muted">{t('platform.mfa.lost_device')}</p> : null}
-        </form>
+        {enroll ? (
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center gap-2"><KeyRound className="size-5 text-link" aria-hidden /><h1 className="text-lg font-semibold">{t('platform.security.mfa')}</h1></div>
+            <FormErrorSummary message={err ? msg(err) : null} />
+            <EnrolForm enroll={enroll} busy={busy} onActivate={activate} onCancel={() => setEnroll(null)} />
+          </div>
+        ) : (
+          <form onSubmit={(e) => { e.preventDefault(); if (code.length >= 4) submit(); }} className="flex flex-col gap-4">
+            <div className="flex items-center gap-2"><KeyRound className="size-5 text-link" aria-hidden /><h1 className="text-lg font-semibold">{t('platform.mfa.prompt_title')}</h1></div>
+            <p className="text-sm text-ink-muted">{body}</p>
+            <FormErrorSummary message={err ? msg(err) : null} />
+            {sent?.destination ? <p role="status" className="text-sm">{t('platform.mfa.sent_to', { destination: sent.destination })}</p> : null}
+            <DeliveryNotice delivery={sent?.delivery} />
+            {canEnter ? (
+              <>
+                <CodeInput label={t('platform.mfa.code')} value={code} onChange={setCode} />
+                <Button type="submit" loading={busy} disabled={code.length < 4}>{t('platform.mfa.verify')}</Button>
+              </>
+            ) : null}
+            {!demo && !totp && whatsapp ? (
+              <Button type="button" variant={sent ? 'ghost' : 'primary'} className="self-start" loading={busy && !sent} onClick={send}>
+                {sent ? t('platform.mfa.resend') : t('platform.mfa.send')}
+              </Button>
+            ) : null}
+            {!demo && !totp ? (
+              <Button type="button" variant={whatsapp ? 'outline' : 'primary'} className="self-start" loading={busy && !whatsapp} icon={<ShieldCheck className="size-4" />} onClick={startEnroll}>
+                {t('platform.mfa.setup_app')}
+              </Button>
+            ) : null}
+            {!demo && (totp || whatsapp) ? <p className="text-xs text-ink-muted">{totp ? t('platform.mfa.lost_app') : t('platform.mfa.lost_device')}</p> : null}
+          </form>
+        )}
       </Card>
     </div>
   );
@@ -113,7 +143,7 @@ export function SecurityPage() {
   const qc = useQueryClient();
   const stepUp = useStepUp();
   const q = useApiQuery<MfaState>(['platform', 'mfa'], '/api/v1/platform/mfa');
-  const [enroll, setEnroll] = useState<{ secret: string; otpauth_uri: string } | null>(null);
+  const [enroll, setEnroll] = useState<{ secret: string; otpauth_uri: string; pending_token?: string } | null>(null);
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<unknown>(null);
@@ -137,14 +167,14 @@ export function SecurityPage() {
           <div className="flex flex-col gap-3">
             <p className="text-sm text-ink-muted">{t('platform.security.explain')}</p>
             <Button className="self-start" loading={busy} icon={<KeyRound className="size-4" />} onClick={() => act(async () => {
-              const r = await stepUp(() => api<{ secret: string; otpauth_uri: string }>('/api/v1/platform/mfa/enroll', { body: {} }));
+              const r = await stepUp(() => api<{ secret: string; otpauth_uri: string; pending_token?: string }>('/api/v1/platform/mfa/enroll', { body: {} }));
               setEnroll(r); setCode('');
             })}>{t('platform.security.start')}</Button>
           </div>
         ) : null}
         {!s.enabled && enroll ? (
           <EnrolForm enroll={enroll} busy={busy} onCancel={() => setEnroll(null)}
-            onActivate={(code) => act(async () => { await api('/api/v1/platform/mfa/activate', { body: { code } }); setEnroll(null); }, t('platform.security.now_enabled'))} />
+            onActivate={(code) => act(async () => { await api('/api/v1/platform/mfa/activate', { body: { code, ...(enroll?.pending_token ? { pending_token: enroll.pending_token } : {}) } }); setEnroll(null); }, t('platform.security.now_enabled'))} />
         ) : null}
         {s.enabled ? (
           <form className="flex flex-col gap-3" onSubmit={(e) => { e.preventDefault(); act(() => stepUp(() => api('/api/v1/platform/mfa/disable', { body: { code } })), t('platform.security.now_disabled')); }}>

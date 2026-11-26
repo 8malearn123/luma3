@@ -95,7 +95,7 @@ function IncidentsTab({ onOpen }: { onOpen: (id: string) => void }) {
         <Field label={t('fields.status')} className="min-w-36">{(p) => <Select {...p} value={status} onChange={(e) => setStatus(e.target.value)}>{['all', 'submitted', 'under_review', 'confirmed', 'corrected', 'rejected'].map((s) => <option key={s} value={s}>{t(`policy.statuses.${s}`)}</option>)}</Select>}</Field>
         <Field label={t('fields.category')} className="min-w-36">{(p) => <Select {...p} value={type} onChange={(e) => setType(e.target.value)}><option value="">{t('policy.rules.any_type')}</option>{['no_show', 'late_cancellation', 'payment_dispute', 'conduct', 'other'].map((s) => <option key={s} value={s}>{t(`policy.types.${s}`)}</option>)}</Select>}</Field>
         <Field label={t('customers.sort.label')} className="min-w-36">{(p) => <Select {...p} value={sort} onChange={(e) => setSort(e.target.value)}><option value="recent">{t('customers.sort.recent')}</option><option value="occurred">{t('policy.occurred_at')}</option></Select>}</Field>
-        <label className="flex h-10 items-center gap-2 text-sm"><input type="checkbox" className="size-4 accent-luma-700" checked={escalated} onChange={(e) => setEscalated(e.target.checked)} />{t('policy.escalation.pending')}</label>
+        <label className="flex h-10 items-center gap-2 text-sm"><input type="checkbox" className="size-4 accent-primary" checked={escalated} onChange={(e) => setEscalated(e.target.checked)} />{t('policy.escalation.pending')}</label>
         {access.can('incidents.submit') && !access.readOnly ? <Button icon={<Plus className="size-4" />} onClick={() => setCreating(true)}>{t('policy.new_incident')}</Button> : null}
       </div>
       <p className="text-xs text-ink-muted">{t('time.tz_note', { tz: tzLabel(access.timezone, locale) })}</p>
@@ -134,7 +134,7 @@ function DecisionsTab({ customerFilter, clearCustomer, onOpen, onNew }: { custom
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-end gap-2">
         <Field label={t('fields.status')} className="min-w-36">{(p) => <Select {...p} value={status} onChange={(e) => setStatus(e.target.value)}>{['active', 'superseded', 'revoked', 'expired', 'all'].map((s) => <option key={s} value={s}>{t(`policy.decisions.status.${s}`)}</option>)}</Select>}</Field>
-        <label className="flex h-10 items-center gap-2 text-sm"><input type="checkbox" className="size-4 accent-luma-700" checked={due} onChange={(e) => setDue(e.target.checked)} />{t('policy.decisions.review_due')}</label>
+        <label className="flex h-10 items-center gap-2 text-sm"><input type="checkbox" className="size-4 accent-primary" checked={due} onChange={(e) => setDue(e.target.checked)} />{t('policy.decisions.review_due')}</label>
         {customerFilter ? <Button variant="outline" size="sm" onClick={clearCustomer}>{t('actions.clear')}: {t('policy.decisions.customer')}</Button> : null}
         <div className="flex-1" />
         {!access.readOnly ? <Button icon={<Gavel className="size-4" />} onClick={() => onNew({ tenantCustomerId: customerFilter ?? undefined })}>{t('policy.decisions.new')}</Button> : null}

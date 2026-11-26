@@ -33,8 +33,8 @@ export function DocumentsTab() {
     {
       key: 'open', header: <span className="sr-only">{t('actions.view')}</span>, cell: (i) => (
         <span className="flex gap-1">
-          <a href={doc(i.id, true)} target="_blank" rel="noreferrer" className="inline-flex size-9 items-center justify-center rounded-lg text-luma-800 hover:bg-luma-100" aria-label={`${t('finance.print')} ${i.number}`} title={t('finance.print')}><Printer className="size-4" /></a>
-          <a href={doc(i.id)} className="inline-flex size-9 items-center justify-center rounded-lg text-luma-800 hover:bg-luma-100" aria-label={`${t('finance.download_pdf')} ${i.number}`} title={t('finance.download_pdf')}><Download className="size-4" /></a>
+          <a href={doc(i.id, true)} target="_blank" rel="noreferrer" className="inline-flex size-9 items-center justify-center rounded-lg text-heading hover:bg-accent-soft" aria-label={`${t('finance.print')} ${i.number}`} title={t('finance.print')}><Printer className="size-4" /></a>
+          <a href={doc(i.id)} className="inline-flex size-9 items-center justify-center rounded-lg text-heading hover:bg-accent-soft" aria-label={`${t('finance.download_pdf')} ${i.number}`} title={t('finance.download_pdf')}><Download className="size-4" /></a>
         </span>
       ),
     },

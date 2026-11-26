@@ -63,7 +63,7 @@ function SegmentBuilder() {
     try { setPreview(await api(access.api('/marketing/segments/preview'), { body: { definition: { conditions: conds } } })); } catch (e) { setErr(msg(e)); }
   };
   return (
-    <Card title={<span className="inline-flex items-center gap-2"><Users className="size-5 text-luma-500" aria-hidden />{t('marketing.segments.builder')}</span>}>
+    <Card title={<span className="inline-flex items-center gap-2"><Users className="size-5 text-brand" aria-hidden />{t('marketing.segments.builder')}</span>}>
       <p className="mb-3 text-xs text-ink-muted">{t('marketing.segments.hint')}</p>
       <div className="flex flex-col gap-2">
         {conds.map((c, i) => (
@@ -84,7 +84,7 @@ function SegmentBuilder() {
         </div>
         {err ? <Alert tone="danger">{err}</Alert> : null}
         {preview ? (
-          <div className="rounded-lg bg-luma-50 p-3 text-sm" aria-live="polite">
+          <div className="rounded-lg bg-surface-muted p-3 text-sm" aria-live="polite">
             <p className="font-semibold">{t('marketing.segments.preview_count', { n: preview.count })}</p>
             <p className="text-xs text-ink-muted">{t('marketing.segments.consent_counts', preview.consented_by_channel)}</p>
             {preview.sample ? <p className="mt-1 text-xs text-ink-muted">{t('marketing.segments.sample_note')}: {preview.sample.map((s: any) => s.display_name).join('، ')}</p> : null}

@@ -1,0 +1,61 @@
+{
+  "id": "pb.reactivation.loyalty_reward",
+  "version": 1,
+  "title": {
+    "ar": "مكافأة العودة بدل الخصم العام",
+    "en": "Return reward instead of a general discount"
+  },
+  "applies_to": {
+    "sectors": [
+      "beauty"
+    ],
+    "detectors": [
+      "lapsed_cohort"
+    ],
+    "interventions": [
+      "loyalty_reward",
+      "value_add"
+    ],
+    "channels": [
+      "in_app"
+    ]
+  },
+  "guidance": {
+    "ar": "للعميلات المنقطعات قدّمي ميزة صغيرة مرتبطة بالزيارة التالية (إضافة قصيرة أو هدية تجريبية) بدل خصم عام يعلّم الانتظار للعروض.",
+    "en": "For lapsed customers, offer a small perk tied to the next visit (a short add-on or a sample) instead of a general discount that teaches waiting for deals."
+  },
+  "when_not_to_use": {
+    "ar": "لا تصلح إذا كانت تكلفة الميزة غير معروفة أو المادة غير متوفرة.",
+    "en": "Not suitable when the perk’s cost is unknown or the material is out of stock."
+  },
+  "common_mistakes": [
+    {
+      "ar": "مكافأة أكبر من هامش الخدمة",
+      "en": "A reward bigger than the service margin"
+    }
+  ],
+  "measurement": {
+    "primary": "customers.returning_count",
+    "design": "holdout"
+  },
+  "examples": {
+    "good": [
+      {
+        "ar": "إضافة ماسك قصير مع زيارتك القادمة",
+        "en": "A short mask added to your next visit"
+      }
+    ],
+    "bad": [
+      {
+        "ar": "خصم ٣٠٪ لكل من لم تزرنا",
+        "en": "30% off for anyone who has not visited"
+      }
+    ]
+  },
+  "source": {
+    "type": "internal_review",
+    "ref": "Loom marketing methodology review, beauty pack v1",
+    "reviewed_at": "2026-11-01"
+  },
+  "owner": "loom.methodology"
+}

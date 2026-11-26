@@ -3,9 +3,9 @@ import type { z } from 'zod';
 import { withTenant, type Tx } from '../../db/client';
 import { Errors } from '../../http/errors';
 import { audit, type AuditActor } from '../../infra/audit';
-import { notifyCapability } from '../../infra/notify';
 import { featureEnabled, hasCapability, type TenantAccess } from '../../tenancy/access';
-import { moveStock, primaryBranchId, tenantSlug } from './stock';
+import { adoptManualCost, moveStock, primaryBranchId, type StockKind } from './stock';
+import { loadLocation } from './locations';
 import { idleReasonSql } from './idle';
 import { convertUnits, milli, round3, unitsCompatible, type Unit } from '@/shared/units';
 import type { inventoryItemInput, inventoryItemPatch, inventoryListQuery, MovementInput, recipeInput } from '@/shared/schemas/commerce';
@@ -26,7 +26,7 @@ function decodeCursor<T>(c: string | undefined): T | null {
 
 function stripCost<T extends Record<string, unknown>>(access: TenantAccess, row: T): T {
   if (hasCapability(access, 'costs.view')) return row;
-  const { cost_per_unit_minor: _c, ...rest } = row;
+  const { cost_per_unit_minor: _c, avg_cost_minor: _a, stock_value_minor: _v, freelancer_price_minor: _f, ...rest } = row;
   return rest as T;
 }
 
@@ -37,12 +37,19 @@ function serializeItem(access: TenantAccess, r: Record<string, any>) {
     ...r, on_hand: onHand, reserved, available,
     low_stock_threshold: r.low_stock_threshold == null ? null : Number(r.low_stock_threshold),
     low_stock: r.low_stock_threshold != null && available <= Number(r.low_stock_threshold),
+    // `unit` is the usage (base) unit every quantity is stored in; `kind` is the usage kind.
+    usage_unit: r.unit, usage_kind: r.kind,
+    conversion_factor: r.conversion_factor == null ? null : Number(r.conversion_factor),
+    avg_cost_minor: r.avg_cost_minor == null ? null : Number(r.avg_cost_minor),
   });
 }
 
 const itemSelect = [
   'ii.id', 'ii.branch_id', 'ii.variant_id', 'ii.name', 'ii.kind', 'ii.unit', 'ii.on_hand', 'ii.reserved', 'ii.low_stock_threshold',
   'ii.cost_per_unit_minor', 'ii.is_active', 'ii.updated_at', 'ii.created_at', 'v.product_id', 'v.sku',
+  'ii.code', 'ii.barcode', 'ii.category', 'ii.description', 'ii.image_asset_id', 'ii.storage_unit', 'ii.conversion_factor',
+  'ii.conversion_approved_at', 'ii.is_tool', 'ii.avg_cost_minor', 'ii.stock_value_minor', 'ii.freelancer_price_minor', 'ii.supplier_id',
+  'ii.track_batches', 'ii.track_expiry', 'ii.archived_at', 'ii.master_id',
 ] as const;
 
 export async function listItems(access: TenantAccess, query: z.infer<typeof inventoryListQuery>, opts: { branchIds?: string[] | null } = {}) {
@@ -56,7 +63,7 @@ export async function listItems(access: TenantAccess, query: z.infer<typeof inve
     if (query.idle === '1') q = q.where(sql<boolean>`(${idleReasonSql()}) is not null`);
     if (query.q) {
       const like = `%${query.q.replace(/[%_\\]/g, (m) => `\\${m}`)}%`;
-      q = q.where((eb) => eb.or([eb('ii.name', 'ilike', like), eb('v.sku', 'ilike', like), eb('v.barcode', 'ilike', like)]));
+      q = q.where((eb) => eb.or([eb('ii.name', 'ilike', like), eb('v.sku', 'ilike', like), eb('v.barcode', 'ilike', like), eb('ii.code', 'ilike', like), eb('ii.barcode', 'ilike', like)]));
     }
     const dir = query.dir ?? (query.sort === 'updated' ? 'desc' : 'asc');
     const order = query.sort === 'available' ? sql`ii.on_hand - ii.reserved` : query.sort === 'on_hand' ? sql`ii.on_hand` : query.sort === 'updated' ? sql`ii.updated_at` : sql`ii.name`;
@@ -81,37 +88,75 @@ export async function getItem(access: TenantAccess, id: string) {
 }
 
 export async function createMaterial(access: TenantAccess, actor: AuditActor, input: z.infer<typeof inventoryItemInput>) {
-  if (input.cost_per_unit_minor != null && !hasCapability(access, 'costs.view')) throw Errors.forbidden('You cannot set confidential costs');
+  if ((input.cost_per_unit_minor != null || input.freelancer_price_minor != null) && !hasCapability(access, 'costs.view')) throw Errors.forbidden('You cannot set confidential costs');
   return withTenant(access.tenantId, async (trx) => {
     const branchId = input.branch_id ?? await primaryBranchId(trx, access.tenantId);
+    const { name, unit, initial_quantity, location_id, branch_id: _b, low_stock_threshold, cost_per_unit_minor, ...card } = input;
+    await checkCardRefs(trx, card);
     const row = await trx.insertInto('inventory_items').values({
-      tenant_id: access.tenantId, branch_id: branchId, name: input.name, kind: 'material', unit: input.unit,
-      low_stock_threshold: input.low_stock_threshold ?? null, cost_per_unit_minor: input.cost_per_unit_minor ?? null,
+      tenant_id: access.tenantId, branch_id: branchId, name, kind: 'material', unit,
+      low_stock_threshold: low_stock_threshold ?? null, cost_per_unit_minor: cost_per_unit_minor ?? null,
+      ...card, track_expiry: card.track_expiry ?? false, track_batches: (card.track_batches ?? false) || (card.track_expiry ?? false),
+      ...(card.conversion_factor != null ? { conversion_approved_by: actor.userId, conversion_approved_at: new Date() } : {}),
     }).returning('id').executeTakeFirstOrThrow();
-    if (input.initial_quantity) {
-      await moveStock(trx, access.tenantId, row.id, { kind: 'receipt', quantity: input.initial_quantity, dOnHand: input.initial_quantity, dReserved: 0, reason: 'opening stock', actorUserId: actor.userId });
+    if (initial_quantity) {
+      const r = await moveStock(trx, access.tenantId, row.id, { kind: 'opening', quantity: initial_quantity, dOnHand: initial_quantity, dReserved: 0, reason: 'opening stock', actorUserId: actor.userId, locationId: location_id ?? null, unitCostMinor: cost_per_unit_minor ?? null });
+      if (!r) throw Errors.conflict('insufficient_stock');
     }
     await audit(trx, actor, 'inventory.item_created', { tenantId: access.tenantId, targetType: 'inventory_item', targetId: row.id, data: { name: input.name, unit: input.unit } });
     return serializeItem(access, await loadItem(trx, row.id));
   });
 }
 
-export async function updateItem(access: TenantAccess, actor: AuditActor, id: string, patch: z.infer<typeof inventoryItemPatch>) {
-  if (patch.cost_per_unit_minor !== undefined && !hasCapability(access, 'costs.view')) throw Errors.forbidden('You cannot set confidential costs');
+export async function updateItem(access: TenantAccess, actor: AuditActor, id: string, input: z.infer<typeof inventoryItemPatch>) {
+  if ((input.cost_per_unit_minor !== undefined || input.freelancer_price_minor !== undefined) && !hasCapability(access, 'costs.view')) throw Errors.forbidden('You cannot set confidential costs');
   return withTenant(access.tenantId, async (trx) => {
     const cur = await loadItem(trx, id);
-    if (patch.kind && !cur.variant_id) throw Errors.invalid('invalid_kind', 'Only items linked to a product can be sold');
-    await trx.updateTable('inventory_items').set(patch).where('id', '=', id).execute();
-    await audit(trx, actor, 'inventory.item_updated', { tenantId: access.tenantId, targetType: 'inventory_item', targetId: id, data: patch });
+    if (input.kind && !cur.variant_id) throw Errors.invalid('invalid_kind', 'Only items linked to a product can be sold');
+    const { archived, ...patch } = input;
+    if (patch.is_tool && (patch.kind ?? cur.kind) !== 'material') throw Errors.invalid('tool_must_be_material', 'Only materials can be marked as tools');
+    await checkCardRefs(trx, patch);
+    const extra: Record<string, unknown> = {};
+    if (patch.track_expiry) extra.track_batches = true;
+    if (patch.conversion_factor !== undefined && patch.conversion_factor !== (cur.conversion_factor == null ? null : Number(cur.conversion_factor))) {
+      // Saving a factor with inventory.manage is its approval (like recipes).
+      Object.assign(extra, patch.conversion_factor == null ? { conversion_approved_by: null, conversion_approved_at: null } : { conversion_approved_by: actor.userId, conversion_approved_at: new Date() });
+    }
+    if (archived !== undefined) Object.assign(extra, archived ? { archived_at: new Date(), is_active: false } : { archived_at: null });
+    if (archived && Number(cur.on_hand) > 0) throw Errors.conflict('item_has_stock', 'Count or move out the remaining stock before archiving');
+    await trx.updateTable('inventory_items').set({ ...patch, ...extra }).where('id', '=', id).execute();
+    if (patch.cost_per_unit_minor != null) await adoptManualCost(trx, access.tenantId, id, patch.cost_per_unit_minor, actor.userId);
+    await audit(trx, actor, 'inventory.item_updated', { tenantId: access.tenantId, targetType: 'inventory_item', targetId: id, data: input });
     return serializeItem(access, await loadItem(trx, id));
   });
 }
 
+async function checkCardRefs(trx: Tx, card: { supplier_id?: string | null; image_asset_id?: string | null }) {
+  if (card.supplier_id) {
+    const sup = await trx.selectFrom('suppliers').select('id').where('id', '=', card.supplier_id).executeTakeFirst();
+    if (!sup) throw Errors.notFound('supplier');
+  }
+  if (card.image_asset_id) {
+    const a = await trx.selectFrom('assets').select('id').where('id', '=', card.image_asset_id).executeTakeFirst();
+    if (!a) throw Errors.notFound('asset');
+  }
+}
+
+/** Converts a quantity entered in `unit` to the item's base unit (or rejects incompatible units). */
+export function toBaseUnit(quantity: number, unit: Unit | undefined, itemUnit: Unit): number {
+  if (!unit || unit === itemUnit) return quantity;
+  const c = convertUnits(quantity, unit, itemUnit);
+  if (c === null) throw Errors.invalid('incompatible_units', `Cannot convert ${unit} to ${itemUnit}`, { from: unit, to: itemUnit });
+  return c;
+}
+
 /**
- * Receipt or manual adjustment. Retail stock can be managed from Products
- * (catalog.edit) on any plan with products; materials need the inventory
- * feature and inventory.manage. Quantities in another compatible unit are
- * converted (1 l received into an ml item = 1000 ml); incompatible units are rejected.
+ * Receipt, manual adjustment or waste. Retail stock can be managed from
+ * Products (catalog.edit) on any plan with products; materials need the
+ * inventory feature and inventory.manage. Quantities in another compatible
+ * unit are converted (1 l received into an ml item = 1000 ml); incompatible
+ * units are rejected. A receipt's cost is per entered unit and updates the
+ * weighted average; waste needs a reason and posts shrinkage.
  */
 export async function recordMovement(access: TenantAccess, actor: AuditActor, itemId: string, input: MovementInput) {
   return withTenant(access.tenantId, async (trx) => {
@@ -123,12 +168,7 @@ export async function recordMovement(access: TenantAccess, actor: AuditActor, it
       if (!hasCapability(access, 'inventory.manage')) throw Errors.forbidden();
       if (!featureEnabled(access, 'feature.inventory')) throw Errors.planFeature('feature.inventory');
     }
-    let qty = input.quantity;
-    if (input.unit && input.unit !== item.unit) {
-      const c = convertUnits(qty, input.unit, item.unit as Unit);
-      if (c === null) throw Errors.invalid('incompatible_units', `Cannot convert ${input.unit} to ${item.unit}`, { from: input.unit, to: item.unit });
-      qty = c;
-    }
+    let qty = toBaseUnit(input.quantity, input.unit, item.unit as Unit);
     if (item.unit === 'piece' && !Number.isInteger(qty)) throw Errors.invalid('whole_units_required', 'Pieces must be whole numbers');
     if (qty === 0) throw Errors.invalid('quantity_too_small', 'The converted quantity rounds to zero');
     let ref: { refType: string; refId: string } | null = null;
@@ -137,33 +177,82 @@ export async function recordMovement(access: TenantAccess, actor: AuditActor, it
       if (!bi) throw Errors.notFound('booking_item');
       ref = { refType: 'booking_item', refId: bi.id };
     }
+    if (input.location_id) await loadLocation(trx, input.location_id);
+    let unitCost: number | null = null;
+    if (input.kind === 'receipt' && input.unit_cost_minor != null) {
+      if (!hasCapability(access, 'costs.view')) throw Errors.forbidden('You cannot set confidential costs');
+      // Cost per entered unit → cost per base unit.
+      unitCost = input.unit_cost_minor / toBaseUnit(1, input.unit, item.unit as Unit);
+    }
+    if (input.kind === 'waste') qty = -qty;
+    if ((input.kind === 'receipt' && (input.batch_no || input.expiry_date)) && !item.track_batches) throw Errors.invalid('batches_not_tracked', 'This item does not track batches');
+    if (input.kind === 'receipt' && item.track_expiry && !input.expiry_date) throw Errors.invalid('expiry_required', 'This item tracks expiry dates');
     const r = await moveStock(trx, access.tenantId, itemId, {
       kind: input.kind, quantity: qty, dOnHand: qty, dReserved: 0, reason: input.reason ?? null,
-      refType: ref?.refType, refId: ref?.refId, actorUserId: actor.userId,
+      refType: ref?.refType, refId: ref?.refId, actorUserId: actor.userId, locationId: input.location_id ?? null, unitCostMinor: unitCost,
+      ...(input.kind === 'receipt' && input.batch_no ? { batch: { batchNo: input.batch_no, expiryDate: input.expiry_date ?? null } } : {}),
+      ...(input.kind === 'waste' && input.batch_id ? { batches: [{ batchId: input.batch_id, quantity: -qty }] } : {}),
     });
     if (!r) throw Errors.conflict('insufficient_stock', 'This would take stock below zero or below what is reserved for orders');
-    await audit(trx, actor, `inventory.${input.kind}`, { tenantId: access.tenantId, targetType: 'inventory_item', targetId: itemId, data: { quantity: qty, unit: item.unit, reason: input.reason ?? null } });
+    await audit(trx, actor, `inventory.${input.kind}`, { tenantId: access.tenantId, targetType: 'inventory_item', targetId: itemId, data: { quantity: qty, unit: item.unit, reason: input.reason ?? null, location_id: r.locationId, movement_id: r.movementId } });
     return serializeItem(access, await loadItem(trx, itemId));
   });
 }
 
-export async function listMovements(access: TenantAccess, itemId: string, opts: { limit: number; cursor?: string }) {
+export async function listMovements(access: TenantAccess, itemId: string, opts: { limit: number; cursor?: string; location_id?: string }) {
   return withTenant(access.tenantId, async (trx) => {
     const item = await loadItem(trx, itemId);
     const feature = item.kind === 'retail' ? 'feature.products' : 'feature.inventory';
     if (!featureEnabled(access, feature)) throw Errors.planFeature(feature);
     const cur = decodeCursor<{ t: string; id: string }>(opts.cursor);
-    let q = trx.selectFrom('stock_movements as m').leftJoin('users as u', 'u.id', 'm.actor_user_id')
-      .select(['m.id', 'm.kind', 'm.quantity', 'm.on_hand_after', 'm.reserved_after', 'm.reason', 'm.ref_type', 'm.ref_id', 'm.created_at', 'u.display_name as actor_name'])
+    let q = trx.selectFrom('stock_movements as m').leftJoin('users as u', 'u.id', 'm.actor_user_id').leftJoin('stock_locations as l', 'l.id', 'm.location_id')
+      .leftJoin('stock_locations as cl', 'cl.id', 'm.counter_location_id').leftJoin('stock_batches as sb', 'sb.id', 'm.batch_id')
+      .select(['m.id', 'm.kind', 'm.quantity', 'm.on_hand_after', 'm.reserved_after', 'm.reason', 'm.ref_type', 'm.ref_id', 'm.created_at', 'u.display_name as actor_name',
+        'm.location_id', 'l.name as location_name', 'm.counter_location_id', 'cl.name as counter_location_name', 'm.location_on_hand_after', 'm.unit',
+        'm.unit_cost_minor', 'm.total_cost_minor', 'm.document_type', 'm.document_id', 'm.reversal_of', 'sb.batch_no',
+        sql<boolean>`exists (select 1 from stock_movements r where r.reversal_of = m.id)`.as('reversed')])
       .where('m.inventory_item_id', '=', itemId);
+    if (opts.location_id) q = q.where('m.location_id', '=', opts.location_id);
     if (cur) q = q.where(sql<boolean>`(m.created_at, m.id) < (${new Date(cur.t)}, ${cur.id})`);
     const rows = await q.orderBy('m.created_at', 'desc').orderBy('m.id', 'desc').limit(opts.limit + 1).execute();
     const page = rows.slice(0, opts.limit);
     const last = page[page.length - 1];
+    const costs = hasCapability(access, 'costs.view');
     return {
-      items: page.map((m) => ({ ...m, quantity: Number(m.quantity), on_hand_after: Number(m.on_hand_after), reserved_after: Number(m.reserved_after) })),
+      items: page.map(({ unit_cost_minor, total_cost_minor, ...m }) => ({
+        ...m, quantity: Number(m.quantity), on_hand_after: Number(m.on_hand_after), reserved_after: Number(m.reserved_after),
+        location_on_hand_after: m.location_on_hand_after == null ? null : Number(m.location_on_hand_after),
+        ...(costs ? { unit_cost_minor: unit_cost_minor == null ? null : Number(unit_cost_minor), total_cost_minor } : {}),
+      })),
       next_cursor: rows.length > opts.limit && last ? encodeCursor({ t: new Date(last.created_at).toISOString(), id: last.id }) : null,
     };
+  });
+}
+
+/** Kinds that a person may reverse with a correction movement (documents are voided through their own flow). */
+const REVERSIBLE = new Set(['receipt', 'opening', 'adjustment', 'waste', 'return_from_use']);
+
+/**
+ * Completed movements are never edited. A mistake is corrected by a reversal
+ * movement (kind 'correction', reversal_of = original) at the original's frozen
+ * cost, which also reverses its journal entry. A movement is reversed at most once.
+ */
+export async function reverseMovement(access: TenantAccess, actor: AuditActor, movementId: string, reason: string) {
+  return withTenant(access.tenantId, async (trx) => {
+    const m = await trx.selectFrom('stock_movements').selectAll().where('id', '=', movementId).executeTakeFirst();
+    if (!m) throw Errors.notFound('stock_movement');
+    if (!REVERSIBLE.has(m.kind) || m.document_type) throw Errors.invalid('not_reversible', 'This movement belongs to a document; correct the document instead');
+    const done = await trx.selectFrom('stock_movements').select('id').where('reversal_of', '=', movementId).executeTakeFirst();
+    if (done) throw Errors.conflict('already_reversed');
+    const q = -Number(m.quantity);
+    const r = await moveStock(trx, access.tenantId, m.inventory_item_id, {
+      kind: 'correction', quantity: q, dOnHand: q, dReserved: 0, reason, actorUserId: actor.userId, locationId: m.location_id,
+      unitCostMinor: m.unit_cost_minor == null ? null : Number(m.unit_cost_minor), reversalOf: m.id, journalAs: m.kind as StockKind,
+      refType: 'stock_movement', refId: m.id,
+    });
+    if (!r) throw Errors.conflict('insufficient_stock', 'The stock this would remove is no longer there');
+    await audit(trx, actor, 'inventory.movement_reversed', { tenantId: access.tenantId, targetType: 'stock_movement', targetId: movementId, data: { reason, correction_id: r.movementId } });
+    return { id: r.movementId, reversal_of: movementId, on_hand: r.onHand };
   });
 }
 
@@ -189,10 +278,11 @@ export async function setRecipe(access: TenantAccess, actor: AuditActor, service
     if (!svc) throw Errors.notFound('service');
     const ids = [...new Set(input.lines.map((l) => l.inventory_item_id))];
     if (ids.length !== input.lines.length) throw Errors.invalid('duplicate_line', 'Each material can appear once per recipe');
-    const items = ids.length ? await trx.selectFrom('inventory_items').select(['id', 'unit', 'kind', 'is_active']).where('id', 'in', ids).execute() : [];
+    const items = ids.length ? await trx.selectFrom('inventory_items').select(['id', 'unit', 'kind', 'is_active', 'is_tool']).where('id', 'in', ids).execute() : [];
     if (items.length !== ids.length) throw Errors.notFound('inventory_item');
     for (const l of input.lines) {
       const it = items.find((i) => i.id === l.inventory_item_id)!;
+      if (it.is_tool) throw Errors.invalid('tool_not_consumable', 'Tools are reused, not consumed by services');
       if (it.kind === 'retail') throw Errors.invalid('not_a_material', 'Only materials (or items marked "sold and consumed") can be used in recipes');
       if (!unitsCompatible(l.unit, it.unit as Unit)) throw Errors.invalid('incompatible_units', `Cannot convert ${l.unit} to ${it.unit}`, { from: l.unit, to: it.unit, inventory_item_id: it.id });
       if (it.unit === 'piece' && !Number.isInteger(l.quantity)) throw Errors.invalid('whole_units_required', 'Pieces must be whole numbers');
@@ -228,7 +318,7 @@ const METHOD = 'min over recipe lines of floor(available stock ÷ approved quant
 export async function capacityEstimate(trx: Tx, tenantId: string, serviceId: string): Promise<CapacityEstimate> {
   const lines = await trx.selectFrom('service_material_recipes as r').innerJoin('inventory_items as ii', 'ii.id', 'r.inventory_item_id')
     .select(['r.inventory_item_id', 'r.quantity', 'r.unit', 'r.approved_at', 'ii.name', 'ii.unit as item_unit', 'ii.on_hand', 'ii.reserved', 'ii.is_active',
-      sql<boolean>`exists (select 1 from stock_movements m where m.inventory_item_id = ii.id and m.kind in ('receipt', 'adjustment'))`.as('has_stock_records')])
+      sql<boolean>`exists (select 1 from stock_movements m where m.inventory_item_id = ii.id and m.kind in ('receipt', 'adjustment', 'opening', 'count_adjustment', 'transfer_in', 'transfer_receive'))`.as('has_stock_records')])
     .where('r.tenant_id', '=', tenantId).where('r.service_id', '=', serviceId).orderBy('ii.name').execute();
   if (!lines.length) return { status: 'insufficient_data', serviceId, reasons: ['no_recipe'], method: METHOD };
   const reasons: string[] = [];
@@ -260,75 +350,5 @@ export async function capacityEstimates(access: TenantAccess) {
   });
 }
 
-// ── Consumption on service completion ───────────────────────────────────────
-export type ConsumptionResult = {
-  consumed: Array<{ inventoryItemId: string; quantity: number; unit: string }>;
-  skipped: 'no_recipe' | 'already_consumed' | null;
-  /** Lines where stock was insufficient: only what existed was recorded; managers are notified. */
-  shortages: Array<{ inventoryItemId: string; required: number; consumed: number; unit: string }>;
-};
-
-/**
- * Deducts a service's recipe materials EXACTLY ONCE for a booking item.
- * Guards: the booking item row is locked and `materials_consumed_at` checked
- * and set in the same transaction; each movement is also unique per
- * (item, 'consumption', 'booking_item', id).
- *
- * Insufficient stock: never drives on_hand negative and never eats stock
- * reserved for customer orders — it records consumption up to what is
- * available, and reports the shortfall (return value + notification to
- * inventory.manage + audit) so the count can be corrected by an adjustment.
- * With no recipe nothing is consumed and the item is NOT marked consumed.
- */
-export async function consumeMaterialsForBookingItem(trx: Tx, tenantId: string, bookingItemId: string, actorUserId: string | null): Promise<ConsumptionResult> {
-  const bi = await trx.selectFrom('booking_items').select(['id', 'service_id', 'materials_consumed_at', 'booking_id'])
-    .where('tenant_id', '=', tenantId).where('id', '=', bookingItemId).forUpdate().executeTakeFirst();
-  if (!bi) throw Errors.notFound('booking_item');
-  if (bi.materials_consumed_at) return { consumed: [], skipped: 'already_consumed', shortages: [] };
-  const lines = await trx.selectFrom('service_material_recipes as r').innerJoin('inventory_items as ii', 'ii.id', 'r.inventory_item_id')
-    .select(['r.inventory_item_id', 'r.quantity', 'r.unit', 'ii.unit as item_unit', 'ii.name'])
-    .where('r.tenant_id', '=', tenantId).where('r.service_id', '=', bi.service_id).orderBy('r.inventory_item_id').execute();
-  if (!lines.length) return { consumed: [], skipped: 'no_recipe', shortages: [] };
-
-  const consumed: ConsumptionResult['consumed'] = [];
-  const shortages: ConsumptionResult['shortages'] = [];
-  for (const l of lines) {
-    const required = convertUnits(Number(l.quantity), l.unit as Unit, l.item_unit as Unit);
-    if (required === null || required <= 0) continue; // rejected at recipe save; defensive
-    const take = await sql<{ take: number; on_hand: number; reserved: number }>`
-      with cur as (
-        select id, least(${required}::numeric, greatest(on_hand - reserved, 0)) as take
-        from inventory_items where id = ${l.inventory_item_id} and tenant_id = ${tenantId} for update
-      )
-      select cur.take, i.on_hand, i.reserved from cur join inventory_items i on i.id = cur.id`.execute(trx);
-    const t = Number(take.rows[0]?.take ?? 0);
-    if (t > 0) {
-      const r = await moveStock(trx, tenantId, l.inventory_item_id, {
-        kind: 'consumption', quantity: -t, dOnHand: -t, dReserved: 0, reason: 'service completed',
-        refType: 'booking_item', refId: bookingItemId, actorUserId,
-      });
-      if (!r) throw Errors.conflict('concurrent_update', 'Stock changed during consumption; retry');
-      consumed.push({ inventoryItemId: l.inventory_item_id, quantity: t, unit: l.item_unit });
-    }
-    if (milli(t) < milli(required)) shortages.push({ inventoryItemId: l.inventory_item_id, required, consumed: t, unit: l.item_unit });
-  }
-  await trx.updateTable('booking_items').set({ materials_consumed_at: new Date() }).where('id', '=', bookingItemId).execute();
-  if (shortages.length) {
-    const slug = await tenantSlug(trx, tenantId);
-    await notifyCapability(trx, tenantId, ['inventory.manage'], {
-      kind: 'inventory.consumption_shortage',
-      title_ar: 'نقص في مواد خدمة مكتملة', title_en: 'Material shortage on a completed service',
-      body_ar: 'سُجّل الاستهلاك بقدر المتاح فقط. راجعي الجرد وسجّلي تسوية إذا لزم.',
-      body_en: 'Consumption was recorded only up to available stock. Review the count and record an adjustment if needed.',
-      target_path: slug ? `/app/${slug}/inventory` : undefined,
-      data: { booking_item_id: bookingItemId, shortages },
-      dedupe_key: `consumption_shortage:${bookingItemId}`,
-    });
-    await audit(trx, { userId: actorUserId, kind: actorUserId ? 'user' : 'system' }, 'inventory.consumption_shortage', { tenantId, targetType: 'booking_item', targetId: bookingItemId, data: { shortages } });
-  }
-  return { consumed, skipped: null, shortages };
-}
-
-export async function consumeForBookingItem(access: TenantAccess, actor: AuditActor, bookingItemId: string) {
-  return withTenant(access.tenantId, (trx) => consumeMaterialsForBookingItem(trx, access.tenantId, bookingItemId, actor.userId));
-}
+// ── Consumption on service completion: see consumption.ts ───────────────────
+export { consumeMaterialsForBookingItem, consumeForBookingItem, type ConsumptionResult } from './consumption';

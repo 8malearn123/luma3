@@ -155,8 +155,8 @@ function TenantDrawer({ id, onClose, canManage, canSupport }: { id: string; onCl
             ) : <p className="text-sm text-ink-muted">{t('states.none')}</p>}
           </Card>
           <div className="flex flex-wrap gap-2">
-            <Link href={`/platform/subscriptions?q=${tn.slug}`} className="rounded-lg border border-luma-300 px-3 py-2 text-sm text-luma-800 hover:bg-luma-50">{t('platform.tenants.view_subscription')}</Link>
-            {canSupport ? <Link href={`/platform/support?tenant=${tn.slug}`} className="inline-flex items-center gap-1.5 rounded-lg border border-luma-300 px-3 py-2 text-sm text-luma-800 hover:bg-luma-50"><LifeBuoy className="size-4" />{t('platform.tenants.request_support')}</Link> : null}
+            <Link href={`/platform/subscriptions?q=${tn.slug}`} className="rounded-lg border border-line-strong px-3 py-2 text-sm text-heading hover:bg-surface-muted">{t('platform.tenants.view_subscription')}</Link>
+            {canSupport ? <Link href={`/platform/support?tenant=${tn.slug}`} className="inline-flex items-center gap-1.5 rounded-lg border border-line-strong px-3 py-2 text-sm text-heading hover:bg-surface-muted"><LifeBuoy className="size-4" />{t('platform.tenants.request_support')}</Link> : null}
             {canManage && tn.status !== 'suspended' && tn.status !== 'closed' ? <Button variant="danger" icon={<Ban className="size-4" />} onClick={() => setDialog('suspended')}>{t('platform.tenants.suspend')}</Button> : null}
             {canManage && tn.status === 'suspended' ? <Button icon={<RotateCcw className="size-4" />} onClick={() => setDialog('active')}>{t('platform.tenants.reinstate')}</Button> : null}
           </div>

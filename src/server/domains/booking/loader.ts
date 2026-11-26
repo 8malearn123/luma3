@@ -19,7 +19,7 @@ export type ResolvedItem = {
   variant: { id: string; name_ar: string | null; name_en: string | null; price_minor: number; duration_min: number } | null;
   addons: Array<{ id: string; name_ar: string | null; name_en: string | null; price_minor: number; duration_min: number }>;
   /** Per qualified staff: price and duration (incl. add-ons), honouring per-specialist overrides. */
-  staffTerms: Record<string, { priceMinor: number; durationMin: number; name: string }>;
+  staffTerms: Record<string, { priceMinor: number; durationMin: number; name: string; nameEn: string | null }>;
   spec: ItemSpec;
 };
 
@@ -43,7 +43,7 @@ export async function resolveItems(trx: Tx, tenantId: string, branchId: string, 
   const staffLinks = await trx.selectFrom('service_staff as ss')
     .innerJoin('staff_profiles as sp', 'sp.id', 'ss.staff_id')
     .innerJoin('staff_branch_assignments as sba', (j) => j.onRef('sba.staff_id', '=', 'ss.staff_id').on('sba.branch_id', '=', branchId))
-    .select(['ss.service_id', 'ss.staff_id', 'ss.price_override_minor', 'ss.duration_override_min', 'sp.display_name', 'sp.is_public'])
+    .select(['ss.service_id', 'ss.staff_id', 'ss.price_override_minor', 'ss.duration_override_min', 'sp.display_name', 'sp.display_name_en', 'sp.is_public'])
     .where('ss.service_id', 'in', serviceIds).where('sp.is_active', '=', true).where('sp.archived_at', 'is', null).execute();
   const reqs = await trx.selectFrom('service_resource_requirements').selectAll().where('service_id', 'in', serviceIds).execute();
 
@@ -73,7 +73,7 @@ export async function resolveItems(trx: Tx, tenantId: string, branchId: string, 
     for (const l of links) {
       // Variant wins over per-specialist override, which wins over the base service.
       const base = variant ? { p: variant.price_minor, d: variant.duration_min } : { p: l.price_override_minor ?? s.price_minor, d: l.duration_override_min ?? s.duration_min };
-      staffTerms[l.staff_id] = { priceMinor: base.p + addonPrice, durationMin: base.d + addonMin, name: l.display_name };
+      staffTerms[l.staff_id] = { priceMinor: base.p + addonPrice, durationMin: base.d + addonMin, name: l.display_name, nameEn: l.display_name_en };
     }
     return {
       key: req.key, service: s, variant: variant ? { id: variant.id, name_ar: variant.name_ar, name_en: variant.name_en, price_minor: variant.price_minor, duration_min: variant.duration_min } : null,
@@ -95,7 +95,8 @@ export async function resolveItems(trx: Tx, tenantId: string, branchId: string, 
  * involved, for local dates [from, to]. Unexpired holds count as busy; expired
  * holds do not (they are released lazily before allocating).
  */
-export async function loadEngineInput(trx: Tx, tenantId: string, branchId: string, resolved: ResolvedItem[], fromISO: string, toISO: string, now = new Date()): Promise<EngineInput> {
+export async function loadEngineInput(trx: Tx, tenantId: string, branchId: string, resolved: ResolvedItem[], fromISO: string, toISO: string, now = new Date(),
+  opts: { /** A guest appointment placed inside this space booking: its own window does not block her. */ withinWorkspaceBookingId?: string | null } = {}): Promise<EngineInput> {
   const settings = await trx.selectFrom('tenant_settings').selectAll().where('tenant_id', '=', tenantId).executeTakeFirstOrThrow();
   const branch = await trx.selectFrom('branches').select(['id', 'timezone', 'status']).where('id', '=', branchId).executeTakeFirst();
   if (!branch || branch.status !== 'active') throw Errors.invalid('branch_unavailable', 'This branch is not available');
@@ -116,7 +117,9 @@ export async function loadEngineInput(trx: Tx, tenantId: string, branchId: strin
       .where('branch_id', '=', branchId).where(sql<boolean>`during && ${window}`).execute(),
     trx.selectFrom('booking_allocations').select(['staff_id', 'resource_id', sql<Date>`lower(during)`.as('s'), sql<Date>`upper(during)`.as('e')])
       .where(sql<boolean>`during && ${window}`)
-      .where((eb) => eb.or([eb('state', '=', 'confirmed'), eb.and([eb('state', '=', 'held'), eb('expires_at', '>', now)])])).execute(),
+      .where((eb) => eb.or([eb('state', '=', 'confirmed'), eb.and([eb('state', '=', 'held'), eb('expires_at', '>', now)])]))
+      .$if(!!opts.withinWorkspaceBookingId, (q) => q.where((eb) => eb.or([eb('workspace_booking_id', 'is', null), eb('workspace_booking_id', '<>', opts.withinWorkspaceBookingId!)])))
+      .execute(),
     trx.selectFrom('staff_profiles').select(['id', 'sort']).where('id', 'in', staffIds).execute(),
     trx.selectFrom('branch_hours').selectAll().where('branch_id', '=', branchId).execute(),
     typeIds.length ? trx.selectFrom('resources').select(['id', 'resource_type_id']).where('branch_id', '=', branchId).where('is_active', '=', true).where('resource_type_id', 'in', typeIds).execute() : Promise.resolve([]),
@@ -125,6 +128,15 @@ export async function loadEngineInput(trx: Tx, tenantId: string, branchId: strin
       .where('i.staff_id', 'in', staffIds).where('i.starts_at', '>=', rangeStart).where('i.starts_at', '<', rangeEnd)
       .where('b.status', 'in', ['held', 'pending_approval', 'pending_payment', 'confirmed', 'checked_in', 'in_service', 'completed']).execute(),
   ]);
+
+  // Chairs linked to these staff (D1b): booking a linked specialist also reserves one of her chairs.
+  const links = staffIds.length ? await trx.selectFrom('resource_staff_links as l').innerJoin('resources as r', 'r.id', 'l.resource_id')
+    .select(['l.staff_id', 'r.id', 'r.resource_type_id']).where('l.staff_id', 'in', staffIds).where('r.branch_id', '=', branchId).where('r.is_active', '=', true)
+    .orderBy('r.sort').orderBy('r.id').execute() : [];
+  const staffChairs: Record<string, string[]> = {};
+  for (const l of links) (staffChairs[l.staff_id] ??= []).push(l.id);
+  const allResources: Array<{ id: string; resource_type_id: string }> = [...resources];
+  for (const l of links) if (!allResources.some((r) => r.id === l.id)) allResources.push({ id: l.id, resource_type_id: l.resource_type_id });
 
   const staff: Record<string, StaffSchedule> = {};
   for (const id of staffIds) {
@@ -155,11 +167,12 @@ export async function loadEngineInput(trx: Tx, tenantId: string, branchId: strin
     maxGapMin: settings.max_gap_between_items_min, anyStaffRule: settings.any_staff_rule as EngineInput['anyStaffRule'],
     branchHours: branchHours.map((h) => ({ weekday: h.weekday, opens: h.opens.slice(0, 5), closes: h.closes.slice(0, 5) })),
     staff,
-    resources: resources.map((r) => ({
+    resources: allResources.map((r) => ({
       resourceId: r.id, typeId: r.resource_type_id,
       busy: [...allocs.filter((a) => a.resource_id === r.id), ...blocks.filter((b) => b.resource_id === r.id)].map((a) => parseRange(a.s, a.e)),
     })),
     bookedMinutes,
+    ...(links.length ? { staffChairs } : {}),
   };
 }
 

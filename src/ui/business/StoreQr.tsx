@@ -97,7 +97,7 @@ export function StoreQrCard({ slug, name, logoAssetId, compact }: { slug: string
 
   return (
     <div className={compact ? 'flex flex-col items-center gap-3' : 'flex flex-col gap-4 sm:flex-row sm:items-center'}>
-      <div className="mx-auto shrink-0 rounded-xl border border-line bg-white p-2" style={{ width: compact ? 200 : 160 }}>
+      <div className="mx-auto shrink-0 rounded-xl border border-line bg-surface p-2" style={{ width: compact ? 200 : 160 }}>
         {matrix ? (
           <svg viewBox={`0 0 ${dim} ${dim}`} shapeRendering="crispEdges" role="img" aria-label={t('business.qr.alt', { url })} className="block h-auto w-full">
             <rect width={dim} height={dim} fill="#fff" />
@@ -107,13 +107,13 @@ export function StoreQrCard({ slug, name, logoAssetId, compact }: { slug: string
               return <><rect x={o - pad} y={o - pad} width={s + pad * 2} height={s + pad * 2} rx={pad * 1.5} fill="#fff" /><image href={logo} x={o} y={o} width={s} height={s} preserveAspectRatio="xMidYMid meet" /></>;
             })() : null}
           </svg>
-        ) : <div className="flex aspect-square items-center justify-center"><QrCode className="size-10 text-luma-200" aria-hidden /></div>}
+        ) : <div className="flex aspect-square items-center justify-center"><QrCode className="size-10 text-highlight" aria-hidden /></div>}
       </div>
       <div className="flex min-w-0 flex-1 flex-col gap-2">
-        <p className="truncate rounded-lg bg-luma-50 px-2 py-1 text-xs text-ink-muted" dir="ltr">{url}</p>
+        <p className="truncate rounded-lg bg-surface-muted px-2 py-1 text-xs text-ink-muted" dir="ltr">{url}</p>
         <div className="flex flex-wrap gap-2">
           <Button size="sm" variant="outline" icon={copied ? <Check className="size-4" /> : <Copy className="size-4" />} onClick={copy} disabled={!url}>{copied ? t('business.qr.copied') : t('business.qr.copy')}</Button>
-          <a href={wa} target="_blank" rel="noreferrer" className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-[#25D366] px-3 text-sm font-medium text-white hover:opacity-90">
+          <a href={wa} target="_blank" rel="noreferrer" className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-whatsapp px-3 text-sm font-medium text-white hover:opacity-90">
             <MessageCircle className="size-4" aria-hidden />{t('business.qr.whatsapp')}
           </a>
           {canShare ? <Button size="sm" variant="ghost" icon={<Share2 className="size-4" />} onClick={() => { void navigator.share({ title: name, text: shareText, url }).catch(() => null); }}>{t('business.qr.share')}</Button> : null}

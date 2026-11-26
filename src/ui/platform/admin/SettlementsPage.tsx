@@ -79,7 +79,7 @@ export function SettlementsPage() {
                   { key: 's', header: t('admin.settlements.status'), cell: (s) => <Badge tone={s.status === 'settled' ? 'ok' : 'warn'}>{t(`admin.settlements.${s.status}`)}</Badge> },
                   { key: 'a', header: '', cell: (s) => (
                     <div className="flex items-center gap-2">
-                      <a href={`/api/v1/platform/settlements/${s.id}?format=html`} target="_blank" rel="noopener" className="inline-flex items-center gap-1 text-sm text-luma-700 hover:underline" aria-label={t('admin.settlements.open_statement')}>
+                      <a href={`/api/v1/platform/settlements/${s.id}?format=html`} target="_blank" rel="noopener" className="inline-flex items-center gap-1 text-sm text-link hover:underline" aria-label={t('admin.settlements.open_statement')}>
                         {t('admin.settlements.statement')}<ExternalLink className="size-3.5" aria-hidden /></a>
                       {s.status === 'simulated' ? <Button size="sm" variant="outline" onClick={() => setSettling(s)}>{t('admin.settlements.settle')}</Button> : null}
                     </div>

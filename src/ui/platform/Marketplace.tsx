@@ -73,7 +73,7 @@ function Requests() {
       <FormErrorSummary message={err ? msg(err) : null} />
       {q.isLoading ? <LoadingState /> : q.error ? <ErrorState error={q.error} onRetry={() => q.refetch()} /> : !q.data!.items.length ? <EmptyState title={t('market.admin.no_requests')} /> : (
         <DataTable rows={q.data!.items} rowKey={(r) => r.tenant_id} caption={t('market.admin.tabs.requests')} columns={[
-          { key: 'name', header: t('fields.name'), cell: (r) => <div><p className="font-medium">{r.name}</p><a className="text-xs text-luma-700 underline" href={`/s/${r.slug}`} target="_blank" rel="noopener" dir="ltr">/s/{r.slug}</a></div> },
+          { key: 'name', header: t('fields.name'), cell: (r) => <div><p className="font-medium">{r.name}</p><a className="text-xs text-link underline" href={`/s/${r.slug}`} target="_blank" rel="noopener" dir="ltr">/s/{r.slug}</a></div> },
           { key: 'type', header: t('market.admin.type'), cell: (r) => <span className="text-sm">{t(`market.types.${r.business_type}`)}{r.city ? ` · ${r.city}` : ''}</span> },
           { key: 'ver', header: t('market.admin.verification'), cell: (r) => <Badge tone={tone(r.verification_status)}>{t(`market.verification_status.${r.verification_status ?? 'draft'}`)}</Badge> },
           { key: 'st', header: t('fields.status'), cell: (r) => <div className="flex flex-col gap-1"><Badge tone={tone(r.status)}>{t(`market.listing_status.${r.status}`)}</Badge>{r.hidden ? <Badge>{t('market.admin.hidden')}</Badge> : null}{!r.published ? <Badge tone="warn">{t('market.blockers.not_published')}</Badge> : null}</div> },
@@ -150,7 +150,7 @@ function VerificationDrawer({ tenantId, onClose }: { tenantId: string; onClose: 
           <Alert tone="warn">{t('market.admin.sensitive')}</Alert>
           <Card title={t('market.admin.business')}>
             <dl>
-              <KV label={t('market.admin.address')}><a className="text-luma-700 underline" href={`/s/${v.tenant.slug}`} target="_blank" rel="noopener" dir="ltr">/s/{v.tenant.slug}</a></KV>
+              <KV label={t('market.admin.address')}><a className="text-link underline" href={`/s/${v.tenant.slug}`} target="_blank" rel="noopener" dir="ltr">/s/{v.tenant.slug}</a></KV>
               <KV label={t('market.admin.legal_name')}>{v.legal?.legal_name ?? '—'}</KV>
               <KV label={t('market.admin.tax_number')}><span dir="ltr">{v.legal?.tax_number ?? '—'}</span></KV>
               <KV label={t('market.admin.submitted')}><When v={v.verification.submitted_at} /></KV>
@@ -162,12 +162,12 @@ function VerificationDrawer({ tenantId, onClose }: { tenantId: string; onClose: 
                 const doc = v.documents.find((x) => x.kind === k);
                 return (
                   <li key={k} className="flex flex-wrap items-center gap-2 rounded-lg border border-line p-3 text-sm">
-                    <FileText className="size-4 text-luma-700" aria-hidden />
+                    <FileText className="size-4 text-link" aria-hidden />
                     <span className="flex-1 font-medium">{t(`market.docs.${k}`)}</span>
                     {doc ? (
                       <>
                         {doc.iban ? <span className="font-mono text-xs" dir="ltr">{doc.iban}</span> : null}
-                        <a className="text-luma-700 underline" href={`/api/v1/platform/marketplace/documents/${doc.id}`} target="_blank" rel="noopener">{t('market.admin.open_doc')}</a>
+                        <a className="text-link underline" href={`/api/v1/platform/marketplace/documents/${doc.id}`} target="_blank" rel="noopener">{t('market.admin.open_doc')}</a>
                         <span className="text-xs text-ink-muted">{DateTime.fromISO(doc.created_at).setLocale(locale).toLocaleString(DateTime.DATE_MED)}</span>
                       </>
                     ) : <Badge tone="warn">{t('market.settings.missing')}</Badge>}

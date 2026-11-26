@@ -10,11 +10,32 @@ import { normalizeSnapshot } from '../storefront/service';
 import { readBrand, writeBrand } from './brand';
 import { readDraftPages, readDraftSnapshot, readLayout } from './drafts';
 import { validateDraft } from './service';
+import { componentAvailability, componentIssues } from './components';
+import { parseLayout, validatePage, type PageIssue, type RefWarning } from './validation';
 import { requireApprovedForPublish } from '../platform/settings';
-import { validateBlocks } from '@/shared/builder/blocks';
 import type { SiteSnapshot } from '@/shared/builder/storefront';
 
-type PublishResult = { version_id: string; version_number: number; published_at: string; first_publish: boolean; replayed?: boolean };
+type PublishResult = { version_id: string; version_number: number; published_at: string; first_publish: boolean; warnings: RefWarning[]; replayed?: boolean };
+
+/**
+ * Validates a stored snapshot (an earlier version) against TODAY's catalog,
+ * platform component switches and plan — the same rules a publish applies
+ * (LUMA-AUDIT-031). Errors block; reference warnings are returned.
+ */
+async function validateSnapshot(trx: Tx, access: TenantAccess, snapshot: SiteSnapshot) {
+  const issues: PageIssue[] = [];
+  const warnings: RefWarning[] = [];
+  const avail = await componentAvailability(trx, access);
+  const productsEnabled = featureEnabled(access, 'feature.products');
+  for (const p of snapshot.pages) {
+    const r = await validatePage(trx, access.tenantId, p.id, p.blocks, { productsEnabled });
+    issues.push(...r.issues);
+    warnings.push(...r.warnings);
+    if (!r.issues.length) issues.push(...componentIssues(p.id, r.blocks, avail).issues);
+  }
+  issues.push(...parseLayout(snapshot.layout).issues);
+  return { issues, warnings };
+}
 
 async function insertVersion(trx: Tx, access: TenantAccess, actor: AuditActor, snapshot: SiteSnapshot, opts: { note?: string | null; restoredFrom?: string | null }) {
   if (!actor.userId) throw Errors.unauthenticated();
@@ -49,11 +70,12 @@ export async function publish(access: TenantAccess, actor: AuditActor, idempoten
       if (issues.length) throw new AppError(422, 'publish_validation_failed', 'Fix the highlighted problems before publishing', { issues: issues.slice(0, 50) });
       const snapshot = await readDraftSnapshot(trx, access.tenantId);
       const { v, firstPublish, previous } = await insertVersion(trx, access, actor, snapshot, { note: input.note });
+      const pubWarnings = warnings.slice(0, 50);
       await audit(trx, actor, 'storefront.published', {
         tenantId: access.tenantId, targetType: 'site_version', targetId: v.id,
         data: { version_number: v.version_number, previous_version_id: previous, first_publish: firstPublish, warnings: warnings.length },
       });
-      return { status: 201, body: { version_id: v.id, version_number: v.version_number, published_at: v.published_at.toISOString(), first_publish: firstPublish } };
+      return { status: 201, body: { version_id: v.id, version_number: v.version_number, published_at: v.published_at.toISOString(), first_publish: firstPublish, warnings: pubWarnings } };
     });
     return { ...r.body, replayed: r.replayed };
   });
@@ -89,18 +111,20 @@ export async function rollback(access: TenantAccess, actor: AuditActor, versionI
     await sql`select pg_advisory_xact_lock(hashtext(${`publish:${access.tenantId}`}))`.execute(trx);
     const r = await idempotent<PublishResult>(trx, { scope: `tenant:${access.tenantId}`, operation: 'builder.rollback', key: idempotencyKey, hash: requestHash({ versionId }) }, async () => {
       const target = await loadVersion(trx, access.tenantId, versionId);
-      for (const p of target.snapshot.pages) {
-        const s = validateBlocks(p.blocks);
-        if (s.issues.length) throw new AppError(422, 'publish_validation_failed', 'This version can no longer be published', { issues: s.issues.slice(0, 20) });
-      }
+      // A rollback is a publication: same approval, readiness and validation as publish.
+      await requireApprovedForPublish(trx, access.tenantId);
+      const ready = await readiness(access);
+      if (!ready.ready) throw new AppError(422, 'not_ready', 'Complete the readiness checklist before publishing', { items: ready.items.filter((i) => !i.ok) });
+      const { issues, warnings } = await validateSnapshot(trx, access, target.snapshot);
+      if (issues.length) throw new AppError(422, 'publish_validation_failed', 'This version can no longer be published', { issues: issues.slice(0, 50) });
       // Plan policy is re-applied: an old version cannot bring back a hidden platform mark.
       const snapshot: SiteSnapshot = { ...target.snapshot, layout: { ...target.snapshot.layout, footer: { ...target.snapshot.layout.footer, show_powered_by: target.snapshot.layout.footer.show_powered_by || !featureEnabled(access, 'feature.remove_powered_by') } } };
       const { v, previous } = await insertVersion(trx, access, actor, snapshot, { note: `rollback to v${target.version_number}`, restoredFrom: target.id });
       await audit(trx, actor, 'storefront.rolled_back', {
         tenantId: access.tenantId, targetType: 'site_version', targetId: v.id,
-        data: { restored_from_version_id: target.id, restored_from_version_number: target.version_number, previous_version_id: previous, version_number: v.version_number },
+        data: { restored_from_version_id: target.id, restored_from_version_number: target.version_number, previous_version_id: previous, version_number: v.version_number, warnings: warnings.length },
       });
-      return { status: 201, body: { version_id: v.id, version_number: v.version_number, published_at: v.published_at.toISOString(), first_publish: false } };
+      return { status: 201, body: { version_id: v.id, version_number: v.version_number, published_at: v.published_at.toISOString(), first_publish: false, warnings: warnings.slice(0, 50) } };
     });
     return { ...r.body, replayed: r.replayed };
   });
@@ -114,6 +138,8 @@ export async function restoreToDraft(access: TenantAccess, actor: AuditActor, ve
   return withTenant(access.tenantId, async (trx) => {
     const target = await loadVersion(trx, access.tenantId, versionId);
     const snap = target.snapshot;
+    // Nothing is published here, so problems are reported (the next publish blocks on them).
+    const check = await validateSnapshot(trx, access, snap);
     const brand = await readBrand(trx, access.tenantId);
     // Keep the current logo if the old one is no longer available.
     const logoOk = snap.brand.logo_asset_id
@@ -141,7 +167,10 @@ export async function restoreToDraft(access: TenantAccess, actor: AuditActor, ve
       restored++;
     }
     await audit(trx, actor, 'storefront.draft_restored', { tenantId: access.tenantId, targetType: 'site_version', targetId: target.id, data: { version_number: target.version_number, pages: restored, skipped: skipped.length } });
-    return { restored_from_version_number: target.version_number, pages_restored: restored, pages_skipped: skipped.length, brand_version: brandVersion, published: false };
+    return {
+      restored_from_version_number: target.version_number, pages_restored: restored, pages_skipped: skipped.length, brand_version: brandVersion, published: false,
+      warnings: check.warnings.slice(0, 50), issues: check.issues.slice(0, 50),
+    };
   });
 }
 

@@ -14,8 +14,8 @@ Parsed and frozen by `src/server/env.ts`. Empty strings are treated as unset. An
 | `DATABASE_OWNER_URL` | scripts | — | Owner connection (`luma_owner`) for migrate, seed, reset and grant-platform-role |
 | `DB_APP_ROLE` | no | `luma_app` | Runtime role that migrations grant to (pattern `^[a-z_][a-z0-9_]*$`) |
 | `AUTH_SECRET` | yes | — | At least 32 characters. HMAC key for session, preview, invite and gift-card hashes, and the HKDF source for the MFA secret encryption key. Generate with `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"`. **Rotating it invalidates sessions, tokens, gift-card codes and enrolled MFA secrets.** |
-| `DEMO_MODE` | no | false | Demo role switcher on the login page (seeded demo users only). Forced off in production. |
-| `DEV_OTP_ECHO` | no | false | Shows one-time codes on screen and in `dev_message_outbox`; campaigns on email/SMS/WhatsApp become `dev_simulation`. Forced off in production. |
+| `DEMO_MODE` | no | false | One-click demo sign-in on the login page (seeded demo users only). **Local development only**: any deployed build (review/production/Vercel) refuses to start when it is true. |
+| `DEV_OTP_ECHO` | no | false | Shows one-time codes on screen and in `dev_message_outbox`; campaigns on email/SMS/WhatsApp become `dev_simulation`. **Local development only**: any deployed build refuses to start when it is true. |
 | `STORAGE_DRIVER` | no | `local` | Only `local` exists |
 | `STORAGE_LOCAL_DIR` | no | `./storage` | Local file storage root (gitignored) |
 | `EMAIL_PROVIDER`, `SMS_PROVIDER`, `WHATSAPP_PROVIDER` | no | `none` | Only `none` is accepted; no provider is integrated |
@@ -30,7 +30,7 @@ Read directly from `process.env` (not in `.env.example`):
 | Variable | Used by |
 |---|---|
 | `DB_POOL_MAX` (default 10) | `src/server/db/client.ts` pool size. The statement timeout is fixed at 15 s. |
-| `CHROMIUM_EXECUTABLE` | `src/server/infra/pdf.ts` (PDF receipts) |
+| `CHROMIUM_EXECUTABLE` | `src/server/infra/pdf.ts` (PDF receipts). Optional: without a Chromium that starts, the PDF route returns 503 `pdf_renderer_unavailable` and `?format=html` still prints. `playwright-core` looks for its own pinned build (e.g. `chromium_headless_shell-1194` for 1.56.1) under `PLAYWRIGHT_BROWSERS_PATH`; if the machine has a different build, point this variable at it (e.g. `/opt/pw-browsers/chromium`). Not available on Vercel (see DEPLOY_VERCEL.md). |
 | `SEED_CREDENTIALS_JSON` | `scripts/seed.ts`: write credentials as JSON to this path instead of `.demo-credentials.txt` (used by E2E) |
 | `TEST_DATABASE_URL`, `TEST_DATABASE_OWNER_URL` | Vitest (default database `luma_test`) |
 | `E2E_DATABASE` (default `luma_e2e`), `E2E_PORT` (default 3110) | `playwright.config.ts` |
@@ -76,7 +76,7 @@ pnpm db:seed                                 # refuses APP_ENV=production
 pnpm db:reset-dev --confirm=<database-name>  # then pnpm db:seed
 ```
 
-- The **seed** (`scripts/seed.ts`) creates clearly fictional data: a platform owner and a policy reviewer; "Noura Salon" (`noura-salon`, Wahaj plan) with manager, receptionist, specialist and finance members, services, staff, customers (including one with an experimental `require_full_payment` decision), weeks of history with consistent payments, expenses with deliberately missing costs, products, an incident under review, an appeal, an example marketing plan and a published storefront; and "Lamar Makeup" (`lamar-makeup`, Sanaa plan). Demo users are flagged `is_demo`. Each gets a **unique random password** written to `.demo-credentials.txt` (gitignored, mode `0600`), or to `SEED_CREDENTIALS_JSON`. Re-running skips if the demo owner exists, unless `--force-new-slugs` is passed.
+- The **seed** (`scripts/seed.ts`) creates clearly fictional data: a platform owner and a policy reviewer; «الروشة» (display name; slug `noura-salon`, Wahaj plan) with manager, receptionist, specialist and finance members, services, staff, customers (including one with an experimental `require_full_payment` decision), weeks of history with consistent payments, expenses with deliberately missing costs, products, an incident under review, an appeal, an example marketing plan, a published storefront, opening stock movements for every material/product, and hosting fixtures (a station-linked chair «كرسي 1» linked to Huda and listed for rent as K-1 with a store-product and an equipment add-on, an unlisted «كرسي 2», polish moved to «محطة كرسي 1»); and "Lamar Makeup" (`lamar-makeup`, Sanaa plan). Demo users are flagged `is_demo`. Each gets a **unique random password** written to `.demo-credentials.txt` (gitignored, mode `0600`), or to `SEED_CREDENTIALS_JSON`. Re-running skips if the demo owner exists, unless `--force-new-slugs` is passed.
 - The **reset** (`scripts/reset-dev.ts`) drops and recreates the `app` and `public` schemas, then re-migrates. Guards: refuses `APP_ENV=production` or `NODE_ENV=production`; the database name **must end in `_dev`**; the host must be `localhost`, `127.0.0.1` or `::1`; and `--confirm=<exact database name>` must be given.
 
 ## Bootstrapping the first platform owner
@@ -110,7 +110,9 @@ Registered work (from `registerJob` / `registerOutbox` / `registerPeriodic`):
 | Kind | Name | Interval / trigger | What it does |
 |---|---|---|---|
 | job | `analytics.rollup` | on demand (`POST analytics/rollup`) | Recompute `daily_metrics` for given days |
-| job | `marketing.ai_job` | `requestAiJob` | Run a Loom AI job |
+| job | `marketing.ai_job` | `requestAiJob` | Run a legacy marketing AI job (rules/LLM plans and recommendations; deprecated, see LOOM_CORE §8) |
+| job | `loom.analysis` | «تحليل الآن», scheduler | Loom business analysis (metrics, quality gate, opportunities) |
+| job | `loom.plan` | `POST /loom/plans` | Loom planner run (monthly/weekly plan, rules without AI) |
 | job | `marketing.campaign_send` | scheduled campaign | Send (or defer) a campaign |
 | job | `marketing.trend_fetch` | on demand | Fetch the tenant's trend sources |
 | outbox | `booking.confirmed`, `booking.cancelled`, `booking.rescheduled`, `booking.reminder` | enqueued by booking code | Transactional messages through the messaging adapter (simulated or unavailable without a provider) |
@@ -132,13 +134,28 @@ Registered work (from `registerJob` / `registerOutbox` / `registerPeriodic`):
 
 Note the naming styles differ (`commerce-expire-orders` vs `booking.expire-holds`); use the names exactly as listed when searching logs.
 
+### Running the app and the worker together (demos, manual QA, E2E)
+
+Without the worker nothing in the background progresses: Loom analyses and plan preparations stay «في الانتظار» (Loom → متقدم → حالة التحليل shows a warning after 5 minutes), booking holds never expire and outbox messages are never sent (LUMA-AUDIT-043). Always run both processes against the **same** database:
+
+```bash
+# terminal 1 — the app (dev or production build)
+pnpm dev                      # or: pnpm build && pnpm start
+# terminal 2 — the job worker (reads the same .env / DATABASE_URL)
+pnpm worker
+```
+
+- The Loom job kinds are `loom.analysis` («تحليل الآن» and the scheduler) and `loom.plan` («إعداد خطة الشهر/الأسبوع» and plan re-analysis). Both appear with their state, timestamps and failure reason in Loom → «متقدم» → «حالة التحليل».
+- The worker loads code once at start: restart it after changing server code (a stale worker keeps producing the old output).
+- **E2E:** `pnpm test:e2e` starts both automatically. The Playwright web server runs `tests/e2e/serve.ts`, which runs `next start` and starts `scripts/worker.ts` as soon as global setup has migrated and seeded the database (marker `.e2e/seeded`); stopping the run stops both. `E2E_WORKER=0` disables the worker for a run. Use `E2E_DATABASE` / `E2E_PORT` to run beside another checkout.
+
 ## Health endpoint
 
-`GET /api/v1/health` returns `200 {"ok":true,"db":"up"}` after a `select 1` against `DATABASE_URL`, or `503 {"ok":false,"db":"down"}`. It sends `Cache-Control: no-store`, reveals no configuration, and needs no authentication. Playwright waits on it before running E2E tests. It does **not** check the worker.
+`GET /api/v1/health` returns `200 {"ok":true,"db":"up"}` after a `select 1` against `DATABASE_URL`, or `503 {"ok":false,"db":"down"}`. It sends `Cache-Control: no-store`, reveals no configuration, and needs no authentication. Playwright waits on it before running E2E tests. It does **not** check the worker (the E2E web server starts one itself; see «Running the app and the worker together»).
 
 ## E2E database
 
-`pnpm test:e2e` uses a dedicated database, by default `luma_e2e` (`E2E_DATABASE`). An operator must create it **once** (owner `luma_owner`, `grant connect` to `luma_app`). Each run's global setup refuses names not ending in `_e2e`, non-local hosts and `APP_ENV=production`. It then drops and recreates the `app` and `public` schemas, migrates and seeds. The dev server runs on port 3110 with `NEXT_DIST_DIR=.next-e2e`, `DEV_OTP_ECHO=true` and `DEMO_MODE=false`. The role passwords for this database are set in `playwright.config.ts` and must match the local roles.
+`pnpm test:e2e` uses a dedicated database, by default `luma_e2e` (`E2E_DATABASE`). An operator must create it **once** (owner `luma_owner`, `grant connect` to `luma_app`). Each run's global setup refuses names not ending in `_e2e`, non-local hosts and `APP_ENV=production`. It then drops and recreates the `app` and `public` schemas, migrates and seeds. The server (a production build plus the job worker, `tests/e2e/serve.ts`) runs on port 3110 (`E2E_PORT`) with `NEXT_DIST_DIR=.next-e2e`, `DEV_OTP_ECHO=true` and `DEMO_MODE=false`. A preinstalled Chromium at `/opt/pw-browsers/chromium` (or `PW_CHROMIUM_PATH`) is used when present. The role passwords for this database are set in `playwright.config.ts` and must match the local roles.
 
 ## Backups
 
@@ -182,7 +199,7 @@ There is **no automatic reclamation** of jobs left `running` by a crashed worker
 
 ## Production security checklist
 
-- [ ] `APP_ENV=production`. This forces `DEMO_MODE` and `DEV_OTP_ECHO` off, makes cookies `Secure`, and disables the sandbox simulation routes, the dev outbox, seed and reset. Do not run `pnpm db:seed` against production; it refuses anyway.
+- [ ] `APP_ENV=production` and an independent `AUTH_SECRET`. `DEMO_MODE`/`DEV_OTP_ECHO` must be unset (the server refuses to start otherwise); production makes cookies `Secure`, and disables the sandbox simulation routes, the dev outbox, seed and reset. Do not run `pnpm db:seed` against production; it refuses anyway.
 - [ ] Secrets (`AUTH_SECRET`, database passwords, `PAYMENT_SANDBOX_WEBHOOK_SECRET`, `OPENAI_API_KEY`) live in a secret manager, never in the repository, images or logs. `AUTH_SECRET` has at least 32 random bytes and differs per environment.
 - [ ] TLS terminates in front of the app; `APP_URL` is the `https://` origin. HSTS is set at the proxy (the app does not set it). The app sets CSP, `X-Content-Type-Options`, `Referrer-Policy` and `Permissions-Policy` in `next.config.ts`.
 - [ ] The database connection uses TLS. `DATABASE_URL` uses the non-owner `luma_app` role, and the owner credentials are available only to the migration job.

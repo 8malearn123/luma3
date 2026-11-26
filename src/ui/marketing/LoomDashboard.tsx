@@ -15,27 +15,91 @@ import { LoomPlans } from './LoomPlans';
 import { LoomRecommendations } from './LoomRecommendations';
 import { LoomTrends } from './LoomTrends';
 import { LoomCampaigns } from './LoomCampaigns';
+import { LoomOpportunities } from './LoomOpportunities';
+import { LoomSetup } from './LoomSetup';
+import { LoomResults } from './LoomResults';
+import { LoomHome } from './LoomHome';
+import { LoomConnections } from './LoomConnections';
+import { LoomModels } from './LoomModels';
+import { LoomAnalysisStatus } from './LoomAnalysisStatus';
 
-type Tab = 'summary' | 'plans' | 'recommendations' | 'trends' | 'campaigns' | 'preferences' | 'jobs';
-const TABS: Tab[] = ['summary', 'plans', 'recommendations', 'trends', 'campaigns', 'preferences', 'jobs'];
+type Tab = 'home' | 'monthly' | 'weekly' | 'opportunities' | 'trends' | 'results' | 'campaigns' | 'setup' | 'advanced' | 'summary' | 'recommendations';
+type Section = 'status' | 'connections' | 'models' | 'preferences';
+/**
+ * Owner-facing structure (LUMA-AUDIT-021): the agreed primary experience first
+ * (monthly plans, weekly plans, ongoing opportunities, trends & evidence,
+ * results); provider/model/job/connection configuration lives under «متقدم»
+ * (marketing.manage only) — moved, not deleted. Legacy rules recommendations
+ * and the old summary stay reachable by URL behind a deprecation notice.
+ */
+const PRIMARY: Tab[] = ['home', 'monthly', 'weekly', 'opportunities', 'trends', 'results', 'campaigns', 'setup'];
+const LEGACY_TABS: Tab[] = ['summary', 'recommendations'];
+const SECTIONS: Section[] = ['status', 'connections', 'models', 'preferences'];
+/** Old ?tab= values keep working. */
+const ALIASES: Record<string, { tab: Tab; section?: Section }> = {
+  plans: { tab: 'monthly' }, jobs: { tab: 'advanced', section: 'status' }, connections: { tab: 'advanced', section: 'connections' },
+  models: { tab: 'advanced', section: 'models' }, preferences: { tab: 'advanced', section: 'preferences' },
+};
 
-export function LoomDashboard({ initialTab }: { initialTab?: string }) {
+function resolveTab(raw: string | undefined, canAdvanced: boolean): { tab: Tab; section: Section } {
+  const alias = raw ? ALIASES[raw] : undefined;
+  const tab: Tab = alias?.tab ?? ([...PRIMARY, ...LEGACY_TABS, 'advanced'].includes(raw as Tab) ? (raw as Tab) : 'home');
+  if (tab === 'advanced' && !canAdvanced) return { tab: 'home', section: 'status' };
+  return { tab, section: alias?.section ?? 'status' };
+}
+
+export function LoomDashboard({ initialTab, initialSection }: { initialTab?: string; initialSection?: string }) {
   const { t } = useI18n();
   const access = useAccess();
-  const [tab, setTab] = useState<Tab>(TABS.includes(initialTab as Tab) ? (initialTab as Tab) : 'summary');
+  const canAdvanced = access.can('marketing.manage');
+  const init = resolveTab(initialTab, canAdvanced);
+  const [tab, setTab] = useState<Tab>(init.tab);
+  const [section, setSection] = useState<Section>(SECTIONS.includes(initialSection as Section) ? (initialSection as Section) : init.section);
   if (!access.can('marketing.view', 'marketing.manage')) return <DeniedState />;
-  const change = (v: Tab) => {
-    setTab(v);
+  const sync = (v: Tab, s?: Section) => {
     const u = new URL(window.location.href);
     u.searchParams.set('tab', v);
+    if (v === 'advanced' && s) u.searchParams.set('section', s); else u.searchParams.delete('section');
     window.history.replaceState(null, '', u.toString());
   };
+  const change = (raw: Tab | 'plans' | 'jobs') => {
+    const alias = ALIASES[raw];
+    const v: Tab = alias?.tab ?? (raw as Tab);
+    const s = alias?.section ?? section;
+    setTab(v);
+    if (alias?.section) setSection(alias.section);
+    sync(v, s);
+  };
+  const changeSection = (s: Section) => { setSection(s); sync('advanced', s); };
+  const tabs = [...PRIMARY, ...(canAdvanced ? (['advanced'] as Tab[]) : [])];
   return (
     <div>
       <PageHeader title={t('marketing.title')} subtitle={t('marketing.subtitle')} />
-      <Tabs value={tab} onChange={change} items={TABS.map((v) => ({ value: v, label: t(`marketing.tabs.${v}`) }))} />
-      {tab === 'summary' ? <Summary onNavigate={change} /> : tab === 'plans' ? <LoomPlans /> : tab === 'recommendations' ? <LoomRecommendations />
-        : tab === 'trends' ? <LoomTrends /> : tab === 'campaigns' ? <LoomCampaigns /> : tab === 'preferences' ? <Preferences /> : <Jobs />}
+      <Tabs value={LEGACY_TABS.includes(tab) ? 'home' : tab} onChange={change} items={tabs.map((v) => ({ value: v, label: t(`loomux.tabs.${v}`) }))} />
+      {LEGACY_TABS.includes(tab) ? <Alert tone="warn" className="mb-3">{t('loomp.legacy_notice')} <Button size="sm" variant="outline" className="ms-2" onClick={() => change('opportunities')}>{t('loomux.tabs.opportunities')}</Button></Alert> : null}
+      {tab === 'home' ? <LoomHome onNavigate={change} />
+        : tab === 'summary' ? <Summary onNavigate={change} />
+          : tab === 'opportunities' ? <LoomOpportunities onSetup={() => change('setup')} />
+            : tab === 'setup' ? <LoomSetup />
+              : tab === 'results' ? <LoomResults />
+                : tab === 'monthly' ? <LoomPlans key="monthly" kind="monthly" />
+                  : tab === 'weekly' ? <LoomPlans key="weekly" kind="weekly" />
+                    : tab === 'recommendations' ? <LoomRecommendations />
+                      : tab === 'trends' ? <LoomTrends />
+                        : tab === 'campaigns' ? <LoomCampaigns />
+                          : <Advanced section={section} onSection={changeSection} />}
+    </div>
+  );
+}
+
+/** «متقدم»: analysis status, connections & data, models, schedule & calendar (owner/manager configuration). */
+function Advanced({ section, onSection }: { section: Section; onSection: (s: Section) => void }) {
+  const { t } = useI18n();
+  return (
+    <div className="flex flex-col gap-3" data-testid="loom-advanced">
+      <Card title={t('loomux.advanced.title')}><p className="text-sm text-ink-muted">{t('loomux.advanced.note')}</p></Card>
+      <Tabs value={section} onChange={onSection} items={SECTIONS.map((s) => ({ value: s, label: t(`loomux.advanced.sections.${s}`) }))} />
+      {section === 'status' ? <LoomAnalysisStatus /> : section === 'connections' ? <LoomConnections /> : section === 'models' ? <LoomModels /> : <Preferences />}
     </div>
   );
 }
@@ -44,7 +108,7 @@ export function AiStatusCard({ ai }: { ai: any }) {
   const { t, locale } = useI18n();
   const access = useAccess();
   return (
-    <Card title={<span className="inline-flex items-center gap-2"><Bot className="size-5 text-luma-500" aria-hidden />{ai.state === 'connected' ? t('marketing.ai.connected') : ai.state === 'disconnected' ? t('marketing.ai.disconnected') : t('marketing.ai.misconfigured')}</span>}>
+    <Card title={<span className="inline-flex items-center gap-2"><Bot className="size-5 text-brand" aria-hidden />{ai.state === 'connected' ? t('marketing.ai.connected') : ai.state === 'disconnected' ? t('marketing.ai.disconnected') : t('marketing.ai.misconfigured')}</span>}>
       {ai.state === 'disconnected' ? <p className="text-sm text-ink-muted">{t(`marketing.ai.reason_${ai.reason}`)}</p> : null}
       {ai.state === 'connected' ? <p className="text-sm text-ink-muted">{ai.verified_at ? t('marketing.ai.verified_at', { time: formatDateTime(ai.verified_at, { locale, tz: access.timezone }) }) : t('marketing.ai.not_verified')}</p> : null}
       {!ai.feature_enabled ? <p className="text-sm text-warn">{t('marketing.ai.feature_off')}</p> : null}
@@ -54,7 +118,7 @@ export function AiStatusCard({ ai }: { ai: any }) {
   );
 }
 
-function Summary({ onNavigate }: { onNavigate: (t: Tab) => void }) {
+function Summary({ onNavigate }: { onNavigate: (t: Tab | 'plans' | 'jobs') => void }) {
   const { t, locale } = useI18n();
   const access = useAccess();
   const { act, busy } = useAct();
@@ -128,37 +192,6 @@ function Summary({ onNavigate }: { onNavigate: (t: Tab) => void }) {
           {!d.campaigns_enabled ? <p className="mt-2 text-xs text-ink-muted">{t('marketing.campaigns.not_in_plan')}</p> : null}
         </Card>
       </div>
-    </div>
-  );
-}
-
-function Jobs() {
-  const { t, locale } = useI18n();
-  const access = useAccess();
-  const { act, busy } = useAct();
-  const r = useApiQuery<any[]>(loomKey(access.slug, 'jobs'), access.api('/marketing/jobs'), { refetchInterval: 10000 });
-  if (r.isLoading) return <LoadingState rows={4} />;
-  if (r.error) return <ErrorState error={r.error} onRetry={() => r.refetch()} />;
-  const canManage = access.can('marketing.manage');
-  return (
-    <div className="flex flex-col gap-3">
-      <Alert tone="info">{t('marketing.jobs.explanation')}</Alert>
-      {!r.data!.length ? <EmptyState title={t('marketing.jobs.empty')} /> : (
-        <DataTable rows={r.data!} rowKey={(j: any) => j.id} caption={t('marketing.tabs.jobs')} columns={[
-          { key: 'k', header: t('marketing.jobs.kind'), cell: (j: any) => t(`marketing.kinds.${j.kind}`) },
-          { key: 'p', header: t('marketing.jobs.period'), cell: (j: any) => <span dir="ltr">{j.period_key}</span> },
-          { key: 's', header: t('marketing.jobs.status'), cell: (j: any) => <JobStatus status={j.status} /> },
-          { key: 'a', header: t('marketing.jobs.attempts'), cell: (j: any) => `${j.attempts}/${j.max_attempts}` },
-          { key: 'e', header: t('marketing.jobs.error'), cell: (j: any) => (j.error_code ? t(`marketing.job_errors.${j.error_code}`) : '—') },
-          { key: 'c', header: t('marketing.jobs.created'), cell: (j: any) => formatDateTime(j.created_at, { locale, tz: access.timezone }) },
-          { key: 'x', header: '', cell: (j: any) => (canManage && ['failed', 'unavailable', 'insufficient_data'].includes(j.status) && j.kind !== 'employee_insights' ? (
-            <div className="flex gap-1">
-              <Button size="sm" variant="outline" loading={busy === `r${j.id}`} onClick={() => act(`r${j.id}`, `/marketing/jobs/${j.id}/retry`, { body: {} })}>{t('marketing.actions.retry')}</Button>
-              {j.kind !== 'trend_assessment' ? <Button size="sm" variant="ghost" loading={busy === `rr${j.id}`} onClick={() => act(`rr${j.id}`, `/marketing/jobs/${j.id}/retry`, { body: { mode: 'rules' } })}>{t('marketing.actions.retry_rules')}</Button> : null}
-            </div>
-          ) : null) },
-        ]} />
-      )}
     </div>
   );
 }
@@ -238,7 +271,7 @@ function CalendarCard() {
   const [ev, setEv] = useState({ title: '', kind: 'holiday', starts_on: '', ends_on: '', relevance_note: '', source_url: '' });
   const canManage = access.can('marketing.manage');
   return (
-    <Card title={<span className="inline-flex items-center gap-2"><CalendarCheck className="size-5 text-luma-500" aria-hidden />{t('marketing.prefs.calendar_title')}</span>}>
+    <Card title={<span className="inline-flex items-center gap-2"><CalendarCheck className="size-5 text-brand" aria-hidden />{t('marketing.prefs.calendar_title')}</span>}>
       <p className="mb-2 text-xs text-ink-muted">{t('marketing.prefs.calendar_hint')}</p>
       {r.isLoading ? <LoadingState rows={2} /> : r.error ? <ErrorState error={r.error} /> : r.data!.length ? (
         <ul className="mb-3 flex flex-col gap-2 text-sm">

@@ -1,0 +1,68 @@
+{
+  "id": "pb.discount.limited_trial",
+  "version": 1,
+  "title": {
+    "ar": "تجربة خصم محدودة بضابط",
+    "en": "Limited discount trial with a holdout"
+  },
+  "applies_to": {
+    "sectors": [
+      "beauty"
+    ],
+    "detectors": [
+      "quiet_capacity",
+      "high_satisfaction_low_demand",
+      "lapsed_cohort"
+    ],
+    "interventions": [
+      "limited_discount"
+    ],
+    "channels": [
+      "in_app",
+      "whatsapp",
+      "sms"
+    ]
+  },
+  "guidance": {
+    "ar": "الخصم آخر خيار. إن استُخدم فليكن لمجموعة صغيرة ولمدة محددة، ضمن سقف الخصم، وبعد حساب نقطة التعادل، ومع مجموعة ضابطة لمعرفة من كان سيحجز أصلًا.",
+    "en": "A discount is the last option. If used, keep it to a small group for a fixed period, within the discount cap, after computing break-even, and with a holdout to learn who would have booked anyway."
+  },
+  "when_not_to_use": {
+    "ar": "لا تستخدميه عند تفعيل «لا خصومات»، أو إذا كانت التكاليف ناقصة، أو إذا كان التعادل يتطلب زيادة غير واقعية في الحجوزات.",
+    "en": "Never under “no discounts”, when costs are incomplete, or when break-even needs an unrealistic increase in bookings."
+  },
+  "common_mistakes": [
+    {
+      "ar": "خصم مفتوح بلا تاريخ انتهاء",
+      "en": "An open-ended discount"
+    },
+    {
+      "ar": "عدم وجود مجموعة ضابطة",
+      "en": "No holdout group"
+    }
+  ],
+  "measurement": {
+    "primary": "sales.completed_count",
+    "design": "holdout"
+  },
+  "examples": {
+    "good": [
+      {
+        "ar": "خصم محدود لعميلات مختارات لمدة أسبوع مع مجموعة ضابطة ١٠٪",
+        "en": "A limited discount for selected customers for one week with a 10% holdout"
+      }
+    ],
+    "bad": [
+      {
+        "ar": "خصم على كل الخدمات طوال الشهر",
+        "en": "A discount on every service all month"
+      }
+    ]
+  },
+  "source": {
+    "type": "internal_review",
+    "ref": "Loom marketing methodology review, beauty pack v1",
+    "reviewed_at": "2026-11-01"
+  },
+  "owner": "loom.methodology"
+}

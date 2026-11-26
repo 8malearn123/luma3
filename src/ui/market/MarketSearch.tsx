@@ -105,7 +105,7 @@ export function MarketSearch({ door, signedIn }: { door?: 'salons' | 'experts'; 
         <div className="flex flex-wrap gap-1.5">
           {['', '3', '4', '4.5'].map((r) => (
             <button key={r || 'any'} type="button" onClick={() => set({ min_rating: r || null })} aria-pressed={get('min_rating') === r}
-              className={cx('rounded-full border px-3 py-1 text-xs', get('min_rating') === r ? 'border-luma-700 bg-luma-700 text-white' : 'border-luma-200 bg-white hover:border-luma-500')}>
+              className={cx('rounded-full border px-3 py-1 text-xs', get('min_rating') === r ? 'border-primary bg-primary text-on-primary' : 'border-highlight bg-surface hover:border-brand')}>
               {r ? t('market.filters.rating_min', { n: r }) : t('market.filters.any')}
             </button>
           ))}
@@ -128,7 +128,7 @@ export function MarketSearch({ door, signedIn }: { door?: 'salons' | 'experts'; 
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="flex flex-col gap-3 rounded-3xl border border-luma-200 bg-white p-3 shadow-sm sm:flex-row sm:items-center">
+      <div className="flex flex-col gap-3 rounded-3xl border border-highlight bg-surface p-3 shadow-sm sm:flex-row sm:items-center">
         <label className="relative flex-1">
           <span className="sr-only">{t('market.search_label')}</span>
           <Search className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-ink-muted" aria-hidden />
@@ -140,8 +140,8 @@ export function MarketSearch({ door, signedIn }: { door?: 'salons' | 'experts'; 
               {SORTS.map((s) => <option key={s} value={s}>{t(`market.sort.${s}`)}</option>)}
             </Select>
           </label>
-          <button type="button" className="inline-flex items-center gap-1.5 rounded-lg border border-luma-200 px-3 py-2 text-sm lg:hidden" onClick={() => setPanel((v) => !v)} aria-expanded={panel}>
-            <SlidersHorizontal className="size-4" aria-hidden />{t('market.filters.title')}{active ? <span className="rounded-full bg-luma-700 px-1.5 text-[11px] text-white">{active}</span> : null}
+          <button type="button" className="inline-flex items-center gap-1.5 rounded-lg border border-highlight px-3 py-2 text-sm lg:hidden" onClick={() => setPanel((v) => !v)} aria-expanded={panel}>
+            <SlidersHorizontal className="size-4" aria-hidden />{t('market.filters.title')}{active ? <span className="rounded-full bg-primary px-1.5 text-[11px] text-on-primary">{active}</span> : null}
           </button>
         </div>
       </div>
@@ -151,8 +151,8 @@ export function MarketSearch({ door, signedIn }: { door?: 'salons' | 'experts'; 
       ) : null}
       {sort === 'nearest' && geoState === 'asking' ? <p className="text-sm text-ink-muted" role="status">{t('market.geo_asking')}</p> : null}
       <div className="flex flex-col gap-5 lg:flex-row lg:items-start">
-        <aside className={cx('rounded-3xl border border-luma-200 bg-white p-4 lg:sticky lg:top-20 lg:block lg:w-64 lg:shrink-0', !panel && 'hidden')} aria-label={t('market.filters.title')}>
-          <h2 className="mb-3 hidden font-semibold text-luma-900 lg:block">{t('market.filters.title')}</h2>
+        <aside className={cx('rounded-3xl border border-highlight bg-surface p-4 lg:sticky lg:top-20 lg:block lg:w-64 lg:shrink-0', !panel && 'hidden')} aria-label={t('market.filters.title')}>
+          <h2 className="mb-3 hidden font-semibold text-heading lg:block">{t('market.filters.title')}</h2>
           {filters}
         </aside>
         <section className="min-w-0 flex-1" aria-live="polite">

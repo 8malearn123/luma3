@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import { History, RotateCcw, Undo2 } from 'lucide-react';
 import { useI18n } from '@/i18n/client';
-import { api, newIdempotencyKey } from '../api';
+import { api, ApiError, newIdempotencyKey } from '../api';
+import type { Issue, RefWarning } from './types';
 import { useApiQuery, useErrorMessage } from '../hooks';
 import { Button } from '../components/button';
 import { Alert, Badge, EmptyState, ErrorState, LoadingState } from '../components/feedback';
@@ -25,30 +26,51 @@ export function VersionsDrawer({ open, onClose, slug, canPublish, beforeRestore,
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<unknown>(null);
   const [key, setKey] = useState(newIdempotencyKey());
+  // Reference/capability findings for the last rollback/restore (LUMA-AUDIT-031).
+  const [notes, setNotes] = useState<{ warnings: RefWarning[]; issues: Issue[] } | null>(null);
+  const describe = (x: { code: string; kind?: string; message?: string }) => {
+    if (x.kind) return t(`builder.warnings.codes.${x.code}`, { kind: t(`builder.warnings.kinds.${x.kind}`) });
+    const k = `errors.${x.code}`;
+    const v = t(k);
+    return v === k ? x.message ?? x.code : v;
+  };
 
   async function run() {
     if (!confirm) return;
-    setBusy(true); setErr(null);
+    setBusy(true); setErr(null); setNotes(null);
     try {
       if (confirm.kind === 'rollback') {
-        const r = await api<{ version_number: number }>(`/api/v1/t/${slug}/builder/versions/${confirm.v.id}/rollback`, { body: {}, idempotencyKey: key });
+        const r = await api<{ version_number: number; warnings?: RefWarning[] }>(`/api/v1/t/${slug}/builder/versions/${confirm.v.id}/rollback`, { body: {}, idempotencyKey: key });
         toast({ tone: 'ok', text: t('builder.versions.rolled_back', { n: r.version_number }) });
         setKey(newIdempotencyKey());
+        if (r.warnings?.length) setNotes({ warnings: r.warnings, issues: [] });
         onRolledBack();
       } else {
         if (!(await beforeRestore())) throw new Error('save_failed');
-        await api(`/api/v1/t/${slug}/builder/versions/${confirm.v.id}/restore-draft`, { body: {} });
+        const r = await api<{ warnings?: RefWarning[]; issues?: Issue[] }>(`/api/v1/t/${slug}/builder/versions/${confirm.v.id}/restore-draft`, { body: {} });
+        if (r.warnings?.length || r.issues?.length) setNotes({ warnings: r.warnings ?? [], issues: r.issues ?? [] });
         toast({ tone: 'ok', text: t('builder.versions.restored', { n: confirm.v.version_number }) });
         onRestored();
       }
       setConfirm(null);
       void q.refetch();
-    } catch (e) { setErr(e); } finally { setBusy(false); }
+    } catch (e) {
+      setErr(e);
+      if (e instanceof ApiError && Array.isArray(e.details?.issues)) setNotes({ warnings: [], issues: e.details.issues as Issue[] });
+    } finally { setBusy(false); }
   }
 
   return (
     <Drawer open={open} onClose={onClose} title={t('builder.versions.title')}>
       {err ? <Alert tone="danger" className="mb-3">{msg(err)}</Alert> : null}
+      {notes ? (
+        <Alert tone={notes.issues.length ? 'danger' : 'warn'} className="mb-3">
+          <p className="font-medium">{notes.issues.length && err ? t('builder.versions.blocked') : t('builder.versions.notices', { n: notes.issues.length + notes.warnings.length })}</p>
+          <ul className="mt-1 list-disc ps-4 text-sm">
+            {[...notes.issues, ...notes.warnings].slice(0, 10).map((x, i) => <li key={i}>{describe(x as { code: string; kind?: string; message?: string })}</li>)}
+          </ul>
+        </Alert>
+      ) : null}
       {q.isLoading ? <LoadingState /> : q.error ? <ErrorState error={q.error} onRetry={() => q.refetch()} /> : !q.data?.length ? (
         <EmptyState icon={<History className="size-8" />} title={t('builder.versions.empty')} hint={t('builder.versions.empty_hint')} />
       ) : (

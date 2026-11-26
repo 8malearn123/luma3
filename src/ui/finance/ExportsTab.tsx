@@ -16,7 +16,7 @@ import { useStepUp } from '../policy/StepUp';
 import { PeriodPicker, usePeriod } from './common';
 
 type Exp = { id: string; kind: string; period_start: string; period_end: string; status: string; row_count: number | null; error: string | null; created_at: string; download_url: string | null };
-const KINDS = ['bookings', 'payments', 'journal', 'expenses'] as const;
+const KINDS = ['bookings', 'payments', 'journal', 'expenses', 'summary'] as const;
 
 export function ExportsTab() {
   const { t } = useI18n();
@@ -50,7 +50,7 @@ export function ExportsTab() {
     { key: 'created', header: t('fe.exports.created'), className: 'hidden md:table-cell', cell: (e) => <span className="text-xs">{when(e.created_at)}</span> },
     {
       key: 'status', header: t('fields.status'), cell: (e) => e.status === 'succeeded' && e.download_url && access.can('finance.export')
-        ? <a href={e.download_url} className="inline-flex items-center gap-1 text-luma-700 hover:underline"><Download className="size-4" aria-hidden />{t('fe.exports.download')}</a>
+        ? <a href={e.download_url} className="inline-flex items-center gap-1 text-link hover:underline"><Download className="size-4" aria-hidden />{t('fe.exports.download')}</a>
         : <Badge tone={e.status === 'failed' ? 'danger' : e.status === 'succeeded' ? 'ok' : 'warn'}>{t(`fe.exports.status.${e.status}`)}</Badge>,
     },
   ];
@@ -70,7 +70,7 @@ export function ExportsTab() {
             {!valid ? <Alert tone="warn">{t('fe.period.invalid')}</Alert> : null}
             <div className="flex flex-wrap items-center gap-3">
               <Button icon={<FileSpreadsheet className="size-4" />} loading={busy} disabled={!valid} onClick={create}>{t('finance.export')}</Button>
-              {ready ? <a href={ready.url} className="inline-flex items-center gap-1 text-sm font-medium text-luma-700 hover:underline"><Download className="size-4" aria-hidden />{t('fe.exports.download')} ({t('fe.exports.rows_n', { n: ready.rows })})</a> : null}
+              {ready ? <a href={ready.url} className="inline-flex items-center gap-1 text-sm font-medium text-link hover:underline"><Download className="size-4" aria-hidden />{t('fe.exports.download')} ({t('fe.exports.rows_n', { n: ready.rows })})</a> : null}
             </div>
             <p className="text-xs text-ink-muted">{t('fe.exports.note')}</p>
           </div>

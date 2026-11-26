@@ -52,8 +52,8 @@ export function BookingPolicySection({ slug, data, timeFormat }: { slug: string;
           <fieldset className="flex flex-col gap-2">
             <legend className="mb-1 text-sm font-medium">{t('biz_settings.booking.any_staff')}</legend>
             {ANY_STAFF_RULES.map((r) => (
-              <label key={r} className="flex items-start gap-2 rounded-lg border border-line p-3 text-sm has-[:checked]:border-luma-500 has-[:checked]:bg-luma-50">
-                <input type="radio" name="any_staff_rule" className="mt-1 accent-luma-700" checked={v.any_staff_rule === r} onChange={() => s.set({ any_staff_rule: r })} />
+              <label key={r} className="flex items-start gap-2 rounded-lg border border-line p-3 text-sm has-[:checked]:border-brand has-[:checked]:bg-surface-muted">
+                <input type="radio" name="any_staff_rule" className="mt-1 accent-primary" checked={v.any_staff_rule === r} onChange={() => s.set({ any_staff_rule: r })} />
                 <span><span className="font-medium">{t(`biz_settings.booking.rules.${r}.title`)}</span><span className="block text-xs text-ink-muted">{t(`biz_settings.booking.rules.${r}.explain`)}</span></span>
               </label>
             ))}

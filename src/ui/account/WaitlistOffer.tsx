@@ -62,13 +62,13 @@ export function WaitlistOffer({ id }: { id: string }) {
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div>
             <p className="text-xs text-ink-muted">{t('fe.offer.title')}</p>
-            <Link href={`/s/${o.tenant_slug}`} className="inline-flex items-center gap-1 font-semibold text-luma-900 hover:underline"><Store className="size-4" aria-hidden />{o.tenant_name}</Link>
+            <Link href={`/s/${o.tenant_slug}`} className="inline-flex items-center gap-1 font-semibold text-heading hover:underline"><Store className="size-4" aria-hidden />{o.tenant_name}</Link>
           </div>
           <Badge tone={status === 'pending' ? 'warn' : status === 'accepted' ? 'ok' : 'neutral'}>{t(`fe.offer_status.${status}`)}</Badge>
         </div>
         <div className="mt-4 flex flex-col gap-1">
           <p className="text-lg font-medium">{pick(o.service_name_ar, o.service_name_en)}</p>
-          <p className="flex items-center gap-1.5"><CalendarClock className="size-4 text-luma-700" aria-hidden />{when(o.slot_start)}</p>
+          <p className="flex items-center gap-1.5"><CalendarClock className="size-4 text-link" aria-hidden />{when(o.slot_start)}</p>
           <p className="text-sm text-ink-muted"><bdi>{t('account.bookings.with', { name: o.staff_name })}</bdi> · <bdi>{formatDuration(minutes, locale)}</bdi> · {o.price_display === 'starting_from' ? `${t('fe.offer.from_price')} ` : ''}<span dir="ltr">{formatMoney(o.price_minor, 'SAR', locale)}</span></p>
           <p className="text-xs text-ink-muted">{t('time.tz_note', { tz: tzLabel(o.timezone, locale) })}</p>
         </div>

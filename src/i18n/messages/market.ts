@@ -31,7 +31,7 @@ const ar = {
     favorite: 'أضيفي إلى المفضلة',
     unfavorite: 'إزالة من المفضلة',
     login_to_favorite: 'سجّلي الدخول لحفظ المفضلة',
-    rating_aria: 'التقييم {avg} من 5 ({n} تقييم)',
+    rating_aria: { zero: 'التقييم {avg} من 5 (لا تقييمات)', one: 'التقييم {avg} من 5 (تقييم واحد)', two: 'التقييم {avg} من 5 (تقييمان)', few: 'التقييم {avg} من 5 ({n} تقييمات)', many: 'التقييم {avg} من 5 ({n} تقييمًا)', other: 'التقييم {avg} من 5 ({n} تقييم)' },
     new: 'جديد في لوما',
     km: '{km} كم',
     starting_from: 'يبدأ من',
@@ -40,7 +40,7 @@ const ar = {
     types: { salon: 'صالون', beauty_center: 'مركز تجميل', spa: 'سبا', expert: 'خبيرة مستقلة' },
     search_label: 'ابحثي في سوق لوما',
     search_placeholder: 'ابحثي عن صالون، خبيرة، خدمة أو مدينة',
-    results: '{n} نتيجة',
+    results: { zero: 'لا توجد نتائج', one: 'نتيجة واحدة', two: 'نتيجتان', few: '{n} نتائج', many: '{n} نتيجة', other: '{n} نتيجة' },
     empty: 'ما لقينا نتائج مطابقة',
     empty_hint: 'جرّبي كلمات أخرى أو خففي الفلاتر.',
     geo_denied: 'ما قدرنا نعرف موقعكِ. فعّلي إذن الموقع في المتصفح لترتيب الأقرب، أو اختاري المدينة من الفلاتر.',
@@ -70,7 +70,7 @@ const ar = {
     doors: {
       salons: { title: 'الصالونات والمراكز', body: 'صالونات ومراكز تجميل وسبا بفريق متكامل.' },
       experts: { title: 'الخبيرات المستقلات', body: 'خبيرات مكياج وشعر وعناية يستقبلنكِ أو يزرنكِ.' },
-      count: '{n} نشاط',
+      count: { zero: 'لا توجد أنشطة بعد', one: 'نشاط واحد', two: 'نشاطان', few: '{n} أنشطة', many: '{n} نشاطًا', other: '{n} نشاط' },
     },
     pages: {
       search: { title: 'البحث في سوق لوما', subtitle: 'كل الأنشطة المعتمدة في سوق لوما.' },
@@ -172,7 +172,7 @@ const en: typeof ar = {
     favorite: 'Add to favourites',
     unfavorite: 'Remove from favourites',
     login_to_favorite: 'Sign in to save favourites',
-    rating_aria: 'Rated {avg} out of 5 ({n} reviews)',
+    rating_aria: { zero: 'Rated {avg} out of 5 (no reviews)', one: 'Rated {avg} out of 5 (1 review)', two: 'Rated {avg} out of 5 ({n} reviews)', few: 'Rated {avg} out of 5 ({n} reviews)', many: 'Rated {avg} out of 5 ({n} reviews)', other: 'Rated {avg} out of 5 ({n} reviews)' },
     new: 'New on LUMA',
     km: '{km} km',
     starting_from: 'From',
@@ -181,7 +181,7 @@ const en: typeof ar = {
     types: { salon: 'Salon', beauty_center: 'Beauty center', spa: 'Spa', expert: 'Independent expert' },
     search_label: 'Search the LUMA marketplace',
     search_placeholder: 'Search a salon, expert, service or city',
-    results: '{n} results',
+    results: { zero: 'No results', one: '1 result', two: '{n} results', few: '{n} results', many: '{n} results', other: '{n} results' },
     empty: 'No matching businesses',
     empty_hint: 'Try other words or fewer filters.',
     geo_denied: 'We could not get your location. Allow location in your browser to sort by distance, or pick a city in the filters.',
@@ -211,7 +211,7 @@ const en: typeof ar = {
     doors: {
       salons: { title: 'Salons & centers', body: 'Salons, beauty centers and spas with a full team.' },
       experts: { title: 'Independent experts', body: 'Make-up, hair and care experts who host you or visit you.' },
-      count: '{n} businesses',
+      count: { zero: 'No businesses yet', one: '1 business', two: '{n} businesses', few: '{n} businesses', many: '{n} businesses', other: '{n} businesses' },
     },
     pages: {
       search: { title: 'Search the LUMA marketplace', subtitle: 'Every approved business in the LUMA marketplace.' },

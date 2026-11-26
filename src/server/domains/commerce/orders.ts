@@ -12,6 +12,10 @@ import { cartLinesForOrder, lockCustomerCart, type CartIdentity } from './cart';
 import { redeemCoupon, releaseCouponRedemption, validateCoupon } from './coupons';
 import { moveStock, primaryBranchId, tenantSlug } from './stock';
 import type { CheckoutInput, orderListQuery, returnInput } from '@/shared/schemas/commerce';
+import { enabledMethods } from '../booking/service';
+import { computePaymentTerms } from '../booking/terms';
+import { earnForOrder } from '../loyalty/service';
+import type { PaymentTerms } from '@/shared/payments';
 
 /**
  * Orders. Lifecycle: pending_payment → paid → preparing → ready → collected,
@@ -26,10 +30,49 @@ import type { CheckoutInput, orderListQuery, returnInput } from '@/shared/schema
  * stock again.
  */
 export const ORDER_PAYMENT_TTL_MIN = 30;
+/**
+ * Pay-at-pickup orders (owner decision R2) keep their stock reserved for this
+ * long; the expiry sweep then cancels them and releases the stock exactly once.
+ * The window is a product default pending an owner decision (see report).
+ */
+export const ORDER_PICKUP_HOLD_HOURS = 24;
+
+export type OrderPaymentChoice = 'online' | 'on_site';
+
+/**
+ * How a customer can pay for an order right now (PAYMENT_FLOW §1, context
+ * 'order'): online needs an active, integrated provider; pay at pickup needs
+ * the business's pay-on-site switch. Customer restrictions (policy decisions)
+ * apply. Never trusts the browser.
+ */
+export async function orderPaymentTerms(trx: Tx, tenantId: string, who: { tenantCustomerId: string | null; userId: string | null }, amountMinor: number): Promise<PaymentTerms> {
+  return computePaymentTerms(trx, {
+    tenantId, tenantCustomerId: who.tenantCustomerId, customerUserId: who.userId, amountDueMinor: amountMinor,
+    availableMethods: await enabledMethods(trx, tenantId), context: 'order',
+  });
+}
+
+/** Storefront summary of the payment paths for the cart (no customer-specific detail for anonymous visitors). */
+export async function shopPaymentPaths(trx: Tx, tenantId: string, who: { tenantCustomerId: string | null; userId: string | null }) {
+  const methods = await enabledMethods(trx, tenantId);
+  // A nominal amount: only the shape of the options matters here, not deposits (orders never take deposits).
+  const terms = await orderPaymentTerms(trx, tenantId, who, 100);
+  return {
+    online: terms.allowed.includes('full'),
+    pay_at_pickup: terms.allowed.includes('on_site'),
+    accepting_orders: !terms.blocked,
+    simulation: methods.includes('sandbox'),
+    explanation: terms.customerExplanation,
+  };
+}
+
+function paymentUnavailable(terms: PaymentTerms) {
+  return Errors.invalid('payment_unavailable', 'This store is not accepting orders right now. Please contact the business.', { explanation: terms.customerExplanation, reason_codes: terms.reasonCodes });
+}
 
 export type OrderSummary = {
   id: string; number: string; status: string; subtotal_minor: number; discount_minor: number; total_minor: number;
-  currency: string; expires_at: string | null; checkout_path: string;
+  currency: string; expires_at: string | null; checkout_path: string; payment_choice: OrderPaymentChoice;
 };
 
 type Customer = { userId: string; displayName: string; phone: string | null; email: string | null };
@@ -99,16 +142,27 @@ async function createOrderTx(trx: Tx, tenantId: string, user: Customer, input: C
   if (input.coupon_code) coupon = await validateCoupon(trx, tenantId, input.coupon_code, { tenantCustomerId, subtotalMinor: subtotal, appliesTo: 'products' });
   const discount = coupon?.discountMinor ?? 0;
   const total = subtotal - discount;
+  // A usable payment path must exist before any order or stock reservation (owner decision R2).
+  const terms = await orderPaymentTerms(trx, tenantId, { tenantCustomerId, userId: user.userId }, total);
+  let paymentChoice: OrderPaymentChoice = 'online';
+  if (total > 0) {
+    if (terms.blocked) throw paymentUnavailable(terms);
+    paymentChoice = input.payment_choice ?? (terms.allowed.includes('full') ? 'online' : 'on_site');
+    if (!terms.allowed.includes(paymentChoice === 'online' ? 'full' : 'on_site')) {
+      throw Errors.invalid('payment_option_not_allowed', 'This payment option is not available for this order', { allowed: terms.allowed });
+    }
+  }
   const t = await trx.selectFrom('tenants').select(['currency', 'slug']).where('id', '=', tenantId).executeTakeFirstOrThrow();
   const branchId = await primaryBranchId(trx, tenantId);
   const number = await nextReadableNumber(trx, tenantId, 'order');
-  const expiresAt = new Date(Date.now() + ORDER_PAYMENT_TTL_MIN * 60_000);
+  const expiresAt = new Date(Date.now() + (paymentChoice === 'on_site' ? ORDER_PICKUP_HOLD_HOURS * 3_600_000 : ORDER_PAYMENT_TTL_MIN * 60_000));
 
   const order = await trx.insertInto('orders').values({
     tenant_id: tenantId, branch_id: branchId, number, tenant_customer_id: tenantCustomerId, customer_user_id: user.userId,
     status: 'pending_payment', fulfillment_method: input.fulfillment_method, booking_id: bookingId,
     subtotal_minor: subtotal, discount_minor: discount, total_minor: total, currency: t.currency,
     coupon_id: coupon?.couponId ?? null, expires_at: expiresAt, customer_note: input.note ?? null, created_by: user.userId,
+    payment_choice: paymentChoice, payment_terms: JSON.stringify(terms),
   }).returning(['id']).executeTakeFirstOrThrow();
 
   const items = await trx.insertInto('order_items').values(lines.map((l) => ({
@@ -133,7 +187,7 @@ async function createOrderTx(trx: Tx, tenantId: string, user: Customer, input: C
   }
   if (coupon) await redeemCoupon(trx, tenantId, coupon.couponId, { tenantCustomerId, orderId: order.id, discountMinor: discount });
   await trx.updateTable('carts').set({ status: 'converted' }).where('id', '=', cartId!).execute();
-  await event(trx, tenantId, order.id, { kind: 'created', to: 'pending_payment', actorUserId: user.userId, data: { lines: lines.length, total_minor: total } });
+  await event(trx, tenantId, order.id, { kind: 'created', to: 'pending_payment', actorUserId: user.userId, data: { lines: lines.length, total_minor: total, payment_choice: paymentChoice } });
   await audit(trx, actor, 'order.created', { tenantId, targetType: 'order', targetId: order.id, data: { number, total_minor: total, coupon: !!coupon } });
 
   let status = 'pending_payment';
@@ -144,7 +198,7 @@ async function createOrderTx(trx: Tx, tenantId: string, user: Customer, input: C
   }
   return {
     id: order.id, number, status, subtotal_minor: subtotal, discount_minor: discount, total_minor: total, currency: t.currency,
-    expires_at: status === 'paid' ? null : expiresAt.toISOString(), checkout_path: `/s/${t.slug}/checkout/order/${order.id}`,
+    expires_at: status === 'paid' ? null : expiresAt.toISOString(), checkout_path: `/s/${t.slug}/checkout/order/${order.id}`, payment_choice: paymentChoice,
   };
 }
 
@@ -197,6 +251,57 @@ export async function markOrderPaid(trx: Tx, tenantId: string, orderId: string, 
   }
   await settlePaid(trx, tenantId, orderId, payment);
   return { changed: true };
+}
+
+/**
+ * The customer switches a pending order to pay at pickup (e.g. online payment
+ * became unavailable between cart and payment). Allowed only when the
+ * business's current terms allow it for this customer. The reservation is
+ * extended to the pickup window; it never shrinks.
+ */
+export async function choosePayAtPickup(tenantId: string, userId: string, orderId: string) {
+  return withTenant(tenantId, async (trx) => {
+    const o = await lockOrder(trx, tenantId, orderId);
+    if (o.customer_user_id !== userId) throw Errors.notFound('order');
+    if (o.status !== 'pending_payment') throw Errors.conflict('invalid_transition', `Order is ${o.status}`);
+    if (o.expires_at && o.expires_at <= new Date()) throw Errors.conflict('order_expired', 'This order expired. Please check out again.');
+    const terms = await orderPaymentTerms(trx, tenantId, { tenantCustomerId: o.tenant_customer_id, userId }, o.total_minor - o.paid_minor);
+    if (!terms.allowed.includes('on_site')) throw Errors.invalid('payment_option_not_allowed', 'Paying at pickup is not available for this order', { allowed: terms.allowed });
+    if (o.payment_choice === 'on_site') return { id: o.id, payment_choice: 'on_site' as const, expires_at: o.expires_at?.toISOString() ?? null };
+    const pickupUntil = new Date(Date.now() + ORDER_PICKUP_HOLD_HOURS * 3_600_000);
+    const expiresAt = o.expires_at && o.expires_at > pickupUntil ? o.expires_at : pickupUntil;
+    await trx.updateTable('orders').set({ payment_choice: 'on_site', expires_at: expiresAt, payment_terms: JSON.stringify(terms), version: o.version + 1 }).where('id', '=', orderId).execute();
+    await trx.updateTable('stock_reservations').set({ expires_at: expiresAt }).where('order_id', '=', orderId).where('status', '=', 'active').execute();
+    await event(trx, tenantId, orderId, { kind: 'payment_choice_changed', actorUserId: userId, data: { from: o.payment_choice, to: 'on_site' } });
+    return { id: o.id, payment_choice: 'on_site' as const, expires_at: expiresAt.toISOString() };
+  });
+}
+
+/**
+ * Online payment can no longer be taken for this pending order. If the
+ * customer can still pay at pickup she is told so (409 online_payment_unavailable)
+ * and the order stays; otherwise the order is cancelled and its reservation
+ * released at once (never held for an impossible payment), then 422 payment_unavailable.
+ * Returns normally when online payment is available.
+ */
+export async function ensureOrderPayableOnline(tenantId: string, userId: string, orderId: string) {
+  const outcome = await withTenant(tenantId, async (trx) => {
+    const o = await lockOrder(trx, tenantId, orderId);
+    if (o.customer_user_id !== userId) throw Errors.notFound('order');
+    if (o.status !== 'pending_payment') return { ok: true as const };
+    const terms = await orderPaymentTerms(trx, tenantId, { tenantCustomerId: o.tenant_customer_id, userId }, o.total_minor - o.paid_minor);
+    if (terms.allowed.includes('full')) return { ok: true as const };
+    if (terms.allowed.includes('on_site')) return { ok: false as const, terms, pickup: true };
+    await cancelTx(trx, tenantId, orderId, 'payment_unavailable', null);
+    return { ok: false as const, terms, pickup: false };
+  });
+  if (outcome.ok) return;
+  if (outcome.pickup) {
+    throw Errors.conflict('online_payment_unavailable', 'Online payment is not available right now. You can pay at pickup.', { pay_at_pickup_available: true });
+  }
+  throw Errors.invalid('payment_unavailable', 'This store cannot take payment for this order right now, so the order was cancelled and the items released.', {
+    explanation: outcome.terms.customerExplanation, order_cancelled: true,
+  });
 }
 
 // ── Cancellation & expiry ───────────────────────────────────────────────────
@@ -342,7 +447,11 @@ export async function setFulfillmentStatus(access: TenantAccess, actor: AuditAct
     await trx.insertInto('fulfillments').values({ tenant_id: access.tenantId, order_id: id, method: o.fulfillment_method, status: to })
       .onConflict((oc) => oc.columns(['tenant_id', 'order_id']).doUpdateSet({ status: to })).execute();
     if (to === 'ready') await trx.updateTable('fulfillments').set({ ready_at: new Date() }).where('order_id', '=', id).execute();
-    if (to === 'collected') await trx.updateTable('fulfillments').set({ collected_at: new Date(), collected_by: actor.userId }).where('order_id', '=', id).execute();
+    if (to === 'collected') {
+      await trx.updateTable('fulfillments').set({ collected_at: new Date(), collected_by: actor.userId }).where('order_id', '=', id).execute();
+      // Loyalty (owner decision R6): points on the paid amount, earned once at collection.
+      await earnForOrder(trx, access.tenantId, id);
+    }
     await event(trx, access.tenantId, id, { kind: 'status_changed', from: o.status, to, actorUserId: actor.userId });
     await audit(trx, actor, 'order.status_changed', { tenantId: access.tenantId, targetType: 'order', targetId: id, data: { from: o.status, to } });
     if (to === 'ready' && o.customer_user_id) {
@@ -422,12 +531,17 @@ export async function decideReturn(access: TenantAccess, actor: AuditActor, orde
 export async function getCustomerOrder(tenantId: string, userId: string, orderId: string) {
   return withTenant(tenantId, async (trx) => {
     const o = await trx.selectFrom('orders').select(['id', 'number', 'status', 'refund_status', 'fulfillment_method', 'booking_id', 'subtotal_minor', 'discount_minor', 'tax_minor',
-      'total_minor', 'paid_minor', 'currency', 'expires_at', 'created_at', 'customer_note'])
+      'total_minor', 'paid_minor', 'currency', 'expires_at', 'created_at', 'customer_note', 'payment_choice', 'tenant_customer_id'])
       .where('id', '=', orderId).where('customer_user_id', '=', userId).executeTakeFirst();
     if (!o) throw Errors.notFound('order');
+    // Current payment paths (re-checked on every load: a provider may have been disconnected since checkout).
+    const payment = o.status === 'pending_payment' ? await shopPaymentPaths(trx, tenantId, { tenantCustomerId: o.tenant_customer_id, userId }) : null;
     const items = await trx.selectFrom('order_items').select(['id', 'variant_id', 'name_ar', 'name_en', 'variant_name_ar', 'variant_name_en', 'unit_price_minor', 'quantity', 'line_total_minor'])
       .where('order_id', '=', orderId).orderBy('created_at').execute();
-    return { ...o, items };
+    // The business's own tax label (LUMA-AUDIT-039): the UI localizes an Arabic-only label in English.
+    const tax = await trx.selectFrom('tenant_settings').select('tax_label').where('tenant_id', '=', tenantId).executeTakeFirst();
+    const { tenant_customer_id: _tc, ...rest } = o;
+    return { ...rest, tax_label: tax?.tax_label ?? null, items, payment };
   });
 }
 

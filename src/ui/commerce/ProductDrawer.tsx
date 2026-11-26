@@ -202,7 +202,7 @@ function ProductForm({ product, onClose, refetch }: { product: Product | undefin
                   <Field label={t('commerce.products.low_threshold')}>{(fp) => <Input {...fp} inputMode="numeric" dir="ltr" value={v.low_stock_threshold ?? ''} onChange={(e) => setVariant(i, { low_stock_threshold: e.target.value })} />}</Field>
                 </div>
                 {v.id && v.inventory_item_id ? (
-                  <details className="rounded-lg bg-luma-50/60 p-2">
+                  <details className="rounded-lg bg-surface-muted/60 p-2">
                     <summary className="cursor-pointer text-sm font-medium">{t('commerce.products.stock_actions')}</summary>
                     <div className="mt-2">
                       <StockPanel itemId={v.inventory_item_id} unit="piece" onHand={v.on_hand ?? 0} reserved={v.reserved ?? 0}

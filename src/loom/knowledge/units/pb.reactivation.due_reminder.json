@@ -1,0 +1,67 @@
+{
+  "id": "pb.reactivation.due_reminder",
+  "version": 1,
+  "title": {
+    "ar": "تذكير الموعد المستحق",
+    "en": "Due-date reminder"
+  },
+  "applies_to": {
+    "sectors": [
+      "beauty",
+      "wellness"
+    ],
+    "detectors": [
+      "lapsed_cohort"
+    ],
+    "interventions": [
+      "reminder_due"
+    ],
+    "channels": [
+      "in_app",
+      "whatsapp",
+      "sms"
+    ]
+  },
+  "guidance": {
+    "ar": "ذكّري العميلة بموعد العودة المعتاد لخدمتها (دورة الزيارة المحسوبة)، برسالة ودية ورابط حجز، للموافقات فقط. التوقيت قرب الاستحقاق أهم من العرض.",
+    "en": "Remind customers of their usual return time for the service (computed visit cycle) with a friendly message and a booking link, consenting customers only. Timing near the due date matters more than an offer."
+  },
+  "when_not_to_use": {
+    "ar": "لا ترسليه لمن ألغت الاشتراك أو لمن لديها حجز قادم.",
+    "en": "Do not send to customers who unsubscribed or already have an upcoming booking."
+  },
+  "common_mistakes": [
+    {
+      "ar": "إرسال التذكير قبل موعده بكثير",
+      "en": "Sending the reminder far too early"
+    }
+  ],
+  "measurement": {
+    "primary": "completed_bookings_14d",
+    "design": "holdout",
+    "note": {
+      "ar": "مجموعة ضابطة ١٠٪ ونافذة ١٤ يومًا",
+      "en": "10% holdout, 14-day window"
+    }
+  },
+  "examples": {
+    "good": [
+      {
+        "ar": "«مرّ شهر على آخر صبغة، نحجز لك؟»",
+        "en": "“It has been a month since your last colour — shall we book you in?”"
+      }
+    ],
+    "bad": [
+      {
+        "ar": "رسالة جماعية بلا اسم خدمة ولا رابط",
+        "en": "A blast with no service name and no link"
+      }
+    ]
+  },
+  "source": {
+    "type": "internal_review",
+    "ref": "Loom marketing methodology review, beauty pack v1",
+    "reviewed_at": "2026-11-01"
+  },
+  "owner": "loom.methodology"
+}

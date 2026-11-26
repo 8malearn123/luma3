@@ -1,0 +1,60 @@
+{
+  "id": "pb.costs.record_costs",
+  "version": 1,
+  "title": {
+    "ar": "تسجيل التكاليف أولًا",
+    "en": "Record costs first"
+  },
+  "applies_to": {
+    "sectors": [
+      "beauty"
+    ],
+    "detectors": [
+      "missing_cost_blocker"
+    ],
+    "interventions": [
+      "record_costs"
+    ],
+    "channels": [
+      "in_store"
+    ]
+  },
+  "guidance": {
+    "ar": "دون تكلفة مواد مسجلة لا يمكن الحكم على الربحية ولا حساب التعادل. سجّلي تكلفة المواد لكل خدمة أو وصفة استهلاك معتمدة قبل أي عرض.",
+    "en": "Without recorded material cost there is no profitability judgement or break-even. Record each service’s material cost or an approved consumption recipe before any offer."
+  },
+  "when_not_to_use": {
+    "ar": "لا يوجد استثناء: هذا متطلب للتحليل.",
+    "en": "No exception: this is an analysis prerequisite."
+  },
+  "common_mistakes": [
+    {
+      "ar": "تقدير التكلفة شفهيًا دون تسجيلها",
+      "en": "Guessing the cost verbally without recording it"
+    }
+  ],
+  "measurement": {
+    "primary": "economics.cost_completeness",
+    "design": "observational"
+  },
+  "examples": {
+    "good": [
+      {
+        "ar": "إدخال وصفة استهلاك لخدمة التنظيف العميق",
+        "en": "Enter a consumption recipe for the deep cleansing service"
+      }
+    ],
+    "bad": [
+      {
+        "ar": "«الخدمة مربحة غالبًا» دون أرقام",
+        "en": "“The service is probably profitable” with no numbers"
+      }
+    ]
+  },
+  "source": {
+    "type": "internal_review",
+    "ref": "Loom marketing methodology review, beauty pack v1",
+    "reviewed_at": "2026-11-01"
+  },
+  "owner": "loom.methodology"
+}

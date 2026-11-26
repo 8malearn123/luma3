@@ -43,7 +43,7 @@ function qs(p: Record<string, string | number | null | undefined>) {
 }
 
 export function BookingsPage() {
-  const { t, locale } = useI18n();
+  const { t, locale, pick } = useI18n();
   const access = useAccess();
   const router = useRouter();
   const pathname = usePathname();
@@ -124,6 +124,11 @@ export function BookingsPage() {
   const Next = locale === 'ar' ? ChevronLeft : ChevronRight;
   const canCreate = access.can('bookings.manage') && !access.readOnly;
 
+  // Localized names in the table (LUMA-AUDIT-039): services from the bilingual item snapshot,
+  // specialists from their profile's display_name / display_name_en.
+  const staffName = (id: string, fallback: string) => { const s = staffList.data?.find((x) => x.id === id); return s ? pick(s.display_name, s.display_name_en) : fallback; };
+  const servicesOf = (r: BookingRow) => (r.segments?.length ? r.segments.map((x) => pick(x.service_name_ar, x.service_name_en)).join(' + ') : r.services);
+  const staffOf = (r: BookingRow) => (r.segments?.length ? [...new Map(r.segments.map((x) => [x.staff_id, staffName(x.staff_id, x.staff_name)])).values()].join(locale === 'ar' ? '، ' : ', ') : r.staff_names);
   const columns: Column<BookingRow>[] = [
     {
       key: 'when', header: t('booking.dashboard.when'), cell: (r) => (
@@ -132,10 +137,10 @@ export function BookingsPage() {
     },
     {
       key: 'customer', header: t('booking.dashboard.customer'), cell: (r) => (
-        <div className="min-w-0"><p className="font-medium">{r.customer_name}</p><p className="text-xs text-ink-muted">{r.services}</p><p className="text-xs text-ink-muted sm:hidden">{r.staff_names}</p></div>
+        <div className="min-w-0"><p className="font-medium">{r.customer_name}</p><p className="text-xs text-ink-muted">{servicesOf(r)}</p><p className="text-xs text-ink-muted sm:hidden">{staffOf(r)}</p></div>
       ),
     },
-    { key: 'staff', header: t('booking.dashboard.staff'), className: 'hidden sm:table-cell', cell: (r) => <span className="text-sm">{r.staff_names}</span> },
+    { key: 'staff', header: t('booking.dashboard.staff'), className: 'hidden sm:table-cell', cell: (r) => <span className="text-sm">{staffOf(r)}</span> },
     {
       key: 'status', header: t('booking.dashboard.status_filter'), cell: (r) => (
         <span className="flex flex-wrap gap-1"><BookingStatusBadge status={r.status} />{financial ? <span className="hidden sm:inline-flex"><PaymentStatusBadge status={r.payment_status} /></span> : null}</span>
@@ -150,9 +155,9 @@ export function BookingsPage() {
     <div className="min-w-0">
       <PageHeader title={t('booking.dashboard.title')} subtitle={t('time.tz_note', { tz: tzLabel(tz, locale) })}
         actions={<>
-          <div role="group" aria-label={t('bookings_ui.view')} className="inline-flex rounded-lg border border-line bg-white p-0.5">
-            <button type="button" aria-pressed={view === 'list'} onClick={() => setParam('view', null)} className={cx('inline-flex items-center gap-1 rounded-md px-3 py-1.5 text-sm', view === 'list' ? 'bg-luma-700 text-white' : 'text-ink-muted')}><List className="size-4" aria-hidden />{t('booking.dashboard.list')}</button>
-            <button type="button" aria-pressed={view === 'calendar'} onClick={() => setParam('view', 'calendar')} className={cx('inline-flex items-center gap-1 rounded-md px-3 py-1.5 text-sm', view === 'calendar' ? 'bg-luma-700 text-white' : 'text-ink-muted')}><CalendarDays className="size-4" aria-hidden />{t('booking.dashboard.calendar')}</button>
+          <div role="group" aria-label={t('bookings_ui.view')} className="inline-flex rounded-lg border border-line bg-surface p-0.5">
+            <button type="button" aria-pressed={view === 'list'} onClick={() => setParam('view', null)} className={cx('inline-flex items-center gap-1 rounded-md px-3 py-1.5 text-sm', view === 'list' ? 'bg-primary text-on-primary' : 'text-ink-muted')}><List className="size-4" aria-hidden />{t('booking.dashboard.list')}</button>
+            <button type="button" aria-pressed={view === 'calendar'} onClick={() => setParam('view', 'calendar')} className={cx('inline-flex items-center gap-1 rounded-md px-3 py-1.5 text-sm', view === 'calendar' ? 'bg-primary text-on-primary' : 'text-ink-muted')}><CalendarDays className="size-4" aria-hidden />{t('booking.dashboard.calendar')}</button>
           </div>
           {canCreate ? <Button icon={<Plus className="size-4" />} onClick={() => setNewOpen(true)}>{t('booking.dashboard.new')}</Button> : null}
         </>} />
@@ -181,7 +186,7 @@ export function BookingsPage() {
       <div className="mb-3 flex gap-1.5 overflow-x-auto pb-1" role="group" aria-label={t('booking.dashboard.status_filter')}>
         {STATUSES.map((s) => (
           <button key={s} type="button" aria-pressed={statuses.includes(s)} onClick={() => toggleStatus(s)}
-            className={cx('whitespace-nowrap rounded-full border px-3 py-1 text-xs', statuses.includes(s) ? 'border-luma-700 bg-luma-700 text-white' : 'border-line bg-white text-ink-muted hover:bg-luma-50')}>
+            className={cx('whitespace-nowrap rounded-full border px-3 py-1 text-xs', statuses.includes(s) ? 'border-primary bg-primary text-on-primary' : 'border-line bg-surface text-ink-muted hover:bg-surface-muted')}>
             {t(`booking.status.${s}`)}
           </button>
         ))}
@@ -194,7 +199,7 @@ export function BookingsPage() {
             <div role="group" aria-label={t('bookings_ui.filters.period')} className="flex flex-wrap gap-1">
               {presets.map((p) => (
                 <button key={p} type="button" aria-pressed={preset === p} onClick={() => { setPreset(p); resetPage(); }}
-                  className={cx('rounded-lg px-3 py-1.5 text-sm', preset === p ? 'bg-luma-100 font-semibold text-luma-800' : 'text-ink-muted hover:bg-luma-50')}>
+                  className={cx('rounded-lg px-3 py-1.5 text-sm', preset === p ? 'bg-accent-soft font-semibold text-heading' : 'text-ink-muted hover:bg-surface-muted')}>
                   {p === 'range' ? t('bookings_ui.filters.range') : t(`booking.dashboard.${p}`)}
                 </button>
               ))}
@@ -220,9 +225,9 @@ export function BookingsPage() {
       ) : (
         <>
           <div className="mb-3 flex flex-wrap items-center gap-2">
-            <div role="group" aria-label={t('bookings_ui.view')} className="inline-flex rounded-lg border border-line bg-white p-0.5">
+            <div role="group" aria-label={t('bookings_ui.view')} className="inline-flex rounded-lg border border-line bg-surface p-0.5">
               {(['day', 'week'] as const).map((m) => (
-                <button key={m} type="button" aria-pressed={calMode === m} onClick={() => setCalMode(m)} className={cx('rounded-md px-3 py-1 text-sm', calMode === m ? 'bg-luma-100 font-semibold text-luma-800' : 'text-ink-muted')}>{t(`bookings_ui.calendar.${m}`)}</button>
+                <button key={m} type="button" aria-pressed={calMode === m} onClick={() => setCalMode(m)} className={cx('rounded-md px-3 py-1 text-sm', calMode === m ? 'bg-accent-soft font-semibold text-heading' : 'text-ink-muted')}>{t(`bookings_ui.calendar.${m}`)}</button>
               ))}
             </div>
             <div className="flex items-center gap-1">

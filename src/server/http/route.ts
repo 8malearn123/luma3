@@ -14,6 +14,7 @@ import { AppError, Errors, fromPgError } from './errors';
 import type { PlanFeatureKey } from '@/shared/plans';
 import { requireSafeRuntimeRole } from '../db/role-guard';
 import { requireDashboardsOpen } from '../domains/platform/settings';
+import { mfaGate, platformMfaState } from '../domains/platform/mfa-state';
 
 type AuthMode = 'public' | 'optional' | 'user' | 'tenant' | 'platform';
 
@@ -52,6 +53,11 @@ type Def<S extends z.ZodTypeAny | undefined, A extends AuthMode> = {
   /** Mutations on tenant routes are blocked in read-only workspaces unless allowed. */
   allowReadOnly?: boolean;
   stepUp?: boolean;
+  /**
+   * Platform routes only: skip the platform MFA check. Reserved for the MFA
+   * enrolment/verification endpoints themselves (and the caller's own /me).
+   */
+  mfaExempt?: boolean;
   /** Requires a verified email or phone (bookings, business creation). */
   requireVerified?: boolean;
   handler: (ctx: RouteContext<S extends z.ZodTypeAny ? z.infer<S> : undefined, A>) => Promise<Result>;
@@ -155,7 +161,8 @@ export function route<S extends z.ZodTypeAny | undefined = undefined, A extends 
       if (def.requireVerified && user && !user.emailVerified && !user.phoneVerified) {
         throw Errors.forbidden('Verify your email or phone first', { reason: 'unverified' });
       }
-      if (def.stepUp && user) requireStepUp(user);
+      // Platform routes check step-up only after the role and MFA checks (non-staff callers get 404).
+      if (def.stepUp && user && def.auth !== 'platform') requireStepUp(user);
 
       if (def.rateLimit) {
         const who = def.rateLimit.scope === 'user' && user ? `u:${user.userId}` : `ip:${ip ?? 'unknown'}`;
@@ -177,6 +184,12 @@ export function route<S extends z.ZodTypeAny | undefined = undefined, A extends 
         if (!user) throw Errors.unauthenticated();
         const caps = platformCapabilities(user.platformRoles);
         if (caps.size === 0 || (def.platformCapability && !caps.has(def.platformCapability))) throw Errors.notFound();
+        // Every platform route requires a verified second factor (when required or enrolled), so
+        // a route that forgets platformRoute() still cannot skip MFA (LUMA-AUDIT-002).
+        if (!def.mfaExempt && mfaGate(await platformMfaState(user)) === 'verify') {
+          throw new AppError(403, 'mfa_required', 'Enter your verification code to continue');
+        }
+        if (def.stepUp) requireStepUp(user);
       }
 
       const idempotencyKey = req.headers.get('idempotency-key');
